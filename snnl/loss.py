@@ -16,6 +16,9 @@
 """Implementation of loss functions"""
 import torch
 
+__author__ = "Abien Fred Agarap"
+__version__ = "1.0.0"
+
 
 def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """
