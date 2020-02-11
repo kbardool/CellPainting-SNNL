@@ -20,6 +20,15 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+def compute_pairwise_distance(
+    features_a: torch.Tensor,
+    features_b: torch.Tensor,
+    temperature: int,
+    cosine_distance: bool,
+) -> torch.Tensor:
+    pass
+
+
 def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """
     Returns the pairwise Euclidean distance between matrices `a` and `b`.
