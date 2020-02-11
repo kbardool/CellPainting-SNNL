@@ -37,3 +37,35 @@ def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tenso
     )
     return tile_a + tile_b - 2.0 * inner_product
 
+
+def pairwise_cosine_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    """
+    Returns the pairwise cosine distance between matrices `a` and `b`.
+
+    Parameters
+    ----------
+    a, b : matrix
+        The input features.
+
+    Returns
+    -------
+    matrix
+        The pairwise cosine distance between `a` and `b`.
+
+    Example
+    -------
+    >>> import torch
+    >>> _ = torch.manual_seed(42)
+    >>> a = torch.rand((4, 2))
+    >>> b = torch.rand((4, 2))
+    >>> pairwise_cosine_distance(a, b)
+    tensor([[0.7569, 0.6507, 0.6715, 0.7327],
+            [0.8754, 0.7632, 0.7759, 0.8224],
+            [0.8858, 0.8157, 0.8262, 0.8602],
+            [0.9114, 0.8185, 0.8280, 0.8644]])
+    """
+    normalized_a = torch.Tensor(a) / torch.norm(torch.Tensor(a), p=2)
+    normalized_b = torch.Tensor(b) / torch.norm(torch.Tensor(b), p=2)
+    normalized_b = torch.t(normalized_b)
+    product = torch.matmul(normalized_a, normalized_b)
+    return 1.0 - product
