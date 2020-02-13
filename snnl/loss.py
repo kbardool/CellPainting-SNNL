@@ -26,7 +26,11 @@ def compute_pairwise_distance(
     temperature: int,
     cosine_distance: bool,
 ) -> torch.Tensor:
-    pass
+    if cosine_distance:
+        distance_matrix = pairwise_cosine_distance(features_a, features_b)
+    else:
+        distance_matrix = pairwise_euclidean_distance(features_a, features_b)
+    return torch.exp(-(distance_matrix / temperature))
 
 
 def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
