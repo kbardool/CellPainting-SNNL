@@ -92,8 +92,10 @@ def pairwise_cosine_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
             [0.8858, 0.8157, 0.8262, 0.8602],
             [0.9114, 0.8185, 0.8280, 0.8644]])
     """
-    normalized_a = torch.Tensor(a) / torch.norm(torch.Tensor(a), p=2)
-    normalized_b = torch.Tensor(b) / torch.norm(torch.Tensor(b), p=2)
-    normalized_b = torch.t(normalized_b)
+    a = torch.tensor(a, dtype=torch.float32)
+    b = torch.tensor(b, dtype=torch.float32)
+    normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+    normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+    normalized_b = torch.conj(normalized_b).T
     product = torch.matmul(normalized_a, normalized_b)
     return 1.0 - product
