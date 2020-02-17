@@ -20,6 +20,37 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+def pick_probability(
+        features, temperature, cosine_distance, stability_epsilon=1e-5
+        ):
+    """
+    Returns a row normalized pairwise distance between all elements of `features`.
+    Parameters
+    ----------
+    features : matrix
+        The input features.
+    temperature : float
+        The temperature constant.
+    cosine_distance : bool
+        Boolean whether to use cosine or Euclidean distance.
+    stability_epsilon : float
+        The stability constant for SNNL.
+    Returns
+    -------
+    normalized_pairwise_distance : matrix
+        The normalized pairwise distance among `features`.
+    """
+    pairwise_distance = compute_pairwise_distance(
+            features, features, temperature, cosine_distance
+            )
+    pairwise_distance -= torch.eye(features.size()[0])
+    normalized_pairwise_distance = pairwise_distance / (
+            stability_epsilon
+            + torch.sum(pairwise_distance, 1).view(-1, 1)
+            )
+    return normalized_pairwise_distance
+
+
 def same_label_mask(labels_a: torch.Tensor, labels_b: torch.Tensor) -> torch.Tensor:
     """
     Returns a masking matrix such that element (i, j) is 1
