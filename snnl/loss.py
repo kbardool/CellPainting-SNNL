@@ -145,6 +145,18 @@ def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tenso
     -------
     torch.Tensor
         The pairwise Euclidean distance between matrices `a` and `b`.
+
+    Example
+    -------
+    >>> import torch
+    >>> _ = torch.manual_seed(42)
+    >>> a = torch.rand((4, 2))
+    >>> b = torch.rand((4, 2))
+    >>> pairwise_euclidean_distance(a, b)
+    tensor([[0.6147, 0.9937, 0.5216, 0.9043],
+            [0.1061, 0.4382, 0.2962, 0.4997],
+            [0.1208, 0.3901, 0.2305, 0.4266],
+            [0.2557, 0.4091, 0.1524, 0.3674]])
     """
     batch_size_a = a.size()[0]
     batch_size_b = b.size()[0]
