@@ -153,7 +153,7 @@ def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tenso
     squared_norm_b = torch.sum(torch.pow(b, 2), dim=1)
     squared_norm_b = torch.reshape(squared_norm_b, [batch_size_b, 1])
 
-    a = torch.t(a)
+    a = a.T
     inner_product = torch.matmul(b, a)
 
     tile_a = (
