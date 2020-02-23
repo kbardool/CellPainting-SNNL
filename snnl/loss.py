@@ -20,6 +20,16 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+def SNNL(
+    features: object,
+    labels: object,
+    distance: str = "cosine",
+    temperature: int = 100.0,
+    as_unsupervised: bool = False,
+) -> float:
+    pass
+
+
 def masked_pick_probability(
     features, labels, temperature, cosine_distance, stability_epsilon
 ):
@@ -44,13 +54,11 @@ def masked_pick_probability(
         A tensor for pairwise sampling probabilities.
     """
     return pick_probability(
-            features, temperature, cosine_distance, stability_epsilon
-            ) * same_label_mask(labels, labels)
+        features, temperature, cosine_distance, stability_epsilon
+    ) * same_label_mask(labels, labels)
 
 
-def pick_probability(
-        features, temperature, cosine_distance, stability_epsilon=1e-5
-        ):
+def pick_probability(features, temperature, cosine_distance, stability_epsilon=1e-5):
     """
     Returns a row normalized pairwise distance between all elements of `features`.
     Parameters
@@ -69,13 +77,12 @@ def pick_probability(
         The normalized pairwise distance among `features`.
     """
     pairwise_distance = compute_pairwise_distance(
-            features, features, temperature, cosine_distance
-            )
+        features, features, temperature, cosine_distance
+    )
     pairwise_distance -= torch.eye(features.size()[0])
     normalized_pairwise_distance = pairwise_distance / (
-            stability_epsilon
-            + torch.sum(pairwise_distance, 1).view(-1, 1)
-            )
+        stability_epsilon + torch.sum(pairwise_distance, 1).view(-1, 1)
+    )
     return normalized_pairwise_distance
 
 
@@ -93,11 +100,8 @@ def same_label_mask(labels_a: torch.Tensor, labels_b: torch.Tensor) -> torch.Ten
         The masking matrix, indicates whether labels are equal.
     """
     masking_matrix = torch.tensor(
-            torch.squeeze(
-                torch.eq(labels_a, labels_b.view(-1, 1))
-                ),
-            torch.float32
-            )
+        torch.squeeze(torch.eq(labels_a, labels_b.view(-1, 1))), torch.float32
+    )
     return masking_matrix
 
 
@@ -173,10 +177,7 @@ def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tenso
         .repeat(batch_size_b, 1)
         .view((batch_size_b * squared_norm_a.size()[0]), -1)
     )
-    tile_b = (
-        squared_norm_b.view(-1, 1)
-        .repeat(1, batch_size_a)
-    )
+    tile_b = squared_norm_b.view(-1, 1).repeat(1, batch_size_a)
     return tile_a + tile_b - 2.0 * inner_product
 
 
