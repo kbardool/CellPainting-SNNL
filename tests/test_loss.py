@@ -12,10 +12,10 @@ def test_pairwise_euclidean_distance():
     assert distance.size() == (4, 4)
     assert type(distance) is torch.Tensor
 
+
 def test_pairwise_cosine_distance():
     a = torch.rand((4, 2))
     b = torch.rand((4, 2))
     distance = pairwise_cosine_distance(a, b)
     assert distance.size() == (4, 4)
     assert type(distance) is torch.Tensor
-
