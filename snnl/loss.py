@@ -27,7 +27,46 @@ def SNNL(
     temperature: int = 100.0,
     as_unsupervised: bool = False,
 ) -> float:
-    pass
+    distance = distance.lower()
+
+    stability_epsilon = 1e-5
+    if not as_unsupervised:
+        if distance == "cosine":
+            summed_masked_pick_probability = torch.sum(
+                    masked_pick_probability(
+                        features, labels, temperature, True, stability_epsilon
+                        ),
+                    dim=1
+                    )
+        elif distance == "euclidean":
+            summed_masked_pick_probability = torch.sum(
+                    masked_pick_probability(
+                        features, labels, temperature, False, stability_epsilon
+                        ),
+                    dim=1
+                    )
+        snnl = torch.mean(
+                -torch.log(stability_epsilon + summed_masked_pick_probability)
+                    )
+    elif as_unsupervised:
+        if distance == "cosine":
+            summed_pick_probability = torch.sum(
+                    masked_pick_probability(
+                        features, labels, temperature, True, stability_epsilon
+                        ),
+                    dim=1
+                    )
+        elif distance == "euclidean":
+            summed_pick_probability = torch.sum(
+                    masked_pick_probability(
+                        features, labels, temperature, False, stability_epsilon
+                        ),
+                    dim=1
+                    )
+        snnl = torch.mean(
+                    -torch.log(stability_epsilon + summed_pick_probability)
+                    )
+    return snnl
 
 
 def masked_pick_probability(
