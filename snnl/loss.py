@@ -27,6 +27,24 @@ def SNNL(
     temperature: int = 100.0,
     as_unsupervised: bool = False,
 ) -> float:
+    """
+    Computes the Soft Nearest Neighbors Loss (Fross, Papernot, & Hinton, 2019)
+    https://arxiv.org/abs/1902.01889/
+    Parameters
+    ----------
+    features : array-like object
+        The input features.
+    labels : array-like object
+        The input labels.
+    distance : str
+        The distance metric to use.
+    temperature : int
+        The temperature factor.
+    Returns
+    -------
+    float
+        The soft nearest neighbors loss across all layers of a model.
+    """
     distance = distance.lower()
 
     stability_epsilon = 1e-5
