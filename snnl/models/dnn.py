@@ -4,10 +4,12 @@ import torch
 class DNN(torch.nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
-        self.layers = torch.nn.ModuleList([
-            torch.nn.Linear(in_features=in_features, out_features=out_features)
-            for in_features, out_features in kwargs["units"]
-            ])
+        self.layers = torch.nn.ModuleList(
+            [
+                torch.nn.Linear(in_features=in_features, out_features=out_features)
+                for in_features, out_features in kwargs["units"]
+            ]
+        )
 
     def forward(self, features):
         activations = {}
