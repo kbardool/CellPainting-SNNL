@@ -25,7 +25,6 @@ def SNNL(
     labels: object,
     distance: str = "cosine",
     temperature: int = 100.0,
-    as_unsupervised: bool = False,
 ) -> float:
     """
     Computes the Soft Nearest Neighbors Loss (Fross, Papernot, & Hinton, 2019)
@@ -48,40 +47,23 @@ def SNNL(
     distance = distance.lower()
 
     stability_epsilon = 1e-5
-    if not as_unsupervised:
-        if distance == "cosine":
-            summed_masked_pick_probability = torch.sum(
-                masked_pick_probability(
-                    features, labels, temperature, True, stability_epsilon
-                ),
-                dim=1,
-            )
-        elif distance == "euclidean":
-            summed_masked_pick_probability = torch.sum(
-                masked_pick_probability(
-                    features, labels, temperature, False, stability_epsilon
-                ),
-                dim=1,
-            )
-        snnl = torch.mean(
-            -torch.log(stability_epsilon + summed_masked_pick_probability)
+    if distance == "cosine":
+        summed_masked_pick_probability = torch.sum(
+            masked_pick_probability(
+                features, labels, temperature, True, stability_epsilon
+            ),
+            dim=1,
         )
-    elif as_unsupervised:
-        if distance == "cosine":
-            summed_pick_probability = torch.sum(
-                masked_pick_probability(
-                    features, labels, temperature, True, stability_epsilon
-                ),
-                dim=1,
-            )
-        elif distance == "euclidean":
-            summed_pick_probability = torch.sum(
-                masked_pick_probability(
-                    features, labels, temperature, False, stability_epsilon
-                ),
-                dim=1,
-            )
-        snnl = torch.mean(-torch.log(stability_epsilon + summed_pick_probability))
+    elif distance == "euclidean":
+        summed_masked_pick_probability = torch.sum(
+            masked_pick_probability(
+                features, labels, temperature, False, stability_epsilon
+            ),
+            dim=1,
+        )
+    snnl = torch.mean(
+        -torch.log(stability_epsilon + summed_masked_pick_probability)
+    )
     return snnl
 
 
@@ -154,8 +136,6 @@ def same_label_mask(labels_a: torch.Tensor, labels_b: torch.Tensor) -> torch.Ten
     masking_matrix : tensor
         The masking matrix, indicates whether labels are equal.
     """
-    labels_a = torch.FloatTensor(labels_a)
-    labels_b = torch.FloatTensor(labels_b)
     masking_matrix = torch.squeeze(torch.eq(labels_a, labels_b.view(-1, 1)).float())
     return masking_matrix
 
@@ -217,6 +197,8 @@ def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tenso
             [0.1208, 0.3901, 0.2305, 0.4266],
             [0.2557, 0.4091, 0.1524, 0.3674]])
     """
+    a = torch.FloatTensor(a)
+    b = torch.FloatTensor(b)
     batch_size_a = a.size()[0]
     batch_size_b = b.size()[0]
     squared_norm_a = torch.sum(torch.pow(a, 2), dim=1)
