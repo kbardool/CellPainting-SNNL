@@ -32,7 +32,7 @@ class DNN(torch.nn.Module):
         for index, layer in enumerate(self.layers):
             if index == 0:
                 activations[index] = torch.nn.ReLU(layer(features))
-            elif index == len(activations) - 1:
+            elif index == len(self.layers) - 1:
                 activations[index] = layer(activations[index - 1])
             else:
                 activations[index] = torch.nn.ReLU(layer(activations[index - 1]))
