@@ -154,9 +154,9 @@ def same_label_mask(labels_a: torch.Tensor, labels_b: torch.Tensor) -> torch.Ten
     masking_matrix : tensor
         The masking matrix, indicates whether labels are equal.
     """
-    masking_matrix = torch.tensor(
-        torch.squeeze(torch.eq(labels_a, labels_b.view(-1, 1))), torch.float32
-    )
+    labels_a = torch.FloatTensor(labels_a)
+    labels_b = torch.FloatTensor(labels_b)
+    masking_matrix = torch.squeeze(torch.eq(labels_a, labels_b.view(-1, 1)).float())
     return masking_matrix
 
 
