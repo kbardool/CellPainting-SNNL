@@ -37,7 +37,6 @@ class Autoencoder(torch.nn.Module):
                 torch.nn.Linear(in_features=500, out_features=500),
                 torch.nn.ReLU(),
                 torch.nn.Linear(in_features=500, out_features=kwargs["input_shape"]),
-                torch.nn.Sigmoid(),
             ]
         )
 
