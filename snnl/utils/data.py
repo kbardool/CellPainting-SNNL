@@ -25,42 +25,42 @@ def load_dataset(name: str = "mnist") -> Tuple[object, object]:
     Tuple[object, object]
         A tuple consisting of the training dataset and the test dataset.
     """
-    transform =
-    torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+    transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
     if name == "mnist":
         train_dataset = torchvision.datasets.MNIST(
-            root="~/torch_datasets", train=True, download=True,
-            transform=transform
+            root="~/torch_datasets", train=True, download=True, transform=transform
         )
         test_dataset = torchvision.datasets.MNIST(
-            root="~/torch_datasets", train=False, download=True,
-            transform=transform
+            root="~/torch_datasets", train=False, download=True, transform=transform
         )
     elif name == "fashion_mnist":
         train_dataset = torchvision.datasets.FashionMNIST(
-            root="~/torch_datasets", train=True, download=True,
-            transform=transform
+            root="~/torch_datasets", train=True, download=True, transform=transform
         )
         test_dataset = torchvision.datasets.FashionMNIST(
-            root="~/torch_datasets", train=False, download=True,
-            transform=transform
+            root="~/torch_datasets", train=False, download=True, transform=transform
         )
     elif name == "emnist":
         train_dataset = torchvision.datasets.EMNIST(
-            root="~/torch_datasets", train=True, split="balanced",
-            download=True, transform=transform
+            root="~/torch_datasets",
+            train=True,
+            split="balanced",
+            download=True,
+            transform=transform,
         )
         test_dataset = torchvision.datasets.EMNIST(
-            root="~/torch_datasets", train=False, split="balanced",
-            download=True, transform=transform
+            root="~/torch_datasets",
+            train=False,
+            split="balanced",
+            download=True,
+            transform=transform,
         )
     return (train_dataset, test_dataset)
 
 
 def create_dataloader(
-    dataset: object, batch_size: int = 16, shuffle: bool = True, num_workers: int =
-    0
+    dataset: object, batch_size: int = 16, shuffle: bool = True, num_workers: int = 0
 ) -> object:
     """
     Returns a data loader object, ready to be used by a model.
