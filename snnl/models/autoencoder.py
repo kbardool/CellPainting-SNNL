@@ -49,3 +49,17 @@ class Autoencoder(torch.nn.Module):
                 activations[index] = layer(activations[index - 1])
         reconstruction = activations[len(activations) - 1]
         return reconstruction
+
+
+def epoch_train(model, data_loader):
+    epoch_loss = 0
+    for batch_features, _ in data_loader:
+        batch_features = batch_features.view(batch_features.shape[0], -1)
+        model.optimizer.zero_grad()
+        outputs = model(batch_features)
+        train_loss = model.criterion(outputs, batch_features)
+        train_loss.backward()
+        model.optimizer.step()
+        epoch_loss += train_loss.item()
+    epoch_loss /= len(data_loader)
+    return epoch_loss
