@@ -50,6 +50,13 @@ class Autoencoder(torch.nn.Module):
         reconstruction = activations[len(activations) - 1]
         return reconstruction
 
+    def fit(self, data_loader, epochs):
+        train_loss = []
+        for epoch in range(epochs):
+            epoch_loss = epoch_train(self, data_loader)
+            train_loss.append(epoch_loss)
+            print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+
 
 def epoch_train(model, data_loader):
     epoch_loss = 0
