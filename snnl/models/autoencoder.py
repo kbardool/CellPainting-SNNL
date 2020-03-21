@@ -53,6 +53,16 @@ class Autoencoder(torch.nn.Module):
         return reconstruction
 
     def fit(self, data_loader, epochs):
+        """
+        Trains the autoencoder model.
+
+        Parameters
+        ----------
+        data_loader : torch.utils.dataloader.DataLoader
+            The data loader object that consists of the data pipeline.
+        epochs : int
+            The number of epochs to train the model.
+        """
         train_loss = []
         for epoch in range(epochs):
             epoch_loss = epoch_train(self, data_loader)
