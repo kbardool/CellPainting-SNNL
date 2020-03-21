@@ -52,7 +52,7 @@ def load_dataset(name: str = "mnist") -> Tuple[object, object]:
 def create_dataloader(
     dataset: object, batch_size: int = 16, shuffle: bool = True, num_workers: int =
     0
-) -> torch.utils.dataloader.DataLoader:
+) -> object:
     """
     Returns a data loader object, ready to be used by a model.
 
