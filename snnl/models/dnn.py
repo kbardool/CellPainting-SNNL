@@ -32,6 +32,19 @@ class DNN(torch.nn.Module):
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, features):
+        """
+        Defines the forward pass by the model.
+
+        Parameter
+        ---------
+        features : torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        logits : torch.Tensor
+            The model output.
+        """
         activations = {}
         for index, layer in enumerate(self.layers):
             if index == 0:
