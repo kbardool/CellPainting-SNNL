@@ -76,6 +76,21 @@ class DNN(torch.nn.Module):
 
 
 def epoch_train(model, data_loader):
+    """
+    Trains a model for one epoch.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    data_loader : torch.utils.dataloader.DataLoader
+        The data loader object that consists of the data pipeline.
+
+    Returns
+    -------
+    epoch_loss : float
+        The epoch loss.
+    """
     epoch_loss = 0
     for batch_features, batch_labels in data_loader:
         batch_features = batch_features.view(batch_features.shape[0], -1)
