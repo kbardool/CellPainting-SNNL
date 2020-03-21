@@ -26,6 +26,9 @@ class DNN(torch.nn.Module):
                 for in_features, out_features in kwargs["units"]
             ]
         )
+        self.optimizer = torch.optim.Adam(params=self.parameters(),
+                lr=kwargs["learning_rate"])
+        self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, features):
         activations = {}
