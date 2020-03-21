@@ -40,7 +40,7 @@ class Autoencoder(torch.nn.Module):
             ]
         )
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=kwargs["learning_rate"])
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.BCEWithLogitsLoss()
 
     def forward(self, features):
         activations = {}
