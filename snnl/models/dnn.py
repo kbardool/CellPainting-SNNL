@@ -31,10 +31,10 @@ class DNN(torch.nn.Module):
         activations = {}
         for index, layer in enumerate(self.layers):
             if index == 0:
-                activations[index] = torch.nn.ReLU(layer(features))
+                activations[index] = torch.relu(layer(features))
             elif index == len(self.layers) - 1:
                 activations[index] = layer(activations[index - 1])
             else:
-                activations[index] = torch.nn.ReLU(layer(activations[index - 1]))
+                activations[index] = torch.nn.relu(layer(activations[index - 1]))
         logits = activations[len(activations) - 1]
         return logits
