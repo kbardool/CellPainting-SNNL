@@ -57,6 +57,16 @@ class DNN(torch.nn.Module):
         return logits
 
     def fit(self, data_loader, epochs):
+        """
+        Trains the dnn model.
+
+        Parameters
+        ----------
+        data_loader : torch.utils.dataloader.DataLoader
+            The data loader object that consists of the data pipeline.
+        epochs : int
+            The number of epochs to train the model.
+        """
         train_loss = []
         for epoch in range(epochs):
             epoch_loss = epoch_train(self, data_loader)
