@@ -26,8 +26,25 @@ class DNN(torch.nn.Module):
                 for in_features, out_features in kwargs["units"]
             ]
         )
+        self.optimizer = torch.optim.Adam(
+            params=self.parameters(), lr=kwargs["learning_rate"]
+        )
+        self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, features):
+        """
+        Defines the forward pass by the model.
+
+        Parameter
+        ---------
+        features : torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        logits : torch.Tensor
+            The model output.
+        """
         activations = {}
         for index, layer in enumerate(self.layers):
             if index == 0:
@@ -35,6 +52,53 @@ class DNN(torch.nn.Module):
             elif index == len(self.layers) - 1:
                 activations[index] = layer(activations[index - 1])
             else:
-                activations[index] = torch.nn.relu(layer(activations[index - 1]))
+                activations[index] = torch.relu(layer(activations[index - 1]))
         logits = activations[len(activations) - 1]
         return logits
+
+    def fit(self, data_loader, epochs):
+        """
+        Trains the dnn model.
+
+        Parameters
+        ----------
+        data_loader : torch.utils.dataloader.DataLoader
+            The data loader object that consists of the data pipeline.
+        epochs : int
+            The number of epochs to train the model.
+        """
+        train_loss = []
+        for epoch in range(epochs):
+            epoch_loss = epoch_train(self, data_loader)
+            train_loss.append(epoch_loss)
+            print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+        self.train_loss = train_loss
+
+
+def epoch_train(model, data_loader):
+    """
+    Trains a model for one epoch.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    data_loader : torch.utils.dataloader.DataLoader
+        The data loader object that consists of the data pipeline.
+
+    Returns
+    -------
+    epoch_loss : float
+        The epoch loss.
+    """
+    epoch_loss = 0
+    for batch_features, batch_labels in data_loader:
+        batch_features = batch_features.view(batch_features.shape[0], -1)
+        model.optimizer.zero_grad()
+        outputs = model(batch_features)
+        train_loss = model.criterion(outputs, batch_labels)
+        train_loss.backward()
+        model.optimizer.step()
+        epoch_loss += train_loss.item()
+    epoch_loss /= len(data_loader)
+    return epoch_loss
