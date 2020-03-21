@@ -26,8 +26,9 @@ class DNN(torch.nn.Module):
                 for in_features, out_features in kwargs["units"]
             ]
         )
-        self.optimizer = torch.optim.Adam(params=self.parameters(),
-                lr=kwargs["learning_rate"])
+        self.optimizer = torch.optim.Adam(
+            params=self.parameters(), lr=kwargs["learning_rate"]
+        )
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, features):
@@ -41,6 +42,14 @@ class DNN(torch.nn.Module):
                 activations[index] = torch.nn.relu(layer(activations[index - 1]))
         logits = activations[len(activations) - 1]
         return logits
+
+    def fit(self, data_loader, epochs):
+        train_loss = []
+        for epoch in range(epochs):
+            epoch_loss = epoch_train(self, data_loader)
+            train_loss.append(epoch_loss)
+            print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+        self.train_loss = train_loss
 
 
 def epoch_train(model, data_loader):
