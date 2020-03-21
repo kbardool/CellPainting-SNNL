@@ -39,7 +39,7 @@ class DNN(torch.nn.Module):
             elif index == len(self.layers) - 1:
                 activations[index] = layer(activations[index - 1])
             else:
-                activations[index] = torch.nn.relu(layer(activations[index - 1]))
+                activations[index] = torch.relu(layer(activations[index - 1]))
         logits = activations[len(activations) - 1]
         return logits
 
