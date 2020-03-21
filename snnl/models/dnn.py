@@ -41,3 +41,17 @@ class DNN(torch.nn.Module):
                 activations[index] = torch.nn.relu(layer(activations[index - 1]))
         logits = activations[len(activations) - 1]
         return logits
+
+
+def epoch_train(model, data_loader):
+    epoch_loss = 0
+    for batch_features, batch_labels in data_loader:
+        batch_features = batch_features.view(batch_features.shape[0], -1)
+        model.optimizer.zero_grad()
+        outputs = model(batch_features)
+        train_loss = model.criterion(outputs, batch_labels)
+        train_loss.backward()
+        model.optimizer.step()
+        epoch_loss += train_loss.item()
+    epoch_loss /= len(data_loader)
+    return epoch_loss
