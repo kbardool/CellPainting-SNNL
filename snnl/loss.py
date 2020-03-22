@@ -20,7 +20,7 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
-def binary_crossentropy(model, outputs, features, labels, epoch):
+def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.):
     model.optimizer.zero_grad()
 
     bce_loss = torch.nn.BCEWithLogitsLoss()(outputs, features)
@@ -49,7 +49,7 @@ def binary_crossentropy(model, outputs, features, labels, epoch):
 
     snn_loss = torch.min(torch.Tensor(layers_snnl))
 
-    train_loss = [bce_loss, (100. * snn_loss)]
+    train_loss = [bce_loss, (factor * snn_loss)]
     train_loss = sum(train_loss)
 
     train_loss.backward()
