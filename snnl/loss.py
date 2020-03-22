@@ -21,6 +21,33 @@ __version__ = "1.0.0"
 
 
 def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
+    """
+    Returns the reconstruction loss (in binary cross entropy) with SNNL.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    outputs : torch.Tensor
+        The model outputs.
+    features : torch.Tensor
+        The input features.
+    labels : torch.Tensor
+        The input labels.
+    epoch : int
+        The training epoch.
+    factor : float
+        The SNNL factor.
+
+    Returns
+    -------
+    train_loss : torch.Tensor
+        The total reconstruction and soft nearest neighbor loss.
+    snn_loss : torch.Tensor
+        The soft nearest neighbor loss.
+    bce_loss : torch.Tensor
+        The binary cross entropy loss for reconstruction.
+    """
     model.optimizer.zero_grad()
 
     bce_loss = torch.nn.BCEWithLogitsLoss()(outputs, features)
