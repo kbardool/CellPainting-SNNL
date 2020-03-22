@@ -20,7 +20,7 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
-def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.):
+def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
     model.optimizer.zero_grad()
 
     bce_loss = torch.nn.BCEWithLogitsLoss()(outputs, features)
@@ -38,11 +38,7 @@ def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.):
     temperature = 1.0 / ((1.0 + epoch) ** 0.55)
 
     for key, value in activations.items():
-        layer_snnl = SNNL(
-                features=value,
-                labels=labels,
-                temperature=temperature
-                )
+        layer_snnl = SNNL(features=value, labels=labels, temperature=temperature)
         layers_snnl.append(layer_snnl)
 
     del activations
@@ -99,9 +95,7 @@ def SNNL(
             ),
             dim=1,
         )
-    snnl = torch.mean(
-        -torch.log(stability_epsilon + summed_masked_pick_probability)
-    )
+    snnl = torch.mean(-torch.log(stability_epsilon + summed_masked_pick_probability))
     return snnl
 
 
