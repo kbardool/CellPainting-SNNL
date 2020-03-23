@@ -50,7 +50,7 @@ def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
     """
     model.optimizer.zero_grad()
 
-    bce_loss = torch.nn.BCEWithLogitsLoss()(outputs, features)
+    bce_loss = model.criterion(outputs, features)
 
     activations = {}
 
