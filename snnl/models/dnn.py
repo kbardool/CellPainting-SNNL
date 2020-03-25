@@ -16,6 +16,8 @@
 """Implementation of a feed-forward neural network"""
 import torch
 
+from snnl.loss import softmax_crossentropy
+
 
 class DNN(torch.nn.Module):
     def __init__(self, **kwargs):
@@ -56,7 +58,7 @@ class DNN(torch.nn.Module):
         logits = activations[len(activations) - 1]
         return logits
 
-    def fit(self, data_loader, epochs):
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None):
         """
         Trains the dnn model.
 
@@ -67,15 +69,18 @@ class DNN(torch.nn.Module):
         epochs : int
             The number of epochs to train the model.
         """
+        if use_snnl:
+            assert factor is not None, "[factor] must not be None if use_snnl == True"
+
         train_loss = []
         for epoch in range(epochs):
-            epoch_loss = epoch_train(self, data_loader)
+            epoch_loss = epoch_train(self, data_loader, use_snnl, factor)
             train_loss.append(epoch_loss)
             print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
         self.train_loss = train_loss
 
 
-def epoch_train(model, data_loader):
+def epoch_train(model, data_loader, use_snnl=False, factor=None):
     """
     Trains a model for one epoch.
 
