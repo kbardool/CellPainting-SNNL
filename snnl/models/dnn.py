@@ -76,7 +76,7 @@ class DNN(torch.nn.Module):
 
         train_loss = []
         for epoch in range(epochs):
-            epoch_loss = epoch_train(self, data_loader, use_snnl, factor)
+            epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
             if type(epoch_loss) is tuple:
                 train_loss.append(epoch_loss[0])
                 train_snn_loss.append(epoch_loss[1])
@@ -91,7 +91,7 @@ class DNN(torch.nn.Module):
         self.train_loss = train_loss
 
 
-def epoch_train(model, data_loader, use_snnl=False, factor=None):
+def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
     """
     Trains a model for one epoch.
 
@@ -108,6 +108,7 @@ def epoch_train(model, data_loader, use_snnl=False, factor=None):
         The epoch loss.
     """
     if use_snnl:
+        assert epoch is not None, "[epoch] must not be None if use_snnl == True"
         epoch_xent_loss = 0
         epoch_snn_loss = 0
     epoch_loss = 0
