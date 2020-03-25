@@ -20,6 +20,129 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+def softmax_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
+    """
+    Returns the entropy loss (in softmax cross entropy) with SNNL.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    outputs : torch.Tensor
+        The model outputs.
+    features : torch.Tensor
+        The input features.
+    labels : torch.Tensor
+        The input labels.
+    epoch : int
+        The training epoch.
+    factor : float
+        The SNNL factor.
+
+    Returns
+    -------
+    train_loss : torch.Tensor
+        The total reconstruction and soft nearest neighbor loss.
+    snn_loss : torch.Tensor
+        The soft nearest neighbor loss.
+    xent_loss : torch.Tensor
+        The softmax cross entropy loss for classification.
+    """
+
+    model.optimizer.zero_grad()
+
+    xent_loss = model.criterion(outputs, labels)
+
+    activations = {}
+
+    for index, layer in enumerate(model.layers):
+        if index == 0:
+            activations[index] = layer(features)
+        else:
+            activations[index] = layer(activations[index - 1])
+
+    layers_snnl = []
+
+    temperature = 1.0 / ((1.0 + epoch) ** 0.55)
+
+    for key, value in activations.items():
+        layer_snnl = SNNL(features=value, labels=labels, temperature=temperature)
+        layers_snnl.append(layer_snnl)
+
+    del activations
+
+    snn_loss = torch.min(torch.Tensor(layers_snnl))
+
+    train_loss = [xent_loss, (factor * snn_loss)]
+    train_loss = sum(train_loss)
+
+    train_loss.backward()
+    model.optimizer.step()
+
+    return train_loss, snn_loss, xent_loss
+
+
+def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
+    """
+    Returns the reconstruction loss (in binary cross entropy) with SNNL.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    outputs : torch.Tensor
+        The model outputs.
+    features : torch.Tensor
+        The input features.
+    labels : torch.Tensor
+        The input labels.
+    epoch : int
+        The training epoch.
+    factor : float
+        The SNNL factor.
+
+    Returns
+    -------
+    train_loss : torch.Tensor
+        The total reconstruction and soft nearest neighbor loss.
+    snn_loss : torch.Tensor
+        The soft nearest neighbor loss.
+    bce_loss : torch.Tensor
+        The binary cross entropy loss for reconstruction.
+    """
+    model.optimizer.zero_grad()
+
+    bce_loss = model.criterion(outputs, features)
+
+    activations = {}
+
+    for index, layer in enumerate(model.layers):
+        if index == 0:
+            activations[index] = layer(features)
+        else:
+            activations[index] = layer(activations[index - 1])
+
+    layers_snnl = []
+
+    temperature = 1.0 / ((1.0 + epoch) ** 0.55)
+
+    for key, value in activations.items():
+        layer_snnl = SNNL(features=value, labels=labels, temperature=temperature)
+        layers_snnl.append(layer_snnl)
+
+    del activations
+
+    snn_loss = torch.min(torch.Tensor(layers_snnl))
+
+    train_loss = [bce_loss, (factor * snn_loss)]
+    train_loss = sum(train_loss)
+
+    train_loss.backward()
+    model.optimizer.step()
+
+    return train_loss, snn_loss, bce_loss
+
+
 def SNNL(
     features: object,
     labels: object,
@@ -61,9 +184,7 @@ def SNNL(
             ),
             dim=1,
         )
-    snnl = torch.mean(
-        -torch.log(stability_epsilon + summed_masked_pick_probability)
-    )
+    snnl = torch.mean(-torch.log(stability_epsilon + summed_masked_pick_probability))
     return snnl
 
 
