@@ -40,7 +40,7 @@ class Autoencoder(torch.nn.Module):
             ]
         )
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=kwargs["learning_rate"])
-        self.criterion = torch.nn.BCEWithLogitsLoss()
+        self.criterion = torch.nn.BCEWithLogitsLoss().to(kwargs["device"])
 
     def forward(self, features):
         """
