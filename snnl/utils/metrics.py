@@ -20,7 +20,22 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
-def accuracy(model, dataset):
+def accuracy(model, dataset) -> float:
+    """
+    Returns the classification accuracy of the model.
+
+    Parameters
+    ----------
+    model: torch.nn.Module
+        The classification model to test.
+    dataset: torch.utils.dataloader.DataLoader
+        The dataset to use for inference.
+
+    Returns
+    -------
+    float
+        The classification accuracy of the model.
+    """
     correct = 0
     total = 0
 
