@@ -20,6 +20,40 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+def softmax_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
+    model.optimizer.zero_grad()
+
+    xent_loss = model.criterion(outputs, labels)
+
+    activations = {}
+
+    for index, layer in enumerate(model.layers):
+        if index == 0:
+            activations[index] = layer(features)
+        else:
+            activations[index] = layer(activations[index - 1])
+
+    layers_snnl = []
+
+    temperature = 1.0 / ((1.0 + epoch) ** 0.55)
+
+    for key, value in activations.items():
+        layer_snnl = SNNL(features=value, labels=labels, temperature=temperature)
+        layers_snnl.append(layer_snnl)
+
+    del activations
+
+    snn_loss = torch.min(torch.Tensor(layers_snnl))
+
+    train_loss = [xent_loss, (factor * snn_loss)]
+    train_loss = sum(train_loss)
+
+    train_loss.backward()
+    model.optimizer.step()
+
+    return train_loss, snn_loss, xent_loss
+
+
 def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
     """
     Returns the reconstruction loss (in binary cross entropy) with SNNL.
