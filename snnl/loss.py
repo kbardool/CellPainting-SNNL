@@ -21,6 +21,34 @@ __version__ = "1.0.0"
 
 
 def softmax_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
+    """
+    Returns the entropy loss (in softmax cross entropy) with SNNL.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    outputs : torch.Tensor
+        The model outputs.
+    features : torch.Tensor
+        The input features.
+    labels : torch.Tensor
+        The input labels.
+    epoch : int
+        The training epoch.
+    factor : float
+        The SNNL factor.
+
+    Returns
+    -------
+    train_loss : torch.Tensor
+        The total reconstruction and soft nearest neighbor loss.
+    snn_loss : torch.Tensor
+        The soft nearest neighbor loss.
+    xent_loss : torch.Tensor
+        The softmax cross entropy loss for classification.
+    """
+
     model.optimizer.zero_grad()
 
     xent_loss = model.criterion(outputs, labels)
