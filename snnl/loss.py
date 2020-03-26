@@ -21,6 +21,37 @@ __version__ = "1.0.0"
 
 
 def composite_loss(model, features, labels, outputs, epoch, factor=100.0, unsupervised=False):
+    """
+    Returns the composite loss with soft nearest neighbor loss.
+    If the objective is unsupervised learning, the primary loss
+    is reconstruction loss.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    features : torch.Tensor
+        The input features.
+    labels : torch.Tensor
+        The input labels.
+    outputs : torch.Tensor
+        The model outputs.
+    epoch : int
+        The training epoch.
+    factor : float
+        The SNNL factor.
+    unsupervised : bool
+        The learning objective. Default is [False].
+
+    Returns
+    -------
+    train_loss : torch.Tensor
+        The total reconstruction and soft nearest neighbor loss.
+    snn_loss : torch.Tensor
+        The soft nearest neighbor loss.
+    primary_loss : torch.Tensor
+        The loss on primary objective of the model.
+    """
 
     model.optimizer.zero_grad()
 
