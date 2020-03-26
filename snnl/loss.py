@@ -20,7 +20,9 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
-def composite_loss(model, features, labels, outputs, epoch, factor=100.0, unsupervised=False):
+def composite_loss(
+    model, features, labels, outputs, epoch, factor=100.0, unsupervised=False
+):
     """
     Returns the composite loss with soft nearest neighbor loss.
     If the objective is unsupervised learning, the primary loss
