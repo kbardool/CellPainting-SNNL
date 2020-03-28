@@ -217,10 +217,7 @@ def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
 
 
 def SNNL(
-    features: object,
-    labels: object,
-    distance: str = "cosine",
-    temperature: int = 100.0,
+    features: object, labels: object, distance: str = "cosine", temperature: int = 100.0
 ) -> float:
     """
     Computes the Soft Nearest Neighbors Loss (Fross, Papernot, & Hinton, 2019)
