@@ -137,6 +137,8 @@ def softmax_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
     temperature = 1.0 / ((1.0 + epoch) ** 0.55)
 
     for key, value in activations.items():
+        if len(value.shape) > 2:
+            value = value.view(value.shape[0], -1)
         layer_snnl = SNNL(features=value, labels=labels, temperature=temperature)
         layers_snnl.append(layer_snnl)
 
