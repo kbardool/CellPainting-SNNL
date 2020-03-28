@@ -1,0 +1,147 @@
+import torch
+
+from snnl.loss import softmax_crossentropy
+
+__author__ = "Abien Fred Agarap"
+__version__ = "1.0.0"
+
+
+class CNN(torch.nn.Module):
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.layers = torch.nn.ModuleList(
+            [
+                torch.nn.Conv2d(
+                    in_channels=kwargs["input_dim"],
+                    out_channels=64,
+                    kernel_size=8,
+                    stride=2,
+                    padding=1,
+                ),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(
+                    in_channels=64, out_channels=128, kernel_size=6, stride=2, padding=1
+                ),
+                torch.nn.ReLU(),
+                torch.nn.Flatten(),
+                torch.nn.Linear(in_features=(128 * 5 * 5), out_features=2048),
+                torch.nn.ReLU(),
+                torch.nn.Linear(in_features=2048, out_features=2048),
+                torch.nn.ReLU(),
+                torch.nn.Linear(in_features=2048, out_features=512),
+                torch.nn.ReLU(),
+                torch.nn.Linear(in_features=512, out_features=kwargs["num_classes"]),
+            ]
+        )
+        self.optimizer = torch.optim.Adam(
+            params=self.parameters(), lr=kwargs["learning_rate"]
+        )
+        self.criterion = torch.nn.CrossEntropyLoss()
+
+    def forward(self, features):
+        """
+        Defines the forward pass by the model.
+
+        Parameter
+        ---------
+        features : torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        logits : torch.Tensor
+            The model output.
+        """
+        activations = {}
+        for index, layer in enumerate(self.layers):
+            if index == 0:
+                activations[index] = layer(features)
+            else:
+                activations[index] = layer(activations[index - 1])
+        logits = activations[len(activations) - 1]
+        return logits
+
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None):
+        """
+        Trains the cnn model.
+
+        Parameters
+        ----------
+        data_loader : torch.utils.dataloader.DataLoader
+            The data loader object that consists of the data pipeline.
+        epochs : int
+            The number of epochs to train the model.
+        """
+        if use_snnl:
+            assert factor is not None, "[factor] must not be None if use_snnl == True"
+            train_snn_loss = []
+            train_xent_loss = []
+
+        train_loss = []
+        for epoch in range(epochs):
+            epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
+            if type(epoch_loss) is tuple:
+                train_loss.append(epoch_loss[0])
+                train_snn_loss.append(epoch_loss[1])
+                train_xent_loss.append(epoch_loss[2])
+                print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+                print(
+                    f"\txent loss = {train_xent_loss[-1]:.6f}\t|\tsnn loss = {train_snn_loss[-1]:.6f}"
+                )
+            else:
+                train_loss.append(epoch_loss)
+                print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+        self.train_loss = train_loss
+
+
+def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
+    """
+    Trains a model for one epoch.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to train.
+    data_loader : torch.utils.dataloader.DataLoader
+        The data loader object that consists of the data pipeline.
+
+    Returns
+    -------
+    epoch_loss : float
+        The epoch loss.
+    """
+    if use_snnl:
+        assert epoch is not None, "[epoch] must not be None if use_snnl == True"
+        epoch_xent_loss = 0
+        epoch_snn_loss = 0
+    epoch_loss = 0
+    for batch_features, batch_labels in data_loader:
+        if use_snnl:
+            outputs = model(batch_features)
+            train_loss, snn_loss, xent_loss = softmax_crossentropy(
+                model=model,
+                outputs=outputs,
+                features=batch_features,
+                labels=batch_labels,
+                epoch=epoch,
+                factor=factor,
+            )
+            epoch_loss += train_loss.item()
+            epoch_snn_loss += snn_loss
+            epoch_xent_loss += xent_loss
+        else:
+            model.optimizer.zero_grad()
+            outputs = model(batch_features)
+            train_loss = model.criterion(outputs, batch_labels)
+            train_loss.backward()
+            model.optimizer.step()
+            epoch_loss += train_loss.item()
+
+    epoch_loss /= len(data_loader)
+
+    if use_snnl:
+        epoch_snn_loss /= len(data_loader)
+        epoch_xent_loss /= len(data_loader)
+        return epoch_loss, epoch_snn_loss, epoch_xent_loss
+    else:
+        return epoch_loss
