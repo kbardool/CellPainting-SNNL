@@ -49,10 +49,11 @@ class CNN(torch.nn.Module):
                 torch.nn.Linear(in_features=512, out_features=kwargs["num_classes"]),
             ]
         )
+        self.model_device = kwargs["device"]
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
 
     def forward(self, features):
         """
@@ -132,6 +133,8 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
         epoch_snn_loss = 0
     epoch_loss = 0
     for batch_features, batch_labels in data_loader:
+        batch_features = batch_features.to(model.model_device)
+        batch_labels = batch_labels.to(model.model_device)
         if use_snnl:
             outputs = model(batch_features)
             train_loss, snn_loss, xent_loss = softmax_crossentropy(
