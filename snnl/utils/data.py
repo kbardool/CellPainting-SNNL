@@ -97,6 +97,10 @@ def create_dataloader(
         The data loader object to be used by a model.
     """
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=True,
     )
     return data_loader
