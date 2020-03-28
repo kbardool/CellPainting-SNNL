@@ -65,7 +65,10 @@ def main(args):
     test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
 
     model = CNN(
-        input_dim=input_dim, num_classes=num_classes, learning_rate=learning_rate
+        input_dim=input_dim,
+        num_classes=num_classes,
+        learning_rate=learning_rate,
+        model_device=device,
     )
     model = model.to(device)
     model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
