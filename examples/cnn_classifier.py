@@ -55,11 +55,10 @@ def main(args):
     batch_size = 512
     epochs = 40
 
-    if args.device == "gpu" or args.device == "cuda":
-        torch.manual_seed(args.seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = True
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     train_dataset, test_dataset = load_dataset(name="mnist")
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
