@@ -49,7 +49,7 @@ class CNN(torch.nn.Module):
                 torch.nn.Linear(in_features=512, out_features=kwargs["num_classes"]),
             ]
         )
-        self.model_device = kwargs["device"]
+        self.model_device = kwargs["model_device"]
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
