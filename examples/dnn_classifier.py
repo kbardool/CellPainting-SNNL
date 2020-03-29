@@ -26,7 +26,7 @@ __version__ = "1.0.0"
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Benchmark for Baseline Autoencoder")
+    parser = argparse.ArgumentParser(description="DNN classifier with SNNL")
     group = parser.add_argument_group("Parameters")
     group.add_argument(
         "-s",
