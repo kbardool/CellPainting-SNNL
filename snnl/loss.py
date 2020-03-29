@@ -307,7 +307,8 @@ def pick_probability(features, temperature, cosine_distance, stability_epsilon=1
     pairwise_distance = compute_pairwise_distance(
         features, features, temperature, cosine_distance
     )
-    pairwise_distance -= torch.eye(features.shape[0])
+    device = torch.device(features.device)
+    pairwise_distance -= torch.eye(features.shape[0]).to(device)
     normalized_pairwise_distance = pairwise_distance / (
         stability_epsilon + torch.sum(pairwise_distance, 1).view(-1, 1)
     )
@@ -435,10 +436,13 @@ def pairwise_cosine_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
             [0.3430, 0.0905, 0.0853, 0.1082],
             [0.5621, 0.2302, 0.2222, 0.2568]])
     """
-    a = torch.tensor(a, dtype=torch.float32)
-    b = torch.tensor(b, dtype=torch.float32)
+    device = torch.device(a.device)
+    a = a.clone()
+    b = b.clone()
     normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
     normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+    normalized_b = normalized_b.cpu()  # torch.conj only works on cpu
     normalized_b = torch.conj(normalized_b).T
+    normalized_b = normalized_b.to(device)
     product = torch.matmul(normalized_a, normalized_b)
     return 1.0 - product
