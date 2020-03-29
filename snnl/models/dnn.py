@@ -22,13 +22,15 @@ from snnl.loss import softmax_crossentropy
 class DNN(torch.nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
+        self.model_device = kwargs["model_device"]
         self.layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(in_features=in_features, out_features=out_features)
+                torch.nn.Linear(in_features=in_features, out_features=out_features).to(
+                    self.model_device
+                )
                 for in_features, out_features in kwargs["units"]
             ]
         )
-        self.model_device = kwargs["model_device"]
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
