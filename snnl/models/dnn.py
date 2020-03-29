@@ -115,6 +115,8 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
     epoch_loss = 0
     for batch_features, batch_labels in data_loader:
         batch_features = batch_features.view(batch_features.shape[0], -1)
+        batch_features = batch_features.to(model.model_device)
+        batch_labels = batch_labels.to(model.model_device)
         if use_snnl:
             outputs = model(batch_features)
             train_loss, snn_loss, xent_loss = softmax_crossentropy(
