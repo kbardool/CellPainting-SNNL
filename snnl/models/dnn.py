@@ -22,16 +22,19 @@ from snnl.loss import softmax_crossentropy
 class DNN(torch.nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
+        self.model_device = kwargs["model_device"]
         self.layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(in_features=in_features, out_features=out_features)
+                torch.nn.Linear(in_features=in_features, out_features=out_features).to(
+                    self.model_device
+                )
                 for in_features, out_features in kwargs["units"]
             ]
         )
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
 
     def forward(self, features):
         """
@@ -114,6 +117,8 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
     epoch_loss = 0
     for batch_features, batch_labels in data_loader:
         batch_features = batch_features.view(batch_features.shape[0], -1)
+        batch_features = batch_features.to(model.model_device)
+        batch_labels = batch_labels.to(model.model_device)
         if use_snnl:
             outputs = model(batch_features)
             train_loss, snn_loss, xent_loss = softmax_crossentropy(
