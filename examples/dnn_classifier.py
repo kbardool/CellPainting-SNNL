@@ -14,12 +14,38 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample module for using DNN classifier with SNNL"""
+import argparse
+import torch
+
 from snnl.models.dnn import DNN
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Benchmark for Baseline Autoencoder")
+    group = parser.add_argument_group("Parameters")
+    group.add_argument(
+        "-s",
+        "--seed",
+        required=False,
+        default=1234,
+        type=int,
+        help="the random seed value to use, default: [1234]",
+    )
+    group.add_argument(
+        "-d",
+        "--device",
+        required=False,
+        default="cpu",
+        type=str,
+        help="the device to use, default: [cpu]",
+    )
+    arguments = parser.parse_args()
+    return arguments
 
 
 def main():
