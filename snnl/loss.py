@@ -440,6 +440,8 @@ def pairwise_cosine_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     b = b.clone()
     normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
     normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+    normalized_b = normalized_b.cpu()  # torch.conj only works on cpu
     normalized_b = torch.conj(normalized_b).T
+    normalized_b = normalized_b.to(device)
     product = torch.matmul(normalized_a, normalized_b)
     return 1.0 - product
