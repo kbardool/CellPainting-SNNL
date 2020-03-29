@@ -28,10 +28,11 @@ class DNN(torch.nn.Module):
                 for in_features, out_features in kwargs["units"]
             ]
         )
+        self.model_device = kwargs["model_device"]
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.CrossEntropyLoss().to(model_device)
 
     def forward(self, features):
         """
