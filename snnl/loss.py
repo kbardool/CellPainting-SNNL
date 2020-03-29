@@ -307,7 +307,8 @@ def pick_probability(features, temperature, cosine_distance, stability_epsilon=1
     pairwise_distance = compute_pairwise_distance(
         features, features, temperature, cosine_distance
     )
-    pairwise_distance -= torch.eye(features.shape[0])
+    device = torch.device(features.device)
+    pairwise_distance -= torch.eye(features.shape[0]).to(device)
     normalized_pairwise_distance = pairwise_distance / (
         stability_epsilon + torch.sum(pairwise_distance, 1).view(-1, 1)
     )
