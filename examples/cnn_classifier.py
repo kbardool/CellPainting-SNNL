@@ -58,7 +58,10 @@ def main(args):
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    if args.device == "gpu":
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device("cpu")
 
     train_dataset, test_dataset = load_dataset(name="mnist")
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
