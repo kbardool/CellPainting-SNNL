@@ -67,7 +67,7 @@ class Autoencoder(torch.nn.Module):
         reconstruction = activations[len(activations) - 1]
         return reconstruction
 
-    def fit(self, data_loader, epochs):
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None):
         """
         Trains the autoencoder model.
 
@@ -78,10 +78,24 @@ class Autoencoder(torch.nn.Module):
         epochs : int
             The number of epochs to train the model.
         """
+        if use_snnl:
+            assert factor is not None, "[factor] must not be None if use_snnl == True"
+            train_snn_loss = []
+            train_recon_loss = []
+
         train_loss = []
         for epoch in range(epochs):
-            epoch_loss = epoch_train(self, data_loader)
-            train_loss.append(epoch_loss)
+            epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
+            if type(epoch_loss) is tuple:
+                train_loss.append(epoch_loss[0])
+                train_snn_loss.append(epoch_loss[1])
+                train_recon_loss.append(epoch_loss[2])
+                print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+                print(
+                    f"\trecon loss = {train_recon_loss[-1]:.6f}\t|\tsnn loss = {train_snn_loss[-1]:.6f}"
+                )
+            else:
+                train_loss.append(epoch_loss)
             print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
         self.train_loss = train_loss
 
