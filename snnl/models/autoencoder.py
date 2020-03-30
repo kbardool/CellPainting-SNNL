@@ -77,6 +77,10 @@ class Autoencoder(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
+        use_snnl : bool
+            Whether to use soft nearest neighbor loss or not.
+        factor : float
+            The soft nearest neighbor loss factor.
         """
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
