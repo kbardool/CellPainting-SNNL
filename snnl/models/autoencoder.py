@@ -16,6 +16,11 @@
 """Implementation of a feed-forward neural network-based autoencoder"""
 import torch
 
+from snnl.loss import binary_crossentropy
+
+__author__ = "Abien Fred Agarap"
+__version__ = "1.0.0"
+
 
 class Autoencoder(torch.nn.Module):
     def __init__(self, **kwargs):
@@ -104,7 +109,7 @@ class Autoencoder(torch.nn.Module):
         self.train_loss = train_loss
 
 
-def epoch_train(model, data_loader):
+def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
     """
     Trains a model for one epoch.
 
@@ -120,14 +125,38 @@ def epoch_train(model, data_loader):
     epoch_loss : float
         The epoch loss.
     """
+    if use_snnl:
+        assert epoch is not None, "[epoch] must not be None if use_snnl == True"
+        assert factor is not None, "[factor] must not be None if use_snnl == True"
+        epoch_recon_loss = 0
+        epoch_snn_loss = 0
     epoch_loss = 0
-    for batch_features, _ in data_loader:
+    for batch_features, batch_labels in data_loader:
         batch_features = batch_features.view(batch_features.shape[0], -1)
-        model.optimizer.zero_grad()
-        outputs = model(batch_features)
-        train_loss = model.criterion(outputs, batch_features)
-        train_loss.backward()
-        model.optimizer.step()
-        epoch_loss += train_loss.item()
+        if use_snnl:
+            outputs = model(batch_features)
+            train_loss, snn_loss, recon_loss = binary_crossentropy(
+                model=model,
+                outputs=outputs,
+                features=batch_features,
+                labels=batch_labels,
+                epoch=epoch,
+                factor=factor,
+            )
+            epoch_loss += train_loss.item()
+            epoch_snn_loss += snn_loss.item()
+            epoch_recon_loss += recon_loss.item()
+        else:
+            model.optimizer.zero_grad()
+            outputs = model(batch_features)
+            train_loss = model.criterion(outputs, batch_features)
+            train_loss.backward()
+            model.optimizer.step()
+            epoch_loss += train_loss.item()
     epoch_loss /= len(data_loader)
-    return epoch_loss
+    if use_snnl:
+        epoch_snn_loss /= len(data_loader)
+        epoch_recon_loss /= len(data_loader)
+        return epoch_loss, epoch_snn_loss, epoch_recon_loss
+    else:
+        return epoch_loss
