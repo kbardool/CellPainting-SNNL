@@ -222,6 +222,7 @@ def SNNL(
     """
     Computes the Soft Nearest Neighbors Loss (Fross, Papernot, & Hinton, 2019)
     https://arxiv.org/abs/1902.01889/
+
     Parameters
     ----------
     features : array-like object
@@ -232,6 +233,7 @@ def SNNL(
         The distance metric to use.
     temperature : int
         The temperature factor.
+
     Returns
     -------
     float
