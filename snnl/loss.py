@@ -266,6 +266,7 @@ def masked_pick_probability(
     """
     Returns the pairwise sampling probabilities for the `feature` elements
     for neighbor points sharing the same labels.
+
     Parameters
     ----------
     features : array-like object
@@ -278,6 +279,7 @@ def masked_pick_probability(
         Boolean whether to use cosine or Euclidean distance.
     stability_epsilon : float
         A constant for making the calculation for SNNL more stable.
+
     Returns
     -------
     tensor
@@ -291,6 +293,7 @@ def masked_pick_probability(
 def pick_probability(features, temperature, cosine_distance, stability_epsilon=1e-5):
     """
     Returns a row normalized pairwise distance between all elements of `features`.
+
     Parameters
     ----------
     features : matrix
@@ -301,6 +304,7 @@ def pick_probability(features, temperature, cosine_distance, stability_epsilon=1
         Boolean whether to use cosine or Euclidean distance.
     stability_epsilon : float
         The stability constant for SNNL.
+
     Returns
     -------
     normalized_pairwise_distance : matrix
@@ -321,10 +325,12 @@ def same_label_mask(labels_a: torch.Tensor, labels_b: torch.Tensor) -> torch.Ten
     """
     Returns a masking matrix such that element (i, j) is 1
     iff labels[i] == labels_2[i].
+
     Parameters
     ----------
     labels_a, labels_b : array-like object
         The input labels.
+
     Returns
     -------
     masking_matrix : tensor
