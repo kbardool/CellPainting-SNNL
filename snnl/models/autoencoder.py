@@ -119,6 +119,12 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
         The model to train.
     data_loader : torch.utils.dataloader.DataLoader
         The data loader object that consists of the data pipeline.
+    epoch : int
+        The epoch number of the training.
+    use_snnl : bool
+        Whether to use soft nearest neighbor loss or not.
+    factor : float
+        The soft nearest neighbor loss factor.
 
     Returns
     -------
