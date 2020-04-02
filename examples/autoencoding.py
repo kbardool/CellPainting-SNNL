@@ -14,6 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample module for using Autoencoder with SNNL"""
+import argparse
+import torch
+
+from snnl.models.autoencoder import Autoencoder
+from snnl.utils.data import load_dataset, create_dataloader
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -40,6 +45,32 @@ def parse_args():
     )
     arguments = parser.parse_args()
     return arguments
+
+
+def main(args):
+    input_shape = 784
+    code_dim = 128
+    learning_rate = 1e-2
+    batch_size = 256
+    epochs = 40
+
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.deterministic = True
+
+    if args.device == "gpu":
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device("cpu")
+
+    train_dataset, test_dataset = load_dataset(name="mnist")
+    train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
+    test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
+
+    model = Autoencoder(
+        input_shape=input_shape, code_dim=code_dim, learning_rate=learning_rate
+    )
+    model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
 
 
 if __name__ == "__main__":
