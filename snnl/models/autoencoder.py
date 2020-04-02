@@ -44,10 +44,11 @@ class Autoencoder(torch.nn.Module):
                 torch.nn.Linear(in_features=500, out_features=kwargs["input_shape"]),
             ]
         )
+        self.model_device = kwargs["model_device"]
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
-        self.criterion = torch.nn.BCEWithLogitsLoss().to(kwargs["device"])
+        self.criterion = torch.nn.BCEWithLogitsLoss().to(kwargs["model_device"])
 
     def forward(self, features):
         """
