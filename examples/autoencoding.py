@@ -19,5 +19,28 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Autoencoder with SNNL")
+    group = parser.add_argument_group("Parameters")
+    group.add_argument(
+        "-s",
+        "--seed",
+        required=False,
+        default=1234,
+        type=int,
+        help="the random seed value to use, default: [1234]",
+    )
+    group.add_argument(
+        "-d",
+        "--device",
+        required=False,
+        default="cpu",
+        type=str,
+        help="the device to use, default: [cpu]",
+    )
+    arguments = parser.parse_args()
+    return arguments
+
+
 if __name__ == "__main__":
     pass
