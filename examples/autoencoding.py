@@ -74,4 +74,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    pass
+    args = parse_args()
+    main(args)
