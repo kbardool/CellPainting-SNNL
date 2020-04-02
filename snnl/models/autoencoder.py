@@ -122,7 +122,7 @@ class Autoencoder(torch.nn.Module):
                 )
             else:
                 train_loss.append(epoch_loss)
-            print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+                print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
         self.train_loss = train_loss
 
 
