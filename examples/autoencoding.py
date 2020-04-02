@@ -68,7 +68,10 @@ def main(args):
     test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
 
     model = Autoencoder(
-        input_shape=input_shape, code_dim=code_dim, learning_rate=learning_rate
+        input_shape=input_shape,
+        code_dim=code_dim,
+        learning_rate=learning_rate,
+        model_device=device,
     )
     model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
 
