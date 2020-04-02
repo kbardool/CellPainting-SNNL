@@ -48,7 +48,7 @@ class Autoencoder(torch.nn.Module):
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
-        self.criterion = torch.nn.BCEWithLogitsLoss().to(kwargs["model_device"])
+        self.criterion = torch.nn.BCEWithLogitsLoss().to(self.model_device)
 
     def forward(self, features):
         """
@@ -140,6 +140,8 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
     epoch_loss = 0
     for batch_features, batch_labels in data_loader:
         batch_features = batch_features.view(batch_features.shape[0], -1)
+        batch_features = batch_features.to(self.model_device)
+        batch_labels = batch_labels.to(self.model_device)
         if use_snnl:
             outputs = model(batch_features)
             train_loss, snn_loss, recon_loss = binary_crossentropy(
