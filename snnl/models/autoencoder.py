@@ -25,26 +25,42 @@ __version__ = "1.0.0"
 class Autoencoder(torch.nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
+        self.model_device = kwargs["model_device"]
         self.layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(in_features=kwargs["input_shape"], out_features=500),
+                torch.nn.Linear(in_features=kwargs["input_shape"], out_features=500).to(
+                    self.model_device
+                ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=500),
+                torch.nn.Linear(in_features=500, out_features=500).to(
+                    self.model_device
+                ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=2000),
+                torch.nn.Linear(in_features=500, out_features=2000).to(
+                    self.model_device
+                ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=2000, out_features=kwargs["code_dim"]),
+                torch.nn.Linear(in_features=2000, out_features=kwargs["code_dim"]).to(
+                    self.model_device
+                ),
                 torch.nn.Sigmoid(),
-                torch.nn.Linear(in_features=kwargs["code_dim"], out_features=2000),
+                torch.nn.Linear(in_features=kwargs["code_dim"], out_features=2000).to(
+                    self.model_device
+                ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=2000, out_features=500),
+                torch.nn.Linear(in_features=2000, out_features=500).to(
+                    self.model_device
+                ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=500),
+                torch.nn.Linear(in_features=500, out_features=500).to(
+                    self.model_device
+                ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=kwargs["input_shape"]),
+                torch.nn.Linear(in_features=500, out_features=kwargs["input_shape"]).to(
+                    self.model_device
+                ),
             ]
         )
-        self.model_device = kwargs["model_device"]
         self.optimizer = torch.optim.Adam(
             params=self.parameters(), lr=kwargs["learning_rate"]
         )
