@@ -23,12 +23,28 @@ __version__ = "1.0.0"
 
 
 class Autoencoder(torch.nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(
+        self, model_device: str, input_shape: int, code_dim: int, learning_rate: float
+    ):
+        """
+        Constructs the autoencoder model with the following units,
+        <input_shape>-500-500-2000-<code_dim>-2000-500-500-<input_shape>
+
+        Parameters
+        model_device: str
+            The device to use for the model computations.
+        input_shape: int
+            The dimensionality of the input features.
+        code_dim: int
+            The dimensionality of the latent code.
+        learning_rate: float
+            The learning rate to use for optimization.
+        """
         super().__init__()
-        self.model_device = kwargs["model_device"]
+        self.model_device = model_device
         self.layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(in_features=kwargs["input_shape"], out_features=500).to(
+                torch.nn.Linear(in_features=input_shape, out_features=500).to(
                     self.model_device
                 ),
                 torch.nn.ReLU(),
@@ -40,11 +56,11 @@ class Autoencoder(torch.nn.Module):
                     self.model_device
                 ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=2000, out_features=kwargs["code_dim"]).to(
+                torch.nn.Linear(in_features=2000, out_features=code_dim).to(
                     self.model_device
                 ),
                 torch.nn.Sigmoid(),
-                torch.nn.Linear(in_features=kwargs["code_dim"], out_features=2000).to(
+                torch.nn.Linear(in_features=code_dim, out_features=2000).to(
                     self.model_device
                 ),
                 torch.nn.ReLU(),
@@ -56,14 +72,12 @@ class Autoencoder(torch.nn.Module):
                     self.model_device
                 ),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=kwargs["input_shape"]).to(
+                torch.nn.Linear(in_features=500, out_features=input_shape).to(
                     self.model_device
                 ),
             ]
         )
-        self.optimizer = torch.optim.Adam(
-            params=self.parameters(), lr=kwargs["learning_rate"]
-        )
+        self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.BCEWithLogitsLoss().to(self.model_device)
 
     def forward(self, features):
