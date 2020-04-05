@@ -23,12 +23,28 @@ __version__ = "1.0.0"
 
 
 class CNN(torch.nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(
+        self, model_device: str, input_dim: int, num_classes: int, learning_rate: float
+    ):
+        """
+        Constructs a convolutional neural network classifier.
+
+        Parameters
+        ----------
+        model_device: str
+            The device to use for model computations.
+        input_dim: int
+            The dimensionality of the input features.
+        num_classes: int
+            The number of classes in the dataset.
+        learning_rate: float
+            The learning rate to use for optimization.
+        """
         super().__init__()
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Conv2d(
-                    in_channels=kwargs["input_dim"],
+                    in_channels=input_dim,
                     out_channels=64,
                     kernel_size=8,
                     stride=2,
@@ -46,13 +62,11 @@ class CNN(torch.nn.Module):
                 torch.nn.ReLU(),
                 torch.nn.Linear(in_features=2048, out_features=512),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=512, out_features=kwargs["num_classes"]),
+                torch.nn.Linear(in_features=512, out_features=num_classes),
             ]
         )
-        self.model_device = kwargs["model_device"]
-        self.optimizer = torch.optim.Adam(
-            params=self.parameters(), lr=kwargs["learning_rate"]
-        )
+        self.model_device = model_device
+        self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
         self.train_loss = []
 
