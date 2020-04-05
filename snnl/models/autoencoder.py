@@ -31,6 +31,7 @@ class Autoencoder(torch.nn.Module):
         <input_shape>-500-500-2000-<code_dim>-2000-500-500-<input_shape>
 
         Parameters
+        ----------
         model_device: str
             The device to use for the model computations.
         input_shape: int
