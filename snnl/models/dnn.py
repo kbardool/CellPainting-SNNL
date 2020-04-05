@@ -20,20 +20,30 @@ from snnl.loss import softmax_crossentropy
 
 
 class DNN(torch.nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, model_device: str, units: list or tuple, learning_rate: float):
+        """
+        Constructs a feed-forward neural network classifier.
+
+        Parameters
+        ----------
+        model_device: str
+            The device to use for model computations.
+        units: list or tuple
+            An iterable that consists of the number of units in each hidden layer.
+        learning_rate: float
+            The learning rate to use for optimization.
+        """
         super().__init__()
-        self.model_device = kwargs["model_device"]
+        self.model_device = model_device
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=in_features, out_features=out_features).to(
                     self.model_device
                 )
-                for in_features, out_features in kwargs["units"]
+                for in_features, out_features in units
             ]
         )
-        self.optimizer = torch.optim.Adam(
-            params=self.parameters(), lr=kwargs["learning_rate"]
-        )
+        self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
 
     def forward(self, features):
