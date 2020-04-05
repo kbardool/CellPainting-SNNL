@@ -80,6 +80,7 @@ class Autoencoder(torch.nn.Module):
         )
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.BCEWithLogitsLoss().to(self.model_device)
+        self.train_loss = []
 
     def forward(self, features):
         """
@@ -124,21 +125,23 @@ class Autoencoder(torch.nn.Module):
             train_snn_loss = []
             train_recon_loss = []
 
-        train_loss = []
         for epoch in range(epochs):
             epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
             if type(epoch_loss) is tuple:
-                train_loss.append(epoch_loss[0])
+                self.train_loss.append(epoch_loss[0])
                 train_snn_loss.append(epoch_loss[1])
                 train_recon_loss.append(epoch_loss[2])
-                print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
+                print(
+                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                )
                 print(
                     f"\trecon loss = {train_recon_loss[-1]:.6f}\t|\tsnn loss = {train_snn_loss[-1]:.6f}"
                 )
             else:
-                train_loss.append(epoch_loss)
-                print(f"epoch {epoch + 1}/{epochs} : mean loss = {train_loss[-1]:.6f}")
-        self.train_loss = train_loss
+                self.train_loss.append(epoch_loss)
+                print(
+                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                )
 
 
 def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
