@@ -45,37 +45,21 @@ class Autoencoder(torch.nn.Module):
         self.model_device = model_device
         self.layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(in_features=input_shape, out_features=500).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=input_shape, out_features=500),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=500).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=500, out_features=500),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=2000).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=500, out_features=2000),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=2000, out_features=code_dim).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=2000, out_features=code_dim),
                 torch.nn.Sigmoid(),
-                torch.nn.Linear(in_features=code_dim, out_features=2000).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=code_dim, out_features=2000),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=2000, out_features=500).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=2000, out_features=500),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=500).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=500, out_features=500),
                 torch.nn.ReLU(),
-                torch.nn.Linear(in_features=500, out_features=input_shape).to(
-                    self.model_device
-                ),
+                torch.nn.Linear(in_features=500, out_features=input_shape),
             ]
         )
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
@@ -120,6 +104,8 @@ class Autoencoder(torch.nn.Module):
         factor : float
             The soft nearest neighbor loss factor.
         """
+        self.to(self.model_device)
+
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
             train_snn_loss = []
