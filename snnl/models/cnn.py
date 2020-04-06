@@ -104,6 +104,8 @@ class CNN(torch.nn.Module):
         epochs : int
             The number of epochs to train the model.
         """
+        self.to(self.model_device)
+
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
             train_snn_loss = []
