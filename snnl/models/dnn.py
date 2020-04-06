@@ -37,9 +37,7 @@ class DNN(torch.nn.Module):
         self.model_device = model_device
         self.layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(in_features=in_features, out_features=out_features).to(
-                    self.model_device
-                )
+                torch.nn.Linear(in_features=in_features, out_features=out_features)
                 for in_features, out_features in units
             ]
         )
@@ -83,6 +81,8 @@ class DNN(torch.nn.Module):
         epochs : int
             The number of epochs to train the model.
         """
+        self.to(self.model_device)
+
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
             train_snn_loss = []
