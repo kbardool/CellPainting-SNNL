@@ -20,13 +20,15 @@ from snnl.loss import softmax_crossentropy
 
 
 class DNN(torch.nn.Module):
-    def __init__(self, model_device: str, units: list or tuple, learning_rate: float):
+    def __init__(
+        self, model_device: torch.device, units: list or tuple, learning_rate: float
+    ):
         """
         Constructs a feed-forward neural network classifier.
 
         Parameters
         ----------
-        model_device: str
+        model_device: torch.device
             The device to use for model computations.
         units: list or tuple
             An iterable that consists of the number of units in each hidden layer.

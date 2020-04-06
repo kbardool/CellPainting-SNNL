@@ -24,14 +24,18 @@ __version__ = "1.0.0"
 
 class CNN(torch.nn.Module):
     def __init__(
-        self, model_device: str, input_dim: int, num_classes: int, learning_rate: float
+        self,
+        model_device: torch.device,
+        input_dim: int,
+        num_classes: int,
+        learning_rate: float,
     ):
         """
         Constructs a convolutional neural network classifier.
 
         Parameters
         ----------
-        model_device: str
+        model_device: torch.device
             The device to use for model computations.
         input_dim: int
             The dimensionality of the input features.

@@ -24,7 +24,11 @@ __version__ = "1.0.0"
 
 class Autoencoder(torch.nn.Module):
     def __init__(
-        self, model_device: str, input_shape: int, code_dim: int, learning_rate: float
+        self,
+        model_device: torch.device,
+        input_shape: int,
+        code_dim: int,
+        learning_rate: float,
     ):
         """
         Constructs the autoencoder model with the following units,
@@ -32,7 +36,7 @@ class Autoencoder(torch.nn.Module):
 
         Parameters
         ----------
-        model_device: str
+        model_device: torch.device
             The device to use for the model computations.
         input_shape: int
             The dimensionality of the input features.
