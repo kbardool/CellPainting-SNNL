@@ -67,9 +67,13 @@ def main(args):
     test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
 
     model = DNN(units=units, learning_rate=learning_rate, model_device=device)
-    model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
-    acc = accuracy(model, test_loader)
-    print(f"accuracy: {acc * 100.}%")
+    model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10.0)
+    test_features = test_dataset.data.reshape(-1, 784) / 255.0
+    model.eval()
+    model = model.cpu()
+    predictions = model.predict(test_features)
+    test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
+    print(f"accuracy: {test_accuracy}%")
 
 
 if __name__ == "__main__":
