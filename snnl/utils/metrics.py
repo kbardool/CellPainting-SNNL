@@ -26,14 +26,14 @@ def accuracy(y_true, y_pred) -> float:
 
     Parameters
     ----------
-    model: torch.nn.Module
-        The classification model to test.
-    dataset: torch.utils.dataloader.DataLoader
-        The dataset to use for inference.
+    y_true: torch.Tensor
+        The target labels.
+    y_pred: torch.Tensor
+        The predicted labels.
 
     Returns
     -------
-    float
+    accuracy: float
         The classification accuracy of the model.
     """
     correct = (y_pred == y_true).sum().item()
