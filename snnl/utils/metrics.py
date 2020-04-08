@@ -20,7 +20,7 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
-def accuracy(model, dataset) -> float:
+def accuracy(y_true, y_pred) -> float:
     """
     Returns the classification accuracy of the model.
 
@@ -36,14 +36,7 @@ def accuracy(model, dataset) -> float:
     float
         The classification accuracy of the model.
     """
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-        for (features, labels) in dataset:
-            features = features.view(features.shape[0], -1)
-            outputs = model(features)
-            _, predicted = torch.max(outputs.data, dim=1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    return correct / total
+    correct = (y_pred == y_true).sum().item()
+    accuracy = correct / len(y_true)
+    accuracy *= 100.0
+    return accuracy
