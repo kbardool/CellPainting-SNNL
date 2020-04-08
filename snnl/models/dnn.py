@@ -108,6 +108,28 @@ class DNN(torch.nn.Module):
                     f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                 )
 
+    def predict(self, features, return_likelihoods=False):
+        """
+        Returns model classifications
+
+        Parameters
+        ----------
+        features: torch.Tensor
+            The input features to classify.
+        return_likelihoods: bool
+            Whether to return classes with likelihoods or not.
+
+        Returns
+        -------
+        predictions: torch.Tensor
+            The class likelihood output by the model.
+        classes: torch.Tensor
+            The class prediction by the model.
+        """
+        outputs = self.forward(features)
+        predictions, classes = torch.max(outputs.data, dim=1)
+        return (predictions, classes) if return_likelihoods else classes
+
 
 def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
     """
