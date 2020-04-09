@@ -201,14 +201,12 @@ def binary_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
 
     del activations
 
-    snn_loss = torch.min(torch.Tensor(layers_snnl))
-
-    train_loss = [bce_loss, (factor * snn_loss)]
-    train_loss = sum(train_loss)
-
-    train_loss.backward()
+    layers_snnl = torch.FloatTensor(layers_snnl)
+    layers_snnl = layers_snnl.to(model.model_device)
+    snn_loss = sum(layers_snnl)
+    train_loss = bce_loss + (factor * snn_loss)
+    train_loss.backward(snn_loss)
     model.optimizer.step()
-
     return train_loss, snn_loss, bce_loss
 
 
