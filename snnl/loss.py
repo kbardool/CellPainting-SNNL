@@ -119,9 +119,7 @@ def softmax_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
     xent_loss : torch.Tensor
         The softmax cross entropy loss for classification.
     """
-
     model.optimizer.zero_grad()
-
     xent_loss = model.criterion(outputs, labels)
 
     activations = {}
@@ -144,14 +142,14 @@ def softmax_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
 
     del activations
 
-    snn_loss = torch.min(torch.Tensor(layers_snnl))
-
-    train_loss = [xent_loss, (factor * snn_loss)]
-    train_loss = sum(train_loss)
-
-    train_loss.backward()
+    layers_snnl = torch.FloatTensor(layers_snnl)
+    layers_snnl = layers_snnl.to(model.model_device)
+    layers_snnl.requires_grad_(True)
+    snn_loss = sum(layers_snnl)
+    snn_loss.requires_grad_(True)
+    train_loss = xent_loss + (factor * snn_loss)
+    train_loss.backward(snn_loss)
     model.optimizer.step()
-
     return train_loss, snn_loss, xent_loss
 
 
@@ -314,7 +312,7 @@ def pick_probability(features, temperature, cosine_distance, stability_epsilon=1
         features, features, temperature, cosine_distance
     )
     device = torch.device(features.device)
-    pairwise_distance -= torch.eye(features.shape[0]).to(device)
+    pairwise_distance -= torch.eye(features.shape[0], requires_grad=True).to(device)
     normalized_pairwise_distance = pairwise_distance / (
         stability_epsilon + torch.sum(pairwise_distance, 1).view(-1, 1)
     )
