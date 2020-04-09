@@ -144,9 +144,7 @@ def softmax_crossentropy(model, outputs, features, labels, epoch, factor=100.0):
 
     layers_snnl = torch.FloatTensor(layers_snnl)
     layers_snnl = layers_snnl.to(model.model_device)
-    layers_snnl.requires_grad_(True)
     snn_loss = sum(layers_snnl)
-    snn_loss.requires_grad_(True)
     train_loss = xent_loss + (factor * snn_loss)
     train_loss.backward(snn_loss)
     model.optimizer.step()
