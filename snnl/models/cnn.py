@@ -17,7 +17,6 @@
 import torch
 
 from snnl.loss import composite_loss
-from snnl.loss import softmax_crossentropy
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
