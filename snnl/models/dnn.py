@@ -17,7 +17,6 @@
 import torch
 
 from snnl.loss import composite_loss
-from snnl.loss import softmax_crossentropy
 
 
 class DNN(torch.nn.Module):
