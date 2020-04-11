@@ -175,6 +175,7 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
                 labels=batch_labels,
                 epoch=epoch,
                 factor=factor,
+                unsupervised=True,
             )
             epoch_loss += train_loss.item()
             epoch_snn_loss += snn_loss.item()
