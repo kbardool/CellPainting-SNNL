@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of loss functions"""
+from typing import Tuple
 import torch
 
 __author__ = "Abien Fred Agarap"
@@ -21,8 +22,14 @@ __version__ = "1.0.0"
 
 
 def composite_loss(
-    model, features, labels, outputs, epoch, factor=100.0, unsupervised=False
-):
+    model: torch.nn.Module,
+    features: torch.Tensor,
+    labels: torch.Tensor,
+    outputs: torch.Tensor,
+    epoch: int,
+    factor: float = 100.0,
+    unsupervised: bool = False,
+) -> Tuple[float, float, float]:
     """
     Returns the composite loss with soft nearest neighbor loss.
     If the objective is unsupervised learning, the primary loss
