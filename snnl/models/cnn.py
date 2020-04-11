@@ -16,7 +16,7 @@
 """Implementation of a convolutional neural network"""
 import torch
 
-from snnl.loss import softmax_crossentropy
+from snnl.loss import composite_loss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -182,7 +182,7 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
         batch_labels = batch_labels.to(model.model_device)
         if use_snnl:
             outputs = model(batch_features)
-            train_loss, snn_loss, xent_loss = softmax_crossentropy(
+            train_loss, snn_loss, xent_loss = composite_loss(
                 model=model,
                 outputs=outputs,
                 features=batch_features,

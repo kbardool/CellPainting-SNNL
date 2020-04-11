@@ -16,7 +16,7 @@
 """Implementation of a feed-forward neural network-based autoencoder"""
 import torch
 
-from snnl.loss import binary_crossentropy
+from snnl.loss import composite_loss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -168,13 +168,14 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
         batch_labels = batch_labels.to(model.model_device)
         if use_snnl:
             outputs = model(batch_features)
-            train_loss, snn_loss, recon_loss = binary_crossentropy(
+            train_loss, snn_loss, recon_loss = composite_loss(
                 model=model,
                 outputs=outputs,
                 features=batch_features,
                 labels=batch_labels,
                 epoch=epoch,
                 factor=factor,
+                unsupervised=True,
             )
             epoch_loss += train_loss.item()
             epoch_snn_loss += snn_loss.item()
