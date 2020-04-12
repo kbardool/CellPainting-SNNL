@@ -64,7 +64,6 @@ def main(args):
 
     train_dataset, test_dataset = load_dataset(name="mnist")
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
-    test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
 
     model = DNN(units=units, learning_rate=learning_rate, model_device=device)
     model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10.0)
