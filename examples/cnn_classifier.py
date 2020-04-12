@@ -76,7 +76,7 @@ def main(args):
     model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
     test_features = test_dataset.data.reshape(-1, 784) / 255.0
     model.eval()
-    model.cpu()
+    model = model.cpu()
     predictions = model.predict(test_features)
     test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
     print(f"accuracy: {test_accuracy}%")
