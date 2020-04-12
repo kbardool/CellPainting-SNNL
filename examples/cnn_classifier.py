@@ -77,8 +77,9 @@ def main(args):
     test_features = test_dataset.data.reshape(-1, 784) / 255.0
     model.eval()
     model.cpu()
-    acc = accuracy(model, test_loader)
-    print(f"accuracy: {acc * 100.}%")
+    predictions = model.predict(test_features)
+    test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
+    print(f"accuracy: {test_accuracy}%")
 
 
 if __name__ == "__main__":
