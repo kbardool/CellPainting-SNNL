@@ -74,7 +74,7 @@ def main(args):
     )
     model = model.to(device)
     model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
-    test_features = test_dataset.data.reshape(-1, 784) / 255.0
+    test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
     model.eval()
     model = model.cpu()
     predictions = model.predict(test_features)
