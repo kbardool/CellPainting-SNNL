@@ -65,7 +65,6 @@ def main(args):
 
     train_dataset, test_dataset = load_dataset(name="mnist")
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
-    test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
 
     model = CNN(
         input_dim=input_dim,
@@ -75,8 +74,12 @@ def main(args):
     )
     model = model.to(device)
     model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
-    acc = accuracy(model, test_loader)
-    print(f"accuracy: {acc * 100.}%")
+    test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
+    model.eval()
+    model = model.cpu()
+    predictions = model.predict(test_features)
+    test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
+    print(f"accuracy: {test_accuracy}%")
 
 
 if __name__ == "__main__":
