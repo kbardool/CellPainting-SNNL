@@ -72,7 +72,6 @@ def main(args):
         learning_rate=learning_rate,
         model_device=device,
     )
-    model = model.to(device)
     model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
     test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
     model.eval()
