@@ -167,8 +167,8 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
                 factor=factor,
             )
             epoch_loss += train_loss.item()
-            epoch_snn_loss += snn_loss
-            epoch_xent_loss += xent_loss
+            epoch_snn_loss += snn_loss.item()
+            epoch_xent_loss += xent_loss.item()
         else:
             model.optimizer.zero_grad()
             outputs = model(batch_features)
