@@ -43,6 +43,14 @@ def parse_args():
         type=str,
         help="the device to use, default: [cpu]",
     )
+    group.add_argument(
+        "-m",
+        "--model",
+        required=False,
+        default="baseline",
+        type=str,
+        help="the model to use, options: [baseline (default) | snnl]",
+    )
     arguments = parser.parse_args()
     return arguments
 
@@ -73,7 +81,12 @@ def main(args):
         learning_rate=learning_rate,
         model_device=device,
     )
-    model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
+    if args.model.lower() == "baseline":
+        model.fit(data_loader=train_loader, epochs=epochs)
+    elif args.model.lower() == "snnl":
+        model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10.0)
+    else:
+        raise ValueError("Choose between [baseline] and [snnl] only.")
 
 
 if __name__ == "__main__":
