@@ -52,7 +52,7 @@ def main(args):
     input_dim = 1
     num_classes = 10
     learning_rate = 1e-4
-    batch_size = 256
+    batch_size = 128
     epochs = 40
 
     torch.manual_seed(args.seed)
