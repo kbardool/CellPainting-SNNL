@@ -95,6 +95,7 @@ class CNN(torch.nn.Module):
             else:
                 activations[index] = layer(activations[index - 1])
         logits = activations[len(activations) - 1]
+        del activations
         return logits
 
     def fit(self, data_loader, epochs, use_snnl=False, factor=None):
@@ -190,6 +191,7 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
                 epoch=epoch,
                 factor=factor,
             )
+            del outputs
             epoch_loss += train_loss.item()
             epoch_snn_loss += snn_loss
             epoch_xent_loss += xent_loss
