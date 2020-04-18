@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Utility functions"""
 import json
+import os
 from typing import Tuple
 
 __author__ = "Abien Fred Agarap"
@@ -58,9 +59,10 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     learning_rate = config["learning_rate"]
     assert isinstance(learning_rate, float), "[learning_rate] must be [float]."
 
-    units = config["units"]
-    assert isinstance(units, list), "[units] must be [list]."
-    assert len(units) >= 2, "len(units) must be >= 2."
+    if "dnn" in os.path.basename(hyperparameters_path).lower():
+        units = config["units"]
+        assert isinstance(units, list), "[units] must be [list]."
+        assert len(units) >= 2, "len(units) must be >= 2."
 
     snnl_factor = config["snnl_factor"]
     assert isinstance(snnl_factor, float) or isinstance(
