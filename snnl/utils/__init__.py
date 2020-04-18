@@ -63,6 +63,12 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         units = config["units"]
         assert isinstance(units, list), "[units] must be [list]."
         assert len(units) >= 2, "len(units) must be >= 2."
+    elif "cnn" in os.path.basename(hyperparameters_path).lower():
+        input_shape = config["input_shape"]
+        assert isinstance(input_shape, int), "[input_shape] must be [int]."
+
+        num_classes = config["num_classes"]
+        assert isinstance(num_classes, int), "[num_classes] must be [int]."
 
     snnl_factor = config["snnl_factor"]
     assert isinstance(snnl_factor, float) or isinstance(
