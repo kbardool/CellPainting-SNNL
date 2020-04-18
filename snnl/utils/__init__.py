@@ -48,6 +48,10 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             The dimensionality of the input feature channel.
         num_classes : int
             The number of classes in a dataset.
+        input_shape : int
+            The dimensionality of flattened input features.
+        code_dim : int
+            The dimensionality of the latent code.
         snnl_factor : int or float
             The SNNL factor.
         temperature_mode : str
