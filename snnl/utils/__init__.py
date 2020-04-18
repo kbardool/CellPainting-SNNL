@@ -76,7 +76,9 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     temperature_mode = config["temperature_mode"]
     assert isinstance(temperature_mode, str), "[temperature_mode] must be [str]."
 
-    if "dnn" in os.path.basename(hyperparameters_path).lower():
+    hyperparameters_filename = os.path.basename(hyperparameters_path)
+    hyperparameters_filename = hyperparameters.lower()
+    if "dnn" in hyperparameters_filename:
         units = config["units"]
         assert isinstance(units, list), "[units] must be [list]."
         assert len(units) >= 2, "len(units) must be >= 2."
@@ -89,7 +91,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             snnl_factor,
             temperature_mode,
         )
-    elif "cnn" in os.path.basename(hyperparameters_path).lower():
+    elif "cnn" in hyperparameters_filename:
         input_shape = config["input_dim"]
         assert isinstance(input_shape, int), "[input_shape] must be [int]."
 
