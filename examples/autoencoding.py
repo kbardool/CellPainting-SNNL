@@ -70,8 +70,8 @@ def main(args):
         batch_size,
         epochs,
         learning_rate,
-        input_dim,
-        num_classes,
+        input_shape,
+        code_dim,
         snnl_factor,
         temperature_mode,
     ) = get_hyperparameters(args.configuration)
