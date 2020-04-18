@@ -15,6 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample module for using DNN classifier with SNNL"""
 import argparse
+import json
+
 import torch
 
 from snnl.models.dnn import DNN
@@ -52,15 +54,27 @@ def parse_args():
         type=str,
         help="the model to use, options: [baseline (default) | snnl]",
     )
+    group.add_argument(
+        "-c",
+        "--configuration",
+        required=False,
+        default="examples/dnn_hyperparameters.json",
+        type=str,
+        help="the training hyperparameters to use",
+    )
     arguments = parser.parse_args()
     return arguments
 
 
 def main(args):
-    units = ([784, 512], [512, 10])
-    learning_rate = 1e-2
-    batch_size = 512
-    epochs = 40
+    with open(args.configuration, "r") as file:
+        config = json.load(file)
+    units = config["units"]
+    learning_rate = config["learning_rate"]
+    batch_size = config["batch_size"]
+    epochs = config["epochs"]
+    dataset = config["dataset"]
+    snnl_factor = config["snnl_factor"]
 
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
@@ -70,7 +84,7 @@ def main(args):
     else:
         device = torch.device("cpu")
 
-    train_dataset, test_dataset = load_dataset(name="mnist")
+    train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
     model = DNN(units=units, learning_rate=learning_rate, model_device=device)
@@ -78,7 +92,9 @@ def main(args):
     if args.model.lower() == "baseline":
         model.fit(data_loader=train_loader, epochs=epochs)
     elif args.model.lower() == "snnl":
-        model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10.0)
+        model.fit(
+            data_loader=train_loader, epochs=epochs, use_snnl=True, factor=snnl_factor
+        )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
 
