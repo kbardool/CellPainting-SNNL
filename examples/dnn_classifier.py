@@ -58,7 +58,7 @@ def parse_args():
         "-c",
         "--configuration",
         required=False,
-        default="examples/dnn_hyperparameters.json",
+        default="examples/hyperparameters/dnn.json",
         type=str,
         help="the training hyperparameters to use",
     )
