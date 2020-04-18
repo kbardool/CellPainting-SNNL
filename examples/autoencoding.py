@@ -18,6 +18,7 @@ import argparse
 import torch
 
 from snnl.models.autoencoder import Autoencoder
+from snnl.utils import get_hyperparameters
 from snnl.utils.data import load_dataset, create_dataloader
 
 __author__ = "Abien Fred Agarap"
@@ -64,11 +65,16 @@ def parse_args():
 
 
 def main(args):
-    input_shape = 784
-    code_dim = 128
-    learning_rate = 1e-2
-    batch_size = 256
-    epochs = 40
+    (
+        dataset,
+        batch_size,
+        epochs,
+        learning_rate,
+        input_dim,
+        num_classes,
+        snnl_factor,
+        temperature_mode,
+    ) = get_hyperparameters(args.configuration)
 
     torch.manual_seed(args.seed)
     torch.backends.cudnn.benchmark = True
@@ -79,7 +85,7 @@ def main(args):
     else:
         device = torch.device("cpu")
 
-    train_dataset, test_dataset = load_dataset(name="mnist")
+    train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
     test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
 
@@ -92,7 +98,9 @@ def main(args):
     if args.model.lower() == "baseline":
         model.fit(data_loader=train_loader, epochs=epochs)
     elif args.model.lower() == "snnl":
-        model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10.0)
+        model.fit(
+            data_loader=train_loader, epochs=epochs, use_snnl=True, factor=snnl_factor
+        )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
 
