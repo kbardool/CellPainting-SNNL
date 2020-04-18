@@ -81,7 +81,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     assert isinstance(temperature_mode, str), "[temperature_mode] must be [str]."
 
     hyperparameters_filename = os.path.basename(hyperparameters_path)
-    hyperparameters_filename = hyperparameters.lower()
+    hyperparameters_filename = hyperparameters_filename.lower()
     if "dnn" in hyperparameters_filename:
         units = config["units"]
         assert isinstance(units, list), "[units] must be [list]."
