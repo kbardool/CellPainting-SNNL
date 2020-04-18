@@ -43,8 +43,9 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         units : list
             The list of units per hidden layer if using [dnn].
         input_dim : int
-
+            The dimensionality of the input feature channel.
         num_classes : int
+            The number of classes in a dataset.
         snnl_factor : int or float
             The SNNL factor.
         temperature_mode : str
