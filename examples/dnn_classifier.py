@@ -20,6 +20,7 @@ import json
 import torch
 
 from snnl.models.dnn import DNN
+from snnl.utils import get_hyperparameters
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
@@ -67,14 +68,15 @@ def parse_args():
 
 
 def main(args):
-    with open(args.configuration, "r") as file:
-        config = json.load(file)
-    units = config["units"]
-    learning_rate = config["learning_rate"]
-    batch_size = config["batch_size"]
-    epochs = config["epochs"]
-    dataset = config["dataset"]
-    snnl_factor = config["snnl_factor"]
+    (
+        dataset,
+        batch_size,
+        epochs,
+        learning_rate,
+        units,
+        snnl_factor,
+        temperature_mode,
+    ) = get_hyperparameters(args.configuration)
 
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
