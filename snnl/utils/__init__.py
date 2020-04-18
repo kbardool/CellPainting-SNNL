@@ -34,6 +34,8 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     Returns
     -------
     Tuple
+        dataset : str
+            The name of the dataset to use.
         batch_size : int
             The mini-batch size.
         epochs : int
@@ -53,6 +55,9 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     """
     with open(hyperparameters_path, "r") as file:
         config = json.load(file)
+
+    dataset = config["dataset"]
+    assert isinstance(dataset, str), "[dataset] must be [str]."
 
     batch_size = config["batch_size"]
     assert isinstance(batch_size, int), "[batch_size] must be [int]."
@@ -75,7 +80,15 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         units = config["units"]
         assert isinstance(units, list), "[units] must be [list]."
         assert len(units) >= 2, "len(units) must be >= 2."
-        return batch_size, epochs, learning_rate, units, snnl_factor, temperature_mode
+        return (
+            dataset,
+            batch_size,
+            epochs,
+            learning_rate,
+            units,
+            snnl_factor,
+            temperature_mode,
+        )
     elif "cnn" in os.path.basename(hyperparameters_path).lower():
         input_shape = config["input_dim"]
         assert isinstance(input_shape, int), "[input_shape] must be [int]."
@@ -84,6 +97,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         assert isinstance(num_classes, int), "[num_classes] must be [int]."
 
         return (
+            dataset,
             batch_size,
             epochs,
             learning_rate,
