@@ -1,0 +1,10 @@
+{
+    "input_shape": 784,
+    "code_dim": 128,
+    "epochs": 10,
+    "batch_size": 256,
+    "learning_rate": 1e-3,
+    "dataset": "mnist",
+    "snnl_factor": 10.0,
+    "temperature_mode": "annealing"
+}
