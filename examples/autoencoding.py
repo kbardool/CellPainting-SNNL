@@ -51,6 +51,14 @@ def parse_args():
         type=str,
         help="the model to use, options: [baseline (default) | snnl]",
     )
+    group.add_argument(
+        "-c",
+        "--configuration",
+        required=False,
+        default="examples/hyperparameters/autoencoder.json",
+        type=str,
+        help="the training hyperparameters to use",
+    )
     arguments = parser.parse_args()
     return arguments
 
