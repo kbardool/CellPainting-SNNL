@@ -82,6 +82,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 
         num_classes = config["num_classes"]
         assert isinstance(num_classes, int), "[num_classes] must be [int]."
+
         return (
             batch_size,
             epochs,
