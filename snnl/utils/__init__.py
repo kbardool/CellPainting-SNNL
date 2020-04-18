@@ -22,6 +22,30 @@ __version__ = "1.0.0"
 
 
 def get_hyperparameters(hyperparameters_path: str) -> Tuple:
+    """
+    Returns hyperparameters from JSON file.
+
+    Parameters
+    ----------
+    hyperparameters_path : str
+        The path to the hyperparameters JSON file.
+
+    Returns
+    -------
+    Tuple
+        batch_size : int
+            The mini-batch size.
+        epochs : int
+            The number of training epochs.
+        learning_rate : float
+            The learning rate to use for optimization.
+        units : list
+            The list of units per hidden layer if using [dnn].
+        snnl_factor : int or float
+            The SNNL factor.
+        temperature_mode : str
+            Use annealing or fixed temperature.
+    """
     with open(hyperparameters_path, "r") as file:
         config = json.load(file)
 
