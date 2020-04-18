@@ -92,7 +92,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             temperature_mode,
         )
     elif "cnn" in hyperparameters_filename:
-        input_shape = config["input_dim"]
+        input_dim = config["input_dim"]
         assert isinstance(input_shape, int), "[input_shape] must be [int]."
 
         num_classes = config["num_classes"]
@@ -103,7 +103,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             batch_size,
             epochs,
             learning_rate,
-            input_shape,
+            input_dim,
             num_classes,
             snnl_factor,
             temperature_mode,
