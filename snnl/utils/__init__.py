@@ -1,0 +1,23 @@
+import json
+from typing import Tuple
+
+
+def get_hyperparameters(hyperparameters_path: str) -> Tuple:
+    with open(hyperparameters_path, "r") as file:
+        config = json.load(file)
+    batch_size = config["batch_size"]
+    assert isinstance(batch_size, int), "[batch_size] must be [int]."
+    epochs = config["epochs"]
+    assert isinstance(epochs, int), "[epochs] must be [int]."
+    learning_rate = config["learning_rate"]
+    assert isinstance(learning_rate, float), "[learning_rate] must be [float]."
+    units = config["units"]
+    assert isinstance(units, list), "[units] must be [list]."
+    assert len(units) >= 2, "len(units) must be >= 2."
+    snnl_factor = config["snnl_factor"]
+    assert isinstance(snnl_factor, float) or isinstance(
+        snnl_factor, int
+    ), "[snnl_factor] must be either [float] or [int]."
+    temperature_mode = config["temperature_mode"]
+    assert isinstance(temperature_mode, str), "[temperature_mode] must be [str]."
+    return batch_size, epochs, learning_rate, units, snnl_factor, temperature_mode
