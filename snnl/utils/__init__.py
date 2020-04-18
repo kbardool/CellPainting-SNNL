@@ -108,3 +108,20 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             snnl_factor,
             temperature_mode,
         )
+    elif "autoencoder" in hyperparameters_filename:
+        input_shape = config["input_shape"]
+        assert isinstance(input_shape, int), "[input_shape] must be [int]."
+
+        code_dim = config["code_dim"]
+        assert isinstance(code_dim, int), "[code_dim] must be [int]."
+
+        return (
+            dataset,
+            batch_size,
+            epochs,
+            learning_rate,
+            input_shape,
+            code_dim,
+            snnl_factor,
+            temperature_mode,
+        )
