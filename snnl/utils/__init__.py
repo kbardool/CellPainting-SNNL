@@ -59,17 +59,6 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     learning_rate = config["learning_rate"]
     assert isinstance(learning_rate, float), "[learning_rate] must be [float]."
 
-    if "dnn" in os.path.basename(hyperparameters_path).lower():
-        units = config["units"]
-        assert isinstance(units, list), "[units] must be [list]."
-        assert len(units) >= 2, "len(units) must be >= 2."
-    elif "cnn" in os.path.basename(hyperparameters_path).lower():
-        input_shape = config["input_shape"]
-        assert isinstance(input_shape, int), "[input_shape] must be [int]."
-
-        num_classes = config["num_classes"]
-        assert isinstance(num_classes, int), "[num_classes] must be [int]."
-
     snnl_factor = config["snnl_factor"]
     assert isinstance(snnl_factor, float) or isinstance(
         snnl_factor, int
@@ -78,4 +67,23 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     temperature_mode = config["temperature_mode"]
     assert isinstance(temperature_mode, str), "[temperature_mode] must be [str]."
 
-    return batch_size, epochs, learning_rate, units, snnl_factor, temperature_mode
+    if "dnn" in os.path.basename(hyperparameters_path).lower():
+        units = config["units"]
+        assert isinstance(units, list), "[units] must be [list]."
+        assert len(units) >= 2, "len(units) must be >= 2."
+        return batch_size, epochs, learning_rate, units, snnl_factor, temperature_mode
+    elif "cnn" in os.path.basename(hyperparameters_path).lower():
+        input_shape = config["input_shape"]
+        assert isinstance(input_shape, int), "[input_shape] must be [int]."
+
+        num_classes = config["num_classes"]
+        assert isinstance(num_classes, int), "[num_classes] must be [int]."
+        return (
+            batch_size,
+            epochs,
+            learning_rate,
+            input_shape,
+            num_classes,
+            snnl_factor,
+            temperature_mode,
+        )
