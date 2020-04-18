@@ -42,6 +42,9 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             The learning rate to use for optimization.
         units : list
             The list of units per hidden layer if using [dnn].
+        input_dim : int
+
+        num_classes : int
         snnl_factor : int or float
             The SNNL factor.
         temperature_mode : str
@@ -73,7 +76,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         assert len(units) >= 2, "len(units) must be >= 2."
         return batch_size, epochs, learning_rate, units, snnl_factor, temperature_mode
     elif "cnn" in os.path.basename(hyperparameters_path).lower():
-        input_shape = config["input_shape"]
+        input_shape = config["input_dim"]
         assert isinstance(input_shape, int), "[input_shape] must be [int]."
 
         num_classes = config["num_classes"]
