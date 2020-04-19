@@ -58,7 +58,7 @@ def parse_args():
         required=False,
         default="examples/hyperparameters/autoencoder.json",
         type=str,
-        help="the training hyperparameters to use",
+        help="the path to the JSON file containing the hyperparameters to use",
     )
     arguments = parser.parse_args()
     return arguments
