@@ -18,6 +18,7 @@ import argparse
 import torch
 
 from snnl.models.cnn import CNN
+from snnl.utils import get_hyperparameters
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
@@ -52,16 +53,29 @@ def parse_args():
         type=str,
         help="the model to use, options: [baseline (default) | snnl]",
     )
+    group.add_argument(
+        "-c",
+        "--configuration",
+        required=False,
+        default="examples/hyperparameters/cnn.json",
+        type=str,
+        help="the path to the JSON file containing the hyperparameters to use",
+    )
     arguments = parser.parse_args()
     return arguments
 
 
 def main(args):
-    input_dim = 1
-    num_classes = 10
-    learning_rate = 1e-4
-    batch_size = 128
-    epochs = 40
+    (
+        dataset,
+        batch_size,
+        epochs,
+        learning_rate,
+        input_dim,
+        num_classes,
+        snnl_factor,
+        temperature_mode,
+    ) = get_hyperparameters(args.configuration)
 
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
@@ -71,7 +85,7 @@ def main(args):
     else:
         device = torch.device("cpu")
 
-    train_dataset, test_dataset = load_dataset(name="mnist")
+    train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
     model = CNN(
@@ -83,7 +97,9 @@ def main(args):
     if args.model.lower() == "baseline":
         model.fit(data_loader=train_loader, epochs=epochs)
     elif args.model.lower() == "snnl":
-        model.fit(data_loader=train_loader, epochs=epochs, use_snnl=True, factor=10)
+        model.fit(
+            data_loader=train_loader, epochs=epochs, use_snnl=True, factor=snnl_factor
+        )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
     test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
