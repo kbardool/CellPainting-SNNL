@@ -71,6 +71,20 @@ def load_dataset(name: str = "mnist") -> Tuple[object, object]:
             download=True,
             transform=transform,
         )
+    elif name == "cifar10":
+        train_dataset = torchvision.datasets.CIFAR10(
+            root="~/torch_datasets", train=True, download=True, transform=transform
+        )
+        test_dataset = torchvision.datasets.CIFAR10(
+            root="~/torch_datasets", train=False, download=True, transform=transform
+        )
+    elif name == "svhn":
+        train_dataset = torchvision.datasets.SVHN(
+            root="~/torch_datasets", split="train", download=True, transform=transform
+        )
+        test_dataset = torchvision.datasets.SVHN(
+            root="~/torch_datasets", split="test", download=True, transform=transform
+        )
     return (train_dataset, test_dataset)
 
 
