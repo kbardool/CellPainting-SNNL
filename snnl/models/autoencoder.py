@@ -25,9 +25,9 @@ __version__ = "1.0.0"
 class Autoencoder(torch.nn.Module):
     def __init__(
         self,
-        model_device: torch.device = torch.device("cpu"),
         input_shape: int,
         code_dim: int,
+        model_device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
     ):
         """

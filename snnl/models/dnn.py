@@ -22,8 +22,8 @@ from snnl.loss import composite_loss
 class DNN(torch.nn.Module):
     def __init__(
         self,
-        model_device: torch.device = torch.device("cpu"),
         units: list or tuple,
+        model_device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
     ):
         """
