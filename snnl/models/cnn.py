@@ -25,7 +25,7 @@ __version__ = "1.0.0"
 class CNN(torch.nn.Module):
     def __init__(
         self,
-        model_device: torch.device,
+        model_device: torch.device = torch.device("cpu"),
         input_dim: int,
         num_classes: int,
         learning_rate: float = 1e-4,
