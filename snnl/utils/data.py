@@ -34,6 +34,8 @@ def load_dataset(name: str = "mnist") -> Tuple[object, object]:
             1. mnist (MNIST)
             2. fashion_mnist (FashionMNIST)
             3. emnist (EMNIST/Balanced)
+            4. cifar10 (CIFAR10)
+            5. svhn (SVHN)
 
     Returns
     -------
