@@ -43,6 +43,7 @@ def load_dataset(name: str = "mnist") -> Tuple[object, object]:
         A tuple consisting of the training dataset and the test dataset.
     """
     transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+    name = name.lower()
 
     if name == "mnist":
         train_dataset = torchvision.datasets.MNIST(
