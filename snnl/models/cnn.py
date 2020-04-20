@@ -28,7 +28,7 @@ class CNN(torch.nn.Module):
         model_device: torch.device,
         input_dim: int,
         num_classes: int,
-        learning_rate: float,
+        learning_rate: float = 1e-4,
     ):
         """
         Constructs a convolutional neural network classifier.

@@ -28,7 +28,7 @@ class Autoencoder(torch.nn.Module):
         model_device: torch.device,
         input_shape: int,
         code_dim: int,
-        learning_rate: float,
+        learning_rate: float = 1e-3,
     ):
         """
         Constructs the autoencoder model with the following units,

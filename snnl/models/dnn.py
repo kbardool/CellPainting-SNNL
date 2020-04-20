@@ -21,7 +21,10 @@ from snnl.loss import composite_loss
 
 class DNN(torch.nn.Module):
     def __init__(
-        self, model_device: torch.device, units: list or tuple, learning_rate: float
+        self,
+        model_device: torch.device,
+        units: list or tuple,
+        learning_rate: float = 1e-3,
     ):
         """
         Constructs a feed-forward neural network classifier.
