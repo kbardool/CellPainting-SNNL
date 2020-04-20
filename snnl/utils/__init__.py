@@ -97,7 +97,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         )
     elif "cnn" in hyperparameters_filename:
         input_dim = config["input_dim"]
-        assert isinstance(input_shape, int), "[input_shape] must be [int]."
+        assert isinstance(input_dim, int), "[input_dim] must be [int]."
 
         num_classes = config["num_classes"]
         assert isinstance(num_classes, int), "[num_classes] must be [int]."
