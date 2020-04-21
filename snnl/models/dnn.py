@@ -20,6 +20,14 @@ from snnl.loss import composite_loss
 
 
 class DNN(torch.nn.Module):
+    """
+    A feed-forward neural network that optimizes
+    softmax cross entropy using Adam optimizer.
+
+    An optional soft nearest neighbor loss
+    regularizer can be used with the softmax cross entropy.
+    """
+
     def __init__(
         self,
         units: list or tuple,
