@@ -27,6 +27,7 @@ def composite_loss(
     labels: torch.Tensor,
     outputs: torch.Tensor,
     epoch: int,
+    temperature: int = None,
     factor: float = 100.0,
     unsupervised: bool = False,
 ) -> Tuple[float, float, float]:
@@ -79,7 +80,8 @@ def composite_loss(
 
     layers_snnl = []
 
-    temperature = 1.0 / ((1.0 + epoch) ** 0.55)
+    if temperature is None:
+        temperature = 1.0 / ((1.0 + epoch) ** 0.55)
 
     for key, value in activations.items():
         if len(value.shape) > 2:
