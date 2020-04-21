@@ -23,6 +23,14 @@ __version__ = "1.0.0"
 
 
 class CNN(torch.nn.Module):
+    """
+    A convolutional neural network that optimizes
+    softmax cross entropy using Adam optimizer.
+
+    An optional soft nearest neighbor loss
+    regularizer can be used with the softmax cross entropy.
+    """
+
     def __init__(
         self,
         input_dim: int,
