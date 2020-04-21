@@ -23,6 +23,14 @@ __version__ = "1.0.0"
 
 
 class Autoencoder(torch.nn.Module):
+    """
+    A feed-forward autoencoder neural network that optimizes
+    binary cross entropy using Adam optimizer.
+
+    An optional soft nearest neighbor loss
+    regularizer can be used with the binary cross entropy.
+    """
+
     def __init__(
         self,
         input_shape: int,
