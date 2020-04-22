@@ -48,6 +48,8 @@ def composite_loss(
         The model outputs.
     epoch : int
         The training epoch.
+    temperature : int
+        Use fixed temperature if not None.
     factor : float
         The SNNL factor.
     unsupervised : bool
