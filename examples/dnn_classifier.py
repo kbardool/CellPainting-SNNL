@@ -75,7 +75,6 @@ def main(args):
         learning_rate,
         units,
         snnl_factor,
-        temperature_mode,
         temperature,
     ) = get_hyperparameters(args.configuration)
 
