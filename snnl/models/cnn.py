@@ -106,7 +106,7 @@ class CNN(torch.nn.Module):
         del activations
         return logits
 
-    def fit(self, data_loader, epochs, use_snnl=False, factor=None):
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None, temperature=None):
         """
         Trains the cnn model.
 
@@ -132,7 +132,9 @@ class CNN(torch.nn.Module):
             train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
+            epoch_loss = epoch_train(
+                self, data_loader, epoch, use_snnl, factor, temperature
+            )
 
             if "cuda" in self.model_device.type:
                 torch.cuda.empty_cache()
@@ -176,7 +178,9 @@ class CNN(torch.nn.Module):
         return (predictions, classes) if return_likelihoods else classes
 
 
-def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
+def epoch_train(
+    model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+):
     """
     Trains a model for one epoch.
 
