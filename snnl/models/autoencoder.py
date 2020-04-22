@@ -101,7 +101,7 @@ class Autoencoder(torch.nn.Module):
         reconstruction = activations[len(activations) - 1]
         return reconstruction
 
-    def fit(self, data_loader, epochs, use_snnl=False, factor=None):
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None, temperature=None):
         """
         Trains the autoencoder model.
 
