@@ -127,7 +127,9 @@ class Autoencoder(torch.nn.Module):
             train_recon_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
+            epoch_loss = epoch_train(
+                self, data_loader, epoch, use_snnl, factor, temperature=temperature
+            )
 
             if "cuda" in self.model_device.type:
                 torch.cuda.empty_cache()
@@ -149,7 +151,9 @@ class Autoencoder(torch.nn.Module):
                 )
 
 
-def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
+def epoch_train(
+    model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+):
     """
     Trains a model for one epoch.
 
@@ -192,6 +196,7 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
                 features=batch_features,
                 labels=batch_labels,
                 epoch=epoch,
+                temperature=temperature,
                 factor=factor,
                 unsupervised=True,
             )
