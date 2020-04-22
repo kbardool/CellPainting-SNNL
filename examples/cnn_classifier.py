@@ -74,7 +74,7 @@ def main(args):
         input_dim,
         num_classes,
         snnl_factor,
-        temperature_mode,
+        temperature,
     ) = get_hyperparameters(args.configuration)
 
     torch.manual_seed(args.seed)
@@ -98,7 +98,11 @@ def main(args):
         model.fit(data_loader=train_loader, epochs=epochs)
     elif args.model.lower() == "snnl":
         model.fit(
-            data_loader=train_loader, epochs=epochs, use_snnl=True, factor=snnl_factor
+            data_loader=train_loader,
+            epochs=epochs,
+            use_snnl=True,
+            factor=snnl_factor,
+            temperature=temperature,
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
