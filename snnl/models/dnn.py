@@ -20,6 +20,14 @@ from snnl.loss import composite_loss
 
 
 class DNN(torch.nn.Module):
+    """
+    A feed-forward neural network that optimizes
+    softmax cross entropy using Adam optimizer.
+
+    An optional soft nearest neighbor loss
+    regularizer can be used with the softmax cross entropy.
+    """
+
     def __init__(
         self,
         units: list or tuple,
@@ -75,7 +83,7 @@ class DNN(torch.nn.Module):
         logits = activations[len(activations) - 1]
         return logits
 
-    def fit(self, data_loader, epochs, use_snnl=False, factor=None):
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None, temperature=None):
         """
         Trains the dnn model.
 
@@ -85,6 +93,13 @@ class DNN(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
+        use_snnl : bool
+            Whether to use soft nearest neighbor loss or not. Default: [False].
+        factor : float
+            The soft nearest neighbor loss scaling factor.
+        temperature : int
+            The temperature to use for soft nearest neighbor loss.
+            If None, annealing temperature will be used.
         """
         self.to(self.model_device)
 
@@ -94,7 +109,9 @@ class DNN(torch.nn.Module):
             train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
+            epoch_loss = epoch_train(
+                self, data_loader, epoch, use_snnl, factor, temperature
+            )
 
             if "cuda" in self.model_device.type:
                 torch.cuda.empty_cache()
@@ -138,7 +155,9 @@ class DNN(torch.nn.Module):
         return (predictions, classes) if return_likelihoods else classes
 
 
-def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
+def epoch_train(
+    model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+):
     """
     Trains a model for one epoch.
 
@@ -148,6 +167,13 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
         The model to train.
     data_loader : torch.utils.dataloader.DataLoader
         The data loader object that consists of the data pipeline.
+    use_snnl : bool
+        Whether to use soft nearest neighbor loss or not. Default: [False].
+    factor : float
+        The soft nearest neighbor loss scaling factor.
+    temperature : int
+        The temperature to use for soft nearest neighbor loss.
+        If None, annealing temperature will be used.
 
     Returns
     -------
@@ -171,6 +197,7 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
                 features=batch_features,
                 labels=batch_labels,
                 epoch=epoch,
+                temperature=temperature,
                 factor=factor,
             )
             epoch_loss += train_loss.item()

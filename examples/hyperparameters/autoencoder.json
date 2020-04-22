@@ -6,5 +6,5 @@
     "learning_rate": 1e-3,
     "dataset": "mnist",
     "snnl_factor": 10.0,
-    "temperature_mode": "annealing"
+    "temperature": 0
 }
