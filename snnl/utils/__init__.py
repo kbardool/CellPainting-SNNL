@@ -56,6 +56,8 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             The SNNL factor.
         temperature_mode : str
             Use annealing or fixed temperature.
+        temperature : int
+            The soft nearest neighbor loss temperature factor.
     """
     with open(hyperparameters_path, "r") as file:
         config = json.load(file)
@@ -80,6 +82,12 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     temperature_mode = config["temperature_mode"]
     assert isinstance(temperature_mode, str), "[temperature_mode] must be [str]."
 
+    if temperature_mode == "fixed":
+        temperature = config["temperature"]
+        assert isinstance(temperature, int), "[temperature] must be [int]."
+    else:
+        temperature = None
+
     hyperparameters_filename = os.path.basename(hyperparameters_path)
     hyperparameters_filename = hyperparameters_filename.lower()
     if "dnn" in hyperparameters_filename:
@@ -94,6 +102,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             units,
             snnl_factor,
             temperature_mode,
+            temperature,
         )
     elif "cnn" in hyperparameters_filename:
         input_dim = config["input_dim"]
@@ -111,6 +120,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             num_classes,
             snnl_factor,
             temperature_mode,
+            temperature,
         )
     elif "autoencoder" in hyperparameters_filename:
         input_shape = config["input_shape"]
@@ -128,4 +138,5 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             code_dim,
             snnl_factor,
             temperature_mode,
+            temperature,
         )
