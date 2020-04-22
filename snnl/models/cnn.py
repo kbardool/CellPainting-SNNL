@@ -116,6 +116,13 @@ class CNN(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
+        use_snnl : bool
+            Whether to use soft nearest neighbor loss or not. Default: [False].
+        factor : float
+            The soft nearest neighbor loss scaling factor.
+        temperature : int
+            The temperature to use for soft nearest neighbor loss.
+            If None, annealing temperature will be used.
         """
         self.to(self.model_device)
 
@@ -179,6 +186,13 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
         The model to train.
     data_loader : torch.utils.dataloader.DataLoader
         The data loader object that consists of the data pipeline.
+    use_snnl : bool
+        Whether to use soft nearest neighbor loss or not. Default: [False].
+    factor : float
+        The soft nearest neighbor loss scaling factor.
+    temperature : int
+        The temperature to use for soft nearest neighbor loss.
+        If None, annealing temperature will be used.
 
     Returns
     -------
