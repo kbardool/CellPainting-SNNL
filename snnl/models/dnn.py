@@ -83,7 +83,7 @@ class DNN(torch.nn.Module):
         logits = activations[len(activations) - 1]
         return logits
 
-    def fit(self, data_loader, epochs, use_snnl=False, factor=None):
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None, temperature=None):
         """
         Trains the dnn model.
 
@@ -102,7 +102,9 @@ class DNN(torch.nn.Module):
             train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = epoch_train(self, data_loader, epoch, use_snnl, factor)
+            epoch_loss = epoch_train(
+                self, data_loader, epoch, use_snnl, factor, temperature
+            )
 
             if "cuda" in self.model_device.type:
                 torch.cuda.empty_cache()
@@ -146,7 +148,9 @@ class DNN(torch.nn.Module):
         return (predictions, classes) if return_likelihoods else classes
 
 
-def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
+def epoch_train(
+    model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+):
     """
     Trains a model for one epoch.
 
@@ -179,6 +183,7 @@ def epoch_train(model, data_loader, epoch=None, use_snnl=False, factor=None):
                 features=batch_features,
                 labels=batch_labels,
                 epoch=epoch,
+                temperature=temperature,
                 factor=factor,
             )
             epoch_loss += train_loss.item()
