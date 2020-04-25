@@ -147,15 +147,22 @@ class ResNet18(torch.nn.Module):
 def epoch_train(
     model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
 ):
+    if use_snnl:
+        assert epoch is not None, "[epoch] must not be None if use_snnl == True"
+        epoch_xent_loss = 0
+        epoch_snn_loss = 0
     epoch_loss = 0
     for batch_features, batch_labels in data_loader:
         batch_features = batch_features.to(model.device)
         batch_labels = batch_labels.to(model.device)
-        model.optimizer.zero_grad()
-        outputs = model(batch_features)
-        train_loss = model.criterion(outputs, batch_labels)
-        train_loss.backward()
-        model.optimizer.step()
-        epoch_loss += train_loss.item()
+        if use_snnl:
+            pass
+        else:
+            model.optimizer.zero_grad()
+            outputs = model(batch_features)
+            train_loss = model.criterion(outputs, batch_labels)
+            train_loss.backward()
+            model.optimizer.step()
+            epoch_loss += train_loss.item()
     epoch_loss /= len(data_loader)
     return epoch_loss
