@@ -15,8 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Test module"""
 import torch
-from snnl.loss import pairwise_euclidean_distance
-from snnl.loss import pairwise_cosine_distance
+from snnl import pairwise_euclidean_distance
+from snnl import pairwise_cosine_distance
 
 torch.manual_seed(42)
 
