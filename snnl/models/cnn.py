@@ -81,6 +81,7 @@ class CNN(torch.nn.Module):
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
         self.train_loss = []
+        self.to(self.model_device)
 
     def forward(self, features):
         """
@@ -124,8 +125,6 @@ class CNN(torch.nn.Module):
             The temperature to use for soft nearest neighbor loss.
             If None, annealing temperature will be used.
         """
-        self.to(self.model_device)
-
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
             train_snn_loss = []
