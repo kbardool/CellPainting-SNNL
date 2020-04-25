@@ -142,3 +142,20 @@ class ResNet18(torch.nn.Module):
         outputs = self.forward(features)
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
+
+
+def epoch_train(
+    model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+):
+    epoch_loss = 0
+    for batch_features, batch_labels in data_loader:
+        batch_features = batch_features.to(model.device)
+        batch_labels = batch_labels.to(model.device)
+        model.optimizer.zero_grad()
+        outputs = model(batch_features)
+        train_loss = model.criterion(outputs, batch_labels)
+        train_loss.backward()
+        model.optimizer.step()
+        epoch_loss += train_loss.item()
+    epoch_loss /= len(data_loader)
+    return epoch_loss
