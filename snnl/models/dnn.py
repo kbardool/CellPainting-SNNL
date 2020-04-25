@@ -16,7 +16,7 @@
 """Implementation of a feed-forward neural network"""
 import torch
 
-from snnl.loss import composite_loss
+from snnl import composite_loss
 
 
 class DNN(torch.nn.Module):

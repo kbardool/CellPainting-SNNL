@@ -16,7 +16,7 @@
 """Implementation of a convolutional neural network"""
 import torch
 
-from snnl.loss import composite_loss
+from snnl import composite_loss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
