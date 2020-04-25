@@ -23,12 +23,32 @@ __version__ = "1.0.0"
 
 
 class ResNet18(torch.nn.Module):
+    """
+    A pre-trained ResNet18 model that optimizes
+    softmax corss entropy using Adam optimizer.
+
+    An optional soft nearest neighbor loss
+    regularized can be used with the softmax cross entropy.
+    """
+
     def __init__(
         self,
         num_classes: int,
         learning_rate: float = 1e-3,
         device: torch.device = torch.device("cpu"),
     ):
+        """
+        Constructs and loads a pre-trained ResNet18 classifier.
+
+        Parameters
+        ----------
+        num_classes: int
+            The number of classes in a dataset.
+        learning_rate: float
+            The learning rate to use for optimization.
+        device: torch.device
+            The device to use for model computations.
+        """
         super().__init__()
         self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
@@ -40,9 +60,39 @@ class ResNet18(torch.nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, features):
+        """
+        The forward pass of the model.
+
+        Parameter
+        ---------
+        features : torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        logits : torch.Tensor
+            The model output.
+        """
         return self.resnet.forward(features)
 
     def fit(self, data_loader, epochs, use_snnl=False, factor=None, temperature=None):
+        """
+        Finetunes the ResNet18 model.
+
+        Parameters
+        ---------
+        data_loader : torch.utils.data.DataLoader
+            The data loader object that consists of the data pipeline.
+        epochs : int
+            The number of epochs to train the model.
+        use_snnl : bool
+            Whether to use soft nearest neighbor loss or not. Default: [False].
+        factor : float
+            The soft nearest neighbor loss scaling factor.
+        temperature : int
+            The temperature to use for soft nearest neighbor loss.
+            If None, annealing temperature will be used.
+        """
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
             train_snn_loss = []
