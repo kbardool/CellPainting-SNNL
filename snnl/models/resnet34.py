@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""Implementation of ResNet18 model"""
+"""Implementation of ResNet34 model"""
 import torch
 import torchvision
 
