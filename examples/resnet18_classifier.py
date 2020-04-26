@@ -102,7 +102,7 @@ def main(args):
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
-    test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
+    test_features = test_dataset.data.reshape(-1, 3, 32, 32) / 255.0
     model.eval()
     model = model.cpu()
     predictions = model.predict(test_features)
