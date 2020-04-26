@@ -189,7 +189,7 @@ def composite_loss(
     model.optimizer.zero_grad()
     primary_loss = model.criterion(outputs, batch_labels)
     activations = {}
-    for index, (_, layer) in enumerate(list(model.named_children())):
+    for index, (_, layer) in enumerate(list(model.resnet.named_children())):
         if index == 0:
             activations[index] = layer(batch_features)
         elif index == 9:
