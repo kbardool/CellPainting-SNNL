@@ -57,7 +57,7 @@ def parse_args():
         "-c",
         "--configuration",
         required=False,
-        default="examples/hyperparameters/cnn.json",
+        default="examples/hyperparameters/resnet18.json",
         type=str,
         help="the path to the JSON file containing the hyperparameters to use",
     )
@@ -71,8 +71,6 @@ def main(args):
         batch_size,
         epochs,
         learning_rate,
-        input_dim,
-        num_classes,
         snnl_factor,
         temperature,
     ) = get_hyperparameters(args.configuration)
@@ -87,6 +85,7 @@ def main(args):
 
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
+    num_classes = len(train_dataset.classes)
 
     model = ResNet18(
         num_classes=num_classes, learning_rate=learning_rate, device=device
