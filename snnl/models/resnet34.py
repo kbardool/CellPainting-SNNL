@@ -113,7 +113,7 @@ class ResNet34(torch.nn.Module):
                 train_snn_loss.append(epoch_loss[1])
                 train_xent_loss.append(epoch_loss[2])
                 print(
-                    f"epoch {epoch + 1}/{epoch} : mean loss = {self.train_loss[-1]:.6f}"
+                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                 )
                 print(
                     f"\txent loss = {train_xent_loss[-1]:.6f}\t|\tsnn loss = {train_snn_loss[-1]:.6f}"
@@ -121,7 +121,7 @@ class ResNet34(torch.nn.Module):
             else:
                 self.train_loss.append(epoch_loss)
                 print(
-                    f"epoch {epoch + 1}/{epoch} : mean loss = {self.train_loss[-1]:.6f}"
+                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                 )
 
     def predict(self, features, return_likelihoods=False):
