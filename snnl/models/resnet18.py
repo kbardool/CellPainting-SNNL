@@ -102,7 +102,7 @@ class ResNet18(torch.nn.Module):
 
         for epoch in range(epochs):
             epoch_loss = epoch_train(
-                self.resnet, data_loader, epoch, use_snnl, factor, temperature
+                self, data_loader, epoch, use_snnl, factor, temperature
             )
             if "cuda" in self.device.type:
                 torch.cuda.empty_cache()
