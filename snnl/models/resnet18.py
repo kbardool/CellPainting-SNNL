@@ -198,7 +198,8 @@ def composite_loss(
         else:
             activations[index] = layer(activations[index - 1])
     layers_snnl = []
-    temperature = 1.0 / ((1.0 + epoch) ** 0.55)
+    if temperature is None:
+        temperature = 1.0 / ((1.0 + epoch) ** 0.55)
     for key, value in activations.items():
         if key > 5:
             if len(value.shape) > 2:
