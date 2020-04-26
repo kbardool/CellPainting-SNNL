@@ -102,11 +102,15 @@ def main(args):
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
-    test_features = test_dataset.data.reshape(-1, 3, 32, 32) / 255.0
-    model.eval()
-    model = model.cpu()
-    predictions = model.predict(test_features)
-    test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
+    test_loader = create_dataloader(
+        dataset=test_dataset, batch_size=len(test_dataset.data)
+    )
+    with torch.no_grad():
+        model.eval()
+        model = model.cpu()
+        for features, labels in test_loader:
+            predictions = model.predict(features)
+    test_accuracy = accuracy(y_true=labels, y_pred=predictions)
     print(f"accuracy: {test_accuracy}%")
 
 
