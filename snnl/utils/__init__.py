@@ -132,3 +132,5 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             snnl_factor,
             temperature,
         )
+    else:
+        return (dataset, batch_size, epochs, learning_rate, snnl_factor, temperature)
