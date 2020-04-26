@@ -132,3 +132,5 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             snnl_factor,
             temperature,
         )
+    elif "resnet" in hyperparameters_filename:
+        return (dataset, batch_size, epochs, learning_rate, snnl_factor, temperature)
