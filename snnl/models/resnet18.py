@@ -60,6 +60,7 @@ class ResNet18(torch.nn.Module):
         self.to(self.device)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        self.train_loss = []
 
     def forward(self, features):
         """
