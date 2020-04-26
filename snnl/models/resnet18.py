@@ -17,6 +17,7 @@
 import torch
 import torchvision
 
+from snnl import SNNL
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -142,6 +143,10 @@ class ResNet18(torch.nn.Module):
         outputs = self.forward(features)
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
+
+
+def composite_loss(model, outputs, batch_features, batch_labels, epoch):
+    pass
 
 
 def epoch_train(
