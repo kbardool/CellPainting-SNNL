@@ -229,7 +229,19 @@ def epoch_train(
         batch_features = batch_features.to(model.device)
         batch_labels = batch_labels.to(model.device)
         if use_snnl:
-            pass
+            outputs = model(batch_features)
+            train_loss, snn_loss, xent_loss = composite_loss(
+                model=model,
+                outputs=outputs,
+                batch_features=batch_features,
+                batch_labels=batch_labels,
+                epoch=epoch,
+                factor=factor,
+            )
+            del outputs
+            epoch_loss += train_loss.item()
+            epoch_snn_loss = snn_loss.item()
+            epoch_xent_loss = xent_loss.item()
         else:
             model.optimizer.zero_grad()
             outputs = model(batch_features)
@@ -238,4 +250,9 @@ def epoch_train(
             model.optimizer.step()
             epoch_loss += train_loss.item()
     epoch_loss /= len(data_loader)
-    return epoch_loss
+    if use_snnl:
+        epoch_snn_loss /= len(data_loader)
+        epoch_xent_loss /= len(data_loader)
+        return epoch_loss, epoch_snn_loss, epoch_xent_loss
+    else:
+        return epoch_loss
