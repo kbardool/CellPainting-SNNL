@@ -32,10 +32,7 @@ class ResNet(torch.nn.Module):
         device: torch.device = torch.device("cpu"),
     ):
         super().__init__()
-        self.device = device
-        self.to(self.device)
         self.criterion = torch.nn.CrossEntropyLoss()
-
         self.train_loss = []
 
     def forward(self, features):
@@ -59,6 +56,7 @@ class ResNet(torch.nn.Module):
             The temperature to use for soft nearest neighbor loss.
             If None, annealing temperature will be used.
         """
+        self.to(self.device)
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
             train_snn_loss = []
@@ -120,6 +118,7 @@ class ResNet18(ResNet):
         super().__init__(
             num_classes=num_classes, learning_rate=learning_rate, device=device
         )
+        self.device = device
         self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
