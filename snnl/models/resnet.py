@@ -110,6 +110,23 @@ class ResNet(torch.nn.Module):
         return (predictions, classes) if return_likelihoods else classes
 
 
+class ResNet18(ResNet):
+    def __init__(
+        self,
+        num_classes: int,
+        learning_rate: float,
+        device: torch.device = torch.device("cpu"),
+    ):
+        super().__init__()
+        self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
+        self.resnet.fc = torch.nn.Linear(
+            in_features=self.resnet.fc.in_features, out_features=num_classes
+        )
+
+    def forward(self, features):
+        return self.resnet.forward(features)
+
+
 def composite_loss(
     model: torch.nn.Module,
     outputs: torch.Tensor,
