@@ -35,7 +35,7 @@ class ResNet(torch.nn.Module):
         self.device = device
         self.to(self.device)
         self.criterion = torch.nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+
         self.train_loss = []
 
     def forward(self, features):
@@ -117,11 +117,14 @@ class ResNet18(ResNet):
         learning_rate: float,
         device: torch.device = torch.device("cpu"),
     ):
-        super().__init__()
+        super().__init__(
+            num_classes=num_classes, learning_rate=learning_rate, device=device
+        )
         self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
         )
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, features):
         return self.resnet.forward(features)
