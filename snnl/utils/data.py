@@ -30,7 +30,7 @@ def load_dataset(
     Returns a tuple of torchvision dataset objects.
 
     Parameters
-    ---------
+    ----------
     name : str
         The name of the dataset to load. Current choices:
             1. mnist (MNIST)
