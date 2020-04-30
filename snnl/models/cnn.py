@@ -127,8 +127,8 @@ class CNN(torch.nn.Module):
         """
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
-            train_snn_loss = []
-            train_xent_loss = []
+            self.train_snn_loss = []
+            self.train_xent_loss = []
 
         for epoch in range(epochs):
             epoch_loss = epoch_train(
@@ -140,13 +140,13 @@ class CNN(torch.nn.Module):
 
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
-                train_snn_loss.append(epoch_loss[1])
-                train_xent_loss.append(epoch_loss[2])
+                self.train_snn_loss.append(epoch_loss[1])
+                self.train_xent_loss.append(epoch_loss[2])
                 print(
                     f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                 )
                 print(
-                    f"\txent loss = {train_xent_loss[-1]:.6f}\t|\tsnn loss = {train_snn_loss[-1]:.6f}"
+                    f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
                 )
             else:
                 self.train_loss.append(epoch_loss)
