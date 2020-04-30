@@ -77,7 +77,7 @@ class ResNet(torch.nn.Module):
                     f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                 )
                 print(
-                    f"\txent loss = {train_xent_loss[-1]:.6f}\t|\tsnn loss = {train_snn_loss[-1]:.6f}"
+                    f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
                 )
             else:
                 self.train_loss.append(epoch_loss)
