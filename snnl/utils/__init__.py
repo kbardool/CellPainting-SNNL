@@ -61,24 +61,24 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     with open(hyperparameters_path, "r") as file:
         config = json.load(file)
 
-    dataset = config["dataset"]
+    dataset = config.get("dataset")
     assert isinstance(dataset, str), "[dataset] must be [str]."
 
-    batch_size = config["batch_size"]
+    batch_size = config.get("batch_size")
     assert isinstance(batch_size, int), "[batch_size] must be [int]."
 
-    epochs = config["epochs"]
+    epochs = config.get("epochs")
     assert isinstance(epochs, int), "[epochs] must be [int]."
 
-    learning_rate = config["learning_rate"]
+    learning_rate = config.get("learning_rate")
     assert isinstance(learning_rate, float), "[learning_rate] must be [float]."
 
-    snnl_factor = config["snnl_factor"]
+    snnl_factor = config.get("snnl_factor")
     assert isinstance(snnl_factor, float) or isinstance(
         snnl_factor, int
     ), "[snnl_factor] must be either [float] or [int]."
 
-    temperature = config["temperature"]
+    temperature = config.get("temperature")
     assert isinstance(temperature, int), "[temperature] must be [int]."
     if temperature == 0:
         temperature = None
@@ -86,7 +86,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     hyperparameters_filename = os.path.basename(hyperparameters_path)
     hyperparameters_filename = hyperparameters_filename.lower()
     if "dnn" in hyperparameters_filename:
-        units = config["units"]
+        units = config.get("units")
         assert isinstance(units, list), "[units] must be [list]."
         assert len(units) >= 2, "len(units) must be >= 2."
         return (
@@ -99,10 +99,10 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             temperature,
         )
     elif "cnn" in hyperparameters_filename:
-        input_dim = config["input_dim"]
+        input_dim = config.get("input_dim")
         assert isinstance(input_dim, int), "[input_dim] must be [int]."
 
-        num_classes = config["num_classes"]
+        num_classes = config.get("num_classes")
         assert isinstance(num_classes, int), "[num_classes] must be [int]."
 
         return (
@@ -116,10 +116,10 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             temperature,
         )
     elif "autoencoder" in hyperparameters_filename:
-        input_shape = config["input_shape"]
+        input_shape = config.get("input_shape")
         assert isinstance(input_shape, int), "[input_shape] must be [int]."
 
-        code_dim = config["code_dim"]
+        code_dim = config.get("code_dim")
         assert isinstance(code_dim, int), "[code_dim] must be [int]."
 
         return (
