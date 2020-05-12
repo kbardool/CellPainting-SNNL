@@ -29,6 +29,9 @@ def test_compute_pairwise_distance():
     pairwise_distance = compute_pairwise_distance(a, b, temperature, True)
     assert pairwise_distance.size() == (4, 4)
     assert type(pairwise_distance) is torch.Tensor
+    pairwise_distance = compute_pairwise_distance(a, b, temperature, False)
+    assert pairwise_distance.size() == (4, 4)
+    assert type(pairwise_distance) is torch.Tensor
 
 
 def test_pairwise_euclidean_distance():
