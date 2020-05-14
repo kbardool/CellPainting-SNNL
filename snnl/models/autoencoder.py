@@ -54,7 +54,6 @@ class Autoencoder(torch.nn.Module):
             The learning rate to use for optimization.
         """
         super().__init__()
-        self.model_device = model_device
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=input_shape, out_features=500),
@@ -72,12 +71,22 @@ class Autoencoder(torch.nn.Module):
                 torch.nn.Linear(in_features=500, out_features=500),
                 torch.nn.ReLU(),
                 torch.nn.Linear(in_features=500, out_features=input_shape),
+                torch.nn.Sigmoid(),
             ]
         )
+
+        for index, layer in enumerate(self.layers):
+            if (index == 6 or index == 14) and isinstance(layer, torch.nn.Linear):
+                torch.nn.init.xavier_uniform_(layer.weight.data)
+            elif isinstance(layer, torch.nn.Linear):
+                torch.nn.init.kaiming_normal_(layer.weight.data)
+            else:
+                pass
+
+        self.model_device = model_device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        self.criterion = torch.nn.BCEWithLogitsLoss().to(self.model_device)
+        self.criterion = torch.nn.BCELoss().to(self.model_device)
         self.train_loss = []
-        self.to(self.model_device)
 
     def forward(self, features):
         """
