@@ -19,8 +19,19 @@ from snnl import compute_pairwise_distance
 from snnl import same_label_mask
 from snnl import pairwise_euclidean_distance
 from snnl import pairwise_cosine_distance
+from snnl import pick_probability
+
 
 torch.manual_seed(42)
+
+
+def test_pick_probability():
+    a = torch.rand((4, 2))
+    probability_matrix = pick_probability(
+        features=a, temperature=10, cosine_distance=True
+    )
+    assert probability_matrix.size() == (4, 4)
+    assert isinstance(probability_matrix, torch.Tensor)
 
 
 def test_same_label_mask():
