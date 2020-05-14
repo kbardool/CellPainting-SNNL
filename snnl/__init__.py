@@ -104,7 +104,6 @@ def composite_loss(
     snn_loss = sum(layers_snnl)
     snn_loss.requires_grad_(True)
     train_loss = primary_loss + (factor * snn_loss)
-    #     train_loss.backward(snn_loss)
     train_loss.backward()
     model.optimizer.step()
     return train_loss, snn_loss, primary_loss
