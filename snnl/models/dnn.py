@@ -54,6 +54,15 @@ class DNN(torch.nn.Module):
                 for in_features, out_features in units
             ]
         )
+
+        for index, layer in enumerate(self.layers):
+            if index < (len(self.layers) - 1) and isinstance(layer, torch.nn.Linear):
+                torch.nn.init.kaiming_normal_(layer.weight.data)
+            elif index == (len(self.layers) - 1) and isinstance(layer, torch.nn.Linear):
+                torch.nn.init.xavier_uniform_(layer.weight.data)
+            else:
+                pass
+
         self.train_loss = []
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
