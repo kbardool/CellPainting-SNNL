@@ -93,11 +93,19 @@ def composite_loss(
 
     del activations
 
+    factor = torch.FloatTensor([factor])
+    factor = factor.to(model.model_device)
+    factor.requires_grad_(True)
+
     layers_snnl = torch.FloatTensor(layers_snnl)
+    layers_snnl.requires_grad_(True)
     layers_snnl = layers_snnl.to(model.model_device)
+
     snn_loss = sum(layers_snnl)
+    snn_loss.requires_grad_(True)
     train_loss = primary_loss + (factor * snn_loss)
-    train_loss.backward(snn_loss)
+    #     train_loss.backward(snn_loss)
+    train_loss.backward()
     model.optimizer.step()
     return train_loss, snn_loss, primary_loss
 
@@ -222,7 +230,10 @@ def same_label_mask(labels_a: torch.Tensor, labels_b: torch.Tensor) -> torch.Ten
     masking_matrix : tensor
         The masking matrix, indicates whether labels are equal.
     """
-    masking_matrix = torch.squeeze(torch.eq(labels_a, labels_b.view(-1, 1)).float())
+    masking_matrix = torch.squeeze(
+        torch.squeeze(torch.eq(labels_a, labels_b.unsqueeze(1)).float())
+    )
+    #     masking_matrix = torch.squeeze(torch.eq(labels_a, labels_b.view(-1, 1)).float())
     return masking_matrix
 
 
