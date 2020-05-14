@@ -16,6 +16,7 @@
 """Test module"""
 import torch
 from snnl import compute_pairwise_distance
+from snnl import masked_pick_probability
 from snnl import same_label_mask
 from snnl import pairwise_euclidean_distance
 from snnl import pairwise_cosine_distance
@@ -23,6 +24,20 @@ from snnl import pick_probability
 
 
 torch.manual_seed(42)
+
+
+def test_masked_pick_probability():
+    features = torch.rand((4, 2))
+    labels = torch.ones((4, 1))
+    masked_probability_matrix = masked_pick_probability(
+        features=features,
+        labels=labels,
+        temperature=10.0,
+        cosine_distance=True,
+        stability_epsilon=1e-5,
+    )
+    assert masked_probability_matrix.size() == (4, 4)
+    assert isinstance(masked_probability_matrix, torch.Tensor)
 
 
 def test_pick_probability():
@@ -38,7 +53,7 @@ def test_same_label_mask():
     labels = torch.ones((4, 1))
     masking_matrix = same_label_mask(labels_a=labels, labels_b=labels)
     assert masking_matrix.size() == (4, 4)
-    assert type(masking_matrix) is torch.Tensor
+    assert isinstance(masking_matrix, torch.Tensor)
 
 
 def test_compute_pairwise_distance():
