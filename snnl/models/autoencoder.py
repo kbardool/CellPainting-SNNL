@@ -87,6 +87,7 @@ class Autoencoder(torch.nn.Module):
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.BCELoss().to(self.model_device)
         self.train_loss = []
+        self.to(self.model_device)
 
     def forward(self, features):
         """
