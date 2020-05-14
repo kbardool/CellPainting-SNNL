@@ -36,10 +36,10 @@ def test_compute_pairwise_distance():
     temperature = 10
     pairwise_distance = compute_pairwise_distance(a, b, temperature, True)
     assert pairwise_distance.size() == (4, 4)
-    assert type(pairwise_distance) is torch.Tensor
+    assert isinstance(pairwise_distance, torch.Tensor)
     pairwise_distance = compute_pairwise_distance(a, b, temperature, False)
     assert pairwise_distance.size() == (4, 4)
-    assert type(pairwise_distance) is torch.Tensor
+    assert isinstance(pairwise_distance, torch.Tensor)
 
 
 def test_pairwise_euclidean_distance():
@@ -47,7 +47,7 @@ def test_pairwise_euclidean_distance():
     b = torch.rand((4, 2))
     distance = pairwise_euclidean_distance(a, b)
     assert distance.size() == (4, 4)
-    assert type(distance) is torch.Tensor
+    assert isinstance(distance, torch.Tensor)
 
 
 def test_pairwise_cosine_distance():
@@ -55,4 +55,4 @@ def test_pairwise_cosine_distance():
     b = torch.rand((4, 2))
     distance = pairwise_cosine_distance(a, b)
     assert distance.size() == (4, 4)
-    assert type(distance) is torch.Tensor
+    assert isinstance(distance, torch.Tensor)
