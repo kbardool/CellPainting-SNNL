@@ -18,12 +18,26 @@ import torch
 from snnl import compute_pairwise_distance
 from snnl import masked_pick_probability
 from snnl import same_label_mask
+from snnl import SNNL
 from snnl import pairwise_euclidean_distance
 from snnl import pairwise_cosine_distance
 from snnl import pick_probability
 
 
 torch.manual_seed(42)
+
+
+def test_SNNL():
+    features = torch.rand((4, 2))
+    labels = torch.ones((4, 1))
+    snn_loss = SNNL(
+        features=features, labels=labels, distance="cosine", temperature=100
+    )
+    assert isinstance(snn_loss, float)
+    snn_loss = SNNL(
+        features=features, labels=labels, distance="euclidean", temperature=100
+    )
+    assert isinstance(snn_loss, float)
 
 
 def test_masked_pick_probability():
