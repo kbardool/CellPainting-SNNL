@@ -87,7 +87,6 @@ def main(args):
 
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
-    test_loader = create_dataloader(dataset=test_dataset, batch_size=batch_size)
 
     model = Autoencoder(
         input_shape=input_shape,
