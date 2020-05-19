@@ -1,5 +1,4 @@
-Soft Nearest Neighbor Loss
-====
+# Soft Nearest Neighbor Loss
 
 ## Overview
 
