@@ -697,7 +697,7 @@ class ResNet(torch.nn.Module):
             self.train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = epoch_train(
+            epoch_loss = self.epoch_train(
                 self, data_loader, epoch, use_snnl, factor, temperature
             )
             if "cuda" in self.device.type:
@@ -741,65 +741,65 @@ class ResNet(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
+    @staticmethod
+    def epoch_train(
+        model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+    ):
+        """
+        Trains a model for one epoch.
 
-def epoch_train(
-    model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
-):
-    """
-    Trains a model for one epoch.
+        Parameters
+        ----------
+        model : torch.nn.Module
+            The model to train.
+        data_loader : torch.utils.dataloader.DataLoader
+            The data loader object that consists of the data pipeline.
+        use_snnl : bool
+            Whether to use soft nearest neighbor loss or not. Default: [False].
+        factor : float
+            The soft nearest neighbor loss scaling factor.
+        temperature : int
+            The temperature to use for soft nearest neighbor loss.
+            If None, annealing temperature will be used.
 
-    Parameters
-    ----------
-    model : torch.nn.Module
-        The model to train.
-    data_loader : torch.utils.dataloader.DataLoader
-        The data loader object that consists of the data pipeline.
-    use_snnl : bool
-        Whether to use soft nearest neighbor loss or not. Default: [False].
-    factor : float
-        The soft nearest neighbor loss scaling factor.
-    temperature : int
-        The temperature to use for soft nearest neighbor loss.
-        If None, annealing temperature will be used.
-
-    Returns
-    -------
-    epoch_loss : float
-        The epoch loss.
-    """
-    if use_snnl:
-        assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-        epoch_xent_loss = 0
-        epoch_snn_loss = 0
-    epoch_loss = 0
-    for batch_features, batch_labels in data_loader:
-        batch_features = batch_features.to(model.device)
-        batch_labels = batch_labels.to(model.device)
+        Returns
+        -------
+        epoch_loss : float
+            The epoch loss.
+        """
         if use_snnl:
-            outputs = model(batch_features)
-            train_loss, snn_loss, xent_loss = composite_loss(
-                model=model,
-                outputs=outputs,
-                batch_features=batch_features,
-                batch_labels=batch_labels,
-                epoch=epoch,
-                factor=factor,
-            )
-            del outputs
-            epoch_loss += train_loss.item()
-            epoch_snn_loss = snn_loss.item()
-            epoch_xent_loss = xent_loss.item()
+            assert epoch is not None, "[epoch] must not be None if use_snnl == True"
+            epoch_xent_loss = 0
+            epoch_snn_loss = 0
+        epoch_loss = 0
+        for batch_features, batch_labels in data_loader:
+            batch_features = batch_features.to(model.device)
+            batch_labels = batch_labels.to(model.device)
+            if use_snnl:
+                outputs = model(batch_features)
+                train_loss, snn_loss, xent_loss = composite_loss(
+                    model=model,
+                    outputs=outputs,
+                    batch_features=batch_features,
+                    batch_labels=batch_labels,
+                    epoch=epoch,
+                    factor=factor,
+                )
+                del outputs
+                epoch_loss += train_loss.item()
+                epoch_snn_loss = snn_loss.item()
+                epoch_xent_loss = xent_loss.item()
+            else:
+                model.optimizer.zero_grad()
+                outputs = model(batch_features)
+                train_loss = model.criterion(outputs, batch_labels)
+                train_loss.backward()
+                model.optimizer.step()
+                epoch_loss += train_loss.item()
+        epoch_loss /= len(data_loader)
+        if use_snnl:
+            epoch_snn_loss /= len(data_loader)
+            epoch_xent_loss /= len(data_loader)
+            return epoch_loss, epoch_snn_loss, epoch_xent_loss
         else:
-            model.optimizer.zero_grad()
-            outputs = model(batch_features)
-            train_loss = model.criterion(outputs, batch_labels)
-            train_loss.backward()
-            model.optimizer.step()
-            epoch_loss += train_loss.item()
-    epoch_loss /= len(data_loader)
-    if use_snnl:
-        epoch_snn_loss /= len(data_loader)
-        epoch_xent_loss /= len(data_loader)
-        return epoch_loss, epoch_snn_loss, epoch_xent_loss
-    else:
-        return epoch_loss
+            return epoch_loss
