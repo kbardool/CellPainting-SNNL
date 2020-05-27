@@ -656,3 +656,87 @@ class CNN(torch.nn.Module):
             return epoch_loss, epoch_snn_loss, epoch_xent_loss
         else:
             return epoch_loss
+
+
+class ResNet(torch.nn.Module):
+    def __init__(
+        self,
+        num_classes: int,
+        learning_rate: float,
+        device: torch.device = torch.device("cpu"),
+    ):
+        super().__init__()
+        self.criterion = torch.nn.CrossEntropyLoss()
+        self.train_loss = []
+
+    def forward(self, features):
+        pass
+
+    def fit(self, data_loader, epochs, use_snnl=False, factor=None, temperature=None):
+        """
+        Finetunes the ResNet18 model.
+
+        Parameters
+        ---------
+        data_loader : torch.utils.data.DataLoader
+            The data loader object that consists of the data pipeline.
+        epochs : int
+            The number of epochs to train the model.
+        use_snnl : bool
+            Whether to use soft nearest neighbor loss or not. Default: [False].
+        factor : float
+            The soft nearest neighbor loss scaling factor.
+        temperature : int
+            The temperature to use for soft nearest neighbor loss.
+            If None, annealing temperature will be used.
+        """
+        self.to(self.device)
+        if use_snnl:
+            assert factor is not None, "[factor] must not be None if use_snnl == True"
+            self.train_snn_loss = []
+            self.train_xent_loss = []
+
+        for epoch in range(epochs):
+            epoch_loss = epoch_train(
+                self, data_loader, epoch, use_snnl, factor, temperature
+            )
+            if "cuda" in self.device.type:
+                torch.cuda.empty_cache()
+
+            if type(epoch_loss) is tuple:
+                self.train_loss.append(epoch_loss[0])
+                self.train_snn_loss.append(epoch_loss[1])
+                self.train_xent_loss.append(epoch_loss[2])
+                print(
+                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                )
+                print(
+                    f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
+                )
+            else:
+                self.train_loss.append(epoch_loss)
+                print(
+                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                )
+
+    def predict(self, features, return_likelihoods=False):
+        """
+        Returns model classifications
+
+        Parameters
+        ----------
+        features: torch.Tensor
+            The input features to classify.
+        return_likelihoods: bool
+            Whether to return classes with likelihoods or not.
+
+        Returns
+        -------
+        predictions: torch.Tensor
+            The class likelihood output by the model.
+        classes: torch.Tensor
+            The class prediction by the model.
+        """
+        outputs = self.forward(features)
+        predictions, classes = torch.max(outputs.data, dim=1)
+        return (predictions, classes) if return_likelihoods else classes
