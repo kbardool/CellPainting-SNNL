@@ -19,7 +19,7 @@ import json
 
 import torch
 
-from snnl.models.dnn import DNN
+from snnl.models import DNN
 from snnl.utils import get_hyperparameters
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
