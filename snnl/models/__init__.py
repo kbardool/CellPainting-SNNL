@@ -15,7 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of models"""
 import torch
-
+import torchvision
 from typing import Tuple
 from snnl import composite_loss, SNNL
 
@@ -876,3 +876,24 @@ class ResNet(torch.nn.Module):
         train_loss.backward(snn_loss)
         model.optimizer.step()
         return train_loss, snn_loss, primary_loss
+
+
+class ResNet18(ResNet):
+    def __init__(
+        self,
+        num_classes: int,
+        learning_rate: float,
+        device: torch.device = torch.device("cpu"),
+    ):
+        super().__init__(
+            num_classes=num_classes, learning_rate=learning_rate, device=device
+        )
+        self.device = device
+        self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
+        self.resnet.fc = torch.nn.Linear(
+            in_features=self.resnet.fc.in_features, out_features=num_classes
+        )
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+
+    def forward(self, features):
+        return self.resnet.forward(features)
