@@ -17,7 +17,7 @@
 import argparse
 import torch
 
-from snnl.models.autoencoder import Autoencoder
+from snnl.models import Autoencoder
 from snnl.utils import get_hyperparameters
 from snnl.utils.data import load_dataset, create_dataloader
 
