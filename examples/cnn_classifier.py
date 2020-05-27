@@ -17,7 +17,7 @@
 import argparse
 import torch
 
-from snnl.models.cnn import CNN
+from snnl.models import CNN
 from snnl.utils import get_hyperparameters
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
