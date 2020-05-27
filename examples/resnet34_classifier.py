@@ -17,7 +17,7 @@
 import argparse
 import torch
 
-from snnl.models.resnet34 import ResNet34
+from snnl.models import ResNet34
 from snnl.utils import get_hyperparameters
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
