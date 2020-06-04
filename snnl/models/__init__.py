@@ -938,6 +938,18 @@ class ResNet34(ResNet):
         learning_rate: float,
         device: torch.device = torch.device("cpu"),
     ):
+        """
+        Loads a pretrained ResNet34 classifier.
+
+        Parameters
+        ----------
+        num_classes: int
+            The number of classes in the dataset.
+        learning_rate: float
+            The learning rate to use for optimization.
+        device:
+            The device to use for computations.
+        """
         super().__init__(
             num_classes=num_classes, learning_rate=learning_rate, device=device
         )
