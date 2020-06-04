@@ -674,6 +674,18 @@ class ResNet(torch.nn.Module):
         learning_rate: float,
         device: torch.device = torch.device("cpu"),
     ):
+        """
+        Constructs a residual neural network classifier.
+
+        Parameters
+        ----------
+        num_classes: int
+            The number of classes in the dataset.
+        learning_rate: float
+            The learning rate to use for optimization.
+        device: torch.device
+            The device to use for model computations.
+        """
         super().__init__()
         self.criterion = torch.nn.CrossEntropyLoss()
         self.train_loss = []
