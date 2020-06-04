@@ -660,6 +660,14 @@ class CNN(torch.nn.Module):
 
 
 class ResNet(torch.nn.Module):
+    """
+    A residual neural network that optimizes
+    softmax cross entropy using Adam optimizer.
+
+    An optional soft nearest neighbor loss
+    regularizer can be used with the softmax cross entropy.
+    """
+
     def __init__(
         self,
         num_classes: int,
