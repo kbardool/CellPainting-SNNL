@@ -36,7 +36,7 @@ class Autoencoder(torch.nn.Module):
         self,
         input_shape: int,
         code_dim: int,
-        model_device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
     ):
         """
@@ -84,11 +84,11 @@ class Autoencoder(torch.nn.Module):
             else:
                 pass
 
-        self.model_device = model_device
+        self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        self.criterion = torch.nn.BCELoss().to(self.model_device)
+        self.criterion = torch.nn.BCELoss().to(self.device)
         self.train_loss = []
-        self.to(self.model_device)
+        self.to(self.device)
 
     def forward(self, features):
         """
@@ -196,8 +196,8 @@ class Autoencoder(torch.nn.Module):
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.view(batch_features.shape[0], -1)
-            batch_features = batch_features.to(model.model_device)
-            batch_labels = batch_labels.to(model.model_device)
+            batch_features = batch_features.to(model.device)
+            batch_labels = batch_labels.to(model.device)
             if use_snnl:
                 outputs = model(batch_features)
                 train_loss, snn_loss, recon_loss = composite_loss(
