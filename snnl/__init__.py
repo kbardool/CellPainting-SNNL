@@ -89,6 +89,7 @@ def composite_loss(
         if len(value.shape) > 2:
             value = value.view(value.shape[0], -1)
         layer_snnl = SNNL(features=value, labels=labels, temperature=temperature)
+        layer_snnl.requires_grad_(True)
         layers_snnl.append(layer_snnl)
 
     del activations
@@ -104,7 +105,7 @@ def composite_loss(
     snn_loss = sum(layers_snnl)
     snn_loss.requires_grad_(True)
     train_loss = primary_loss + (factor * snn_loss)
-    train_loss.backward()
+    train_loss.backward((factor * snn_loss), retain_graph=True)
     model.optimizer.step()
     return train_loss, snn_loss, primary_loss
 
