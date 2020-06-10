@@ -241,7 +241,7 @@ class DNN(torch.nn.Module):
     def __init__(
         self,
         units: list or tuple,
-        model_device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
     ):
         """
@@ -257,7 +257,7 @@ class DNN(torch.nn.Module):
             The learning rate to use for optimization.
         """
         super().__init__()
-        self.model_device = model_device
+        self.device = device
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=in_features, out_features=out_features)
@@ -275,8 +275,8 @@ class DNN(torch.nn.Module):
 
         self.train_loss = []
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
-        self.to(self.model_device)
+        self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
+        self.to(self.device)
 
     def forward(self, features):
         """
@@ -331,8 +331,8 @@ class DNN(torch.nn.Module):
                 self, data_loader, epoch, use_snnl, factor, temperature
             )
 
-            if "cuda" in self.model_device.type:
-                torch.cuda.empty_cache()
+            #             if "cuda" in self.device.type:
+            #                 torch.cuda.empty_cache()
 
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
@@ -405,8 +405,8 @@ class DNN(torch.nn.Module):
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.view(batch_features.shape[0], -1)
-            batch_features = batch_features.to(model.model_device)
-            batch_labels = batch_labels.to(model.model_device)
+            batch_features = batch_features.to(model.device)
+            batch_labels = batch_labels.to(model.device)
             if use_snnl:
                 outputs = model(batch_features)
                 train_loss, snn_loss, xent_loss = composite_loss(
