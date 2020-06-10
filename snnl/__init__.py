@@ -94,12 +94,12 @@ def composite_loss(
     del activations
 
     factor = torch.FloatTensor([factor])
-    factor = factor.to(model.model_device)
+    factor = factor.to(model.device)
     factor.requires_grad_(True)
 
     layers_snnl = torch.FloatTensor(layers_snnl)
     layers_snnl.requires_grad_(True)
-    layers_snnl = layers_snnl.to(model.model_device)
+    layers_snnl = layers_snnl.to(model.device)
 
     snn_loss = sum(layers_snnl)
     snn_loss.requires_grad_(True)
