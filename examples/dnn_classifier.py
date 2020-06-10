@@ -89,7 +89,7 @@ def main(args):
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
-    model = DNN(units=units, learning_rate=learning_rate, model_device=device)
+    model = DNN(units=units, learning_rate=learning_rate, device=device)
 
     if args.model.lower() == "baseline":
         model.fit(data_loader=train_loader, epochs=epochs)
