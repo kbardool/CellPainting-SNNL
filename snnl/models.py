@@ -141,9 +141,6 @@ class Autoencoder(torch.nn.Module):
                 self, data_loader, epoch, use_snnl, factor, temperature=temperature
             )
 
-            if "cuda" in self.device.type:
-                torch.cuda.empty_cache()
-
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
