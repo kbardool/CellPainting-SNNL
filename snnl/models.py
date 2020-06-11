@@ -720,7 +720,15 @@ class ResNet(torch.nn.Module):
     def forward(self, features):
         pass
 
-    def fit(self, data_loader, epochs, use_snnl=False, factor=None, temperature=None):
+    def fit(
+        self,
+        data_loader,
+        epochs,
+        use_snnl=False,
+        factor=None,
+        temperature=None,
+        show_every=2,
+    ):
         """
         Finetunes the ResNet18 model.
 
@@ -737,6 +745,8 @@ class ResNet(torch.nn.Module):
         temperature : int
             The temperature to use for soft nearest neighbor loss.
             If None, annealing temperature will be used.
+        show_every : int
+            The interval in terms of epoch on displaying training progress.
         """
         self.to(self.device)
         if use_snnl:
@@ -753,17 +763,19 @@ class ResNet(torch.nn.Module):
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
                 self.train_xent_loss.append(epoch_loss[2])
-                print(
-                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
-                )
-                print(
-                    f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
-                )
+                if (epoch + 1) % show_every == 0:
+                    print(
+                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                    )
+                    print(
+                        f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
+                    )
             else:
                 self.train_loss.append(epoch_loss)
-                print(
-                    f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
-                )
+                if (epoch + 1) % show_every == 0:
+                    print(
+                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                    )
 
     def predict(self, features, return_likelihoods=False):
         """
