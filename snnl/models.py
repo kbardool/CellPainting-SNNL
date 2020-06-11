@@ -78,9 +78,9 @@ class Autoencoder(torch.nn.Module):
 
         for index, layer in enumerate(self.layers):
             if (index == 6 or index == 14) and isinstance(layer, torch.nn.Linear):
-                torch.nn.init.xavier_uniform_(layer.weight.data)
+                torch.nn.init.xavier_uniform_(layer.weight)
             elif isinstance(layer, torch.nn.Linear):
-                torch.nn.init.kaiming_normal_(layer.weight.data)
+                torch.nn.init.kaiming_normal_(layer.weight)
             else:
                 pass
 
