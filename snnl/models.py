@@ -570,9 +570,6 @@ class CNN(torch.nn.Module):
                 self, data_loader, epoch, use_snnl, factor, temperature
             )
 
-            if "cuda" in self.model_device.type:
-                torch.cuda.empty_cache()
-
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
