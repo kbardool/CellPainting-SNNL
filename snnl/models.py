@@ -80,7 +80,7 @@ class Autoencoder(torch.nn.Module):
             if (index == 6 or index == 14) and isinstance(layer, torch.nn.Linear):
                 torch.nn.init.xavier_uniform_(layer.weight)
             elif isinstance(layer, torch.nn.Linear):
-                torch.nn.init.kaiming_normal_(layer.weight)
+                torch.nn.init.kaiming_normal_(layer.weight, nonlinearity="relu")
             else:
                 pass
 
