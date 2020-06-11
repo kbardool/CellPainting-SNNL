@@ -470,7 +470,7 @@ class CNN(torch.nn.Module):
         self,
         input_dim: int,
         num_classes: int,
-        model_device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-4,
     ):
         """
@@ -478,7 +478,7 @@ class CNN(torch.nn.Module):
 
         Parameters
         ----------
-        model_device: torch.device
+        device: torch.device
             The device to use for model computations.
         input_dim: int
             The dimensionality of the input features.
@@ -512,11 +512,11 @@ class CNN(torch.nn.Module):
                 torch.nn.Linear(in_features=512, out_features=num_classes),
             ]
         )
-        self.model_device = model_device
+        self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        self.criterion = torch.nn.CrossEntropyLoss().to(self.model_device)
+        self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.train_loss = []
-        self.to(self.model_device)
+        self.to(self.device)
 
     def forward(self, features):
         """
@@ -643,8 +643,8 @@ class CNN(torch.nn.Module):
             epoch_snn_loss = 0
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
-            batch_features = batch_features.to(model.model_device)
-            batch_labels = batch_labels.to(model.model_device)
+            batch_features = batch_features.to(model.device)
+            batch_labels = batch_labels.to(model.device)
             if use_snnl:
                 outputs = model(batch_features)
                 train_loss, snn_loss, xent_loss = composite_loss(
