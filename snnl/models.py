@@ -45,7 +45,7 @@ class Autoencoder(torch.nn.Module):
 
         Parameters
         ----------
-        model_device: torch.device
+        device: torch.device
             The device to use for the model computations.
         input_shape: int
             The dimensionality of the input features.
