@@ -92,7 +92,7 @@ def main(args):
         input_dim=input_dim,
         num_classes=num_classes,
         learning_rate=learning_rate,
-        model_device=device,
+        device=device,
     )
     if args.model.lower() == "baseline":
         model.fit(data_loader=train_loader, epochs=epochs)
