@@ -15,7 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample module for using DNN classifier with SNNL"""
 import argparse
-import json
 
 import torch
 
