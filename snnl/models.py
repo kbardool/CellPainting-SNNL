@@ -653,6 +653,10 @@ class CNN(torch.nn.Module):
         -------
         epoch_loss : float
             The epoch loss.
+        epoch_snn_loss : float
+            The soft nearest neighbor loss for an epoch.
+        epoch_xent_loss : float
+            The cross entropy loss for an epoch.
         """
         if use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
