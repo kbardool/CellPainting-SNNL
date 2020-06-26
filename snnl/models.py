@@ -196,6 +196,10 @@ class Autoencoder(torch.nn.Module):
         -------
         epoch_loss : float
             The epoch loss.
+        epoch_snn_loss : float
+            The soft nearest neighbor loss for an epoch.
+        epoch_recon_loss : float
+            The reconstruction loss for an epoch.
         """
         if use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
