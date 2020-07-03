@@ -137,4 +137,8 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 
 
 def export_results(model, filename):
-    pass
+    model_attributes = model.__dict__
+    results = dict()
+    for key, value in model_attributes.items():
+        if isinstance(value, list):
+            results[key] = value
