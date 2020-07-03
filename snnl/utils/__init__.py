@@ -142,3 +142,5 @@ def export_results(model, filename):
     for key, value in model_attributes.items():
         if isinstance(value, list):
             results[key] = value
+    with open(filename, "w") as file:
+        json.dump(results, file)
