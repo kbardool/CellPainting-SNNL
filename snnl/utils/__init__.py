@@ -134,3 +134,23 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         )
     elif "resnet" in hyperparameters_filename:
         return (dataset, batch_size, epochs, learning_rate, snnl_factor, temperature)
+
+
+def export_results(model, filename):
+    """
+    Exports the training results stored in model class to a JSON file.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The trained model object.
+    filename : str
+        The filename of the JSON file to write.
+    """
+    model_attributes = model.__dict__
+    results = dict()
+    for key, value in model_attributes.items():
+        if isinstance(value, list):
+            results[key] = value
+    with open(filename, "w") as file:
+        json.dump(results, file)
