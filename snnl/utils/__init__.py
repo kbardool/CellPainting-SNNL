@@ -137,6 +137,16 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 
 
 def export_results(model, filename):
+    """
+    Exports the training results stored in model class to a JSON file.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The trained model object.
+    filename : str
+        The filename of the JSON file to write.
+    """
     model_attributes = model.__dict__
     results = dict()
     for key, value in model_attributes.items():
