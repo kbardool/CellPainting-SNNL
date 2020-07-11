@@ -27,6 +27,14 @@ __version__ = "1.0.0"
 
 
 def set_global_seed(seed: int) -> None:
+    """
+    Sets the seed value for random number generators.
+
+    Parameter
+    ---------
+    seed : int
+        The seed value to use.
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
