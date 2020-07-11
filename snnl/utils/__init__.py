@@ -16,10 +16,23 @@
 """Utility functions"""
 import json
 import os
+import random
 from typing import Tuple
+
+import numpy as np
+import torch
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
+
+
+def set_global_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
 
 
 def get_hyperparameters(hyperparameters_path: str) -> Tuple:
