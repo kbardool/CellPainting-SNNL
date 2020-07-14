@@ -178,4 +178,9 @@ def export_results(model, filename):
 
 
 def save_model(model: torch.nn.Module, filename: str):
-    pass
+    path = os.path.join("examples", "export")
+    if not os.path.exists(path):
+        os.mkdir(path)
+    path = os.path.join(path, filename)
+    torch.save(model.state_dict(), path)
+    print(f"[INFO] Model exported to {path}.")
