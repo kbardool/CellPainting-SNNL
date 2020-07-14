@@ -175,3 +175,7 @@ def export_results(model, filename):
             results[key] = value
     with open(filename, "w") as file:
         json.dump(results, file)
+
+
+def save_model(model: torch.nn.Module, filename: str):
+    pass
