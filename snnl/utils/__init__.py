@@ -178,6 +178,16 @@ def export_results(model, filename):
 
 
 def save_model(model: torch.nn.Module, filename: str):
+    """
+    Exports the input model to the examples/export directory.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The (presumably) trained model object.
+    filename : str
+        The filename for the trained model to export.
+    """
     path = os.path.join("examples", "export")
     if not os.path.exists(path):
         os.mkdir(path)
