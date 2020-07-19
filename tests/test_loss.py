@@ -15,6 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Test module"""
 import torch
+import pytest
+
 from snnl import compute_pairwise_distance
 from snnl import masked_pick_probability
 from snnl import same_label_mask
@@ -27,15 +29,12 @@ from snnl import pick_probability
 torch.manual_seed(42)
 
 
-def test_SNNL():
+@pytest.mark.parametrize("distance", ["cosine", "euclidean"])
+def test_SNNL(distance):
     features = torch.rand((4, 2))
     labels = torch.ones((4, 1))
     snn_loss = SNNL(
-        features=features, labels=labels, distance="cosine", temperature=100
-    )
-    assert isinstance(snn_loss, torch.Tensor)
-    snn_loss = SNNL(
-        features=features, labels=labels, distance="euclidean", temperature=100
+        features=features, labels=labels, distance=distance, temperature=100
     )
     assert isinstance(snn_loss, torch.Tensor)
 
