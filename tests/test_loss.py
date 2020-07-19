@@ -33,11 +33,11 @@ def test_SNNL():
     snn_loss = SNNL(
         features=features, labels=labels, distance="cosine", temperature=100
     )
-    assert isinstance(snn_loss, float)
+    assert isinstance(snn_loss, torch.Tensor)
     snn_loss = SNNL(
         features=features, labels=labels, distance="euclidean", temperature=100
     )
-    assert isinstance(snn_loss, float)
+    assert isinstance(snn_loss, torch.Tensor)
 
 
 def test_masked_pick_probability():
