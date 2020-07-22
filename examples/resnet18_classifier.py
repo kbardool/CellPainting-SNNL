@@ -18,7 +18,7 @@ import argparse
 import torch
 
 from snnl.models import ResNet18
-from snnl.utils import get_hyperparameters
+from snnl.utils import get_hyperparameters, set_global_seed
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
@@ -75,9 +75,7 @@ def main(args):
         temperature,
     ) = get_hyperparameters(args.configuration)
 
-    torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = True
+    set_global_seed(args.seed)
     if args.device == "gpu":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     else:
