@@ -21,6 +21,14 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+class SNNLoss(torch.nn.Module):
+    def __init__(self, **kwargs):
+        pass
+
+    def forward(self, **kwargs):
+        pass
+
+
 def composite_loss(
     model: torch.nn.Module,
     features: torch.Tensor,
