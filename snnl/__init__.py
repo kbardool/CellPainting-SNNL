@@ -170,6 +170,7 @@ class SNNLoss(torch.nn.Module):
                     break
             else:
                 layers_snnl.append(snnl)
+        snn_loss = torch.stack(layers_snnl).sum()
 
 
 def composite_loss(
