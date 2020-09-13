@@ -34,7 +34,8 @@ class SNNLoss(torch.nn.Module):
         stability_epsilon: float = 1e-5,
     ):
         super().__init__()
-        if mode.lower() not in SNNLoss._supported_modes:
+        mode = mode.lower()
+        if mode not in SNNLoss._supported_modes:
             raise ValueError(f"Mode {mode.lower()} is not supported.")
         self.mode = mode
         self.unsupervised = SNNLoss._supported_modes.get(self.mode)
