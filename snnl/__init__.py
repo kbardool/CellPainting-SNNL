@@ -143,6 +143,8 @@ class SNNLoss(torch.nn.Module):
         for key, value in activations.items():
             if len(value.shape) > 2:
                 value = value.view(value.shape[0], -1)
+            if key == 7 and self.mode == "latent_code":
+                value = value[:, :code_units]
             a = value.clone()
             b = value.clone()
             normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
