@@ -141,6 +141,8 @@ class SNNLoss(torch.nn.Module):
 
         layers_snnl = []
         for key, value in activations.items():
+            if len(value.shape) > 2:
+                value = value.view(value.shape[0], -1)
             a = value.clone()
             b = value.clone()
             normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
