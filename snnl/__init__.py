@@ -22,7 +22,8 @@ __version__ = "1.0.0"
 
 
 class SNNLoss(torch.nn.Module):
-    _supported_modes = ["classifier", "autoencoding"]
+
+    _supported_modes = {"classifier": False, "autoencoding": True, "latent_code": True}
 
     def __init__(
         self,
