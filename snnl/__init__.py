@@ -33,6 +33,25 @@ class SNNLoss(torch.nn.Module):
         code_units: int = 30,
         stability_epsilon: float = 1e-5,
     ):
+        """
+        Constructs the Soft Nearest Neighbor Loss.
+
+        Parameters
+        ----------
+        mode: str
+            The mode in which the soft nearest neighbor loss
+            will be used. Default: [classifier]
+        factor: float
+            The balance factor between SNNL and the primary loss.
+            A positive factor implies SNNL minimization, while a negative
+            factor implies SNNL maximization.
+        temperature: int
+            The SNNL temperature.
+        code_units: int
+            The number of units in which the SNNL will be applied.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
+        """
         super().__init__()
         mode = mode.lower()
         if mode not in SNNLoss._supported_modes:
