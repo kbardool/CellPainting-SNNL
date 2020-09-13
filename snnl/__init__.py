@@ -160,6 +160,12 @@ class SNNLoss(torch.nn.Module):
             snnl = torch.mean(
                 -torch.log(stability_epsilon + summed_masked_pick_probability)
             )
+            if self.mode == "latent_code":
+                if key == 7:
+                    layers_snnl.append(snnl)
+                    break
+            else:
+                layers_snnl.append(snnl)
 
 
 def composite_loss(
