@@ -110,7 +110,14 @@ class SNNLoss(torch.nn.Module):
         epoch: int
             The current training epoch.
         """
-        pass
+        code_units = self.code_units
+        factor = self.factor
+        stability_epsilon = self.stability_epsilon
+        temperature = (
+            (1.0 / ((1.0 + epoch) ** 0.55))
+            if self.temperature is None
+            else self.temperature
+        )
 
 
 def composite_loss(
