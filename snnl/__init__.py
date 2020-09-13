@@ -31,6 +31,7 @@ class SNNLoss(torch.nn.Module):
         unsupervised: bool = False,
         factor: float = 100.0,
         temperature: int = None,
+        code_units: int = 30,
         stability_epsilon: float = 1e-5,
     ):
         super().__init__()
@@ -40,6 +41,7 @@ class SNNLoss(torch.nn.Module):
         self.unsupervised = unsupervised
         self.factor = factor
         self.temperature = temperature
+        self.code_units = code_units
         self.stability_epsilon = stability_epsilon
 
     def forward(self, **kwargs):
