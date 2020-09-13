@@ -29,7 +29,7 @@ class SNNLoss(torch.nn.Module):
         self,
         mode: str = "classifier",
         unsupervised: bool = False,
-        snnl_factor: float = 100.0,
+        factor: float = 100.0,
         temperature: int = None,
         stability_epsilon: float = 1e-5,
     ):
@@ -38,7 +38,7 @@ class SNNLoss(torch.nn.Module):
             raise ValueError(f"Mode {mode.lower()} is not supported.")
         self.mode = mode
         self.unsupervised = unsupervised
-        self.snnl_factor = snnl_factor
+        self.factor = factor
         self.temperature = temperature
         self.stability_epsilon = stability_epsilon
 
