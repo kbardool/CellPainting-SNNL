@@ -21,6 +21,160 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+class SNNLoss(torch.nn.Module):
+    """
+    A composite loss of the Soft Nearest Neighbor Loss
+    computed at each hidden layer, and a softmax
+    cross entropy (for classification) loss or binary
+    cross entropy (for reconstruction) loss.
+
+    Presented in
+    "Improving k-Means Clustering Performance with Disentangled Internal
+    Representations" by Abien Fred Agarap and Arnulfo P. Azcarraga (2020),
+    and in
+    "Analyzing and Improving Representations with the Soft Nearest Neighbor
+    Loss" by Nicholas Frosst, Nicolas Papernot, and Geoffrey Hinton (2019).
+
+    https://arxiv.org/abs/2006.04535/
+    https://arxiv.org/abs/1902.01889/
+    """
+
+    _supported_modes = {"classifier": False, "autoencoding": True, "latent_code": True}
+
+    def __init__(
+        self,
+        mode: str = "classifier",
+        factor: float = 100.0,
+        temperature: int = None,
+        code_units: int = 30,
+        stability_epsilon: float = 1e-5,
+    ):
+        """
+        Constructs the Soft Nearest Neighbor Loss.
+
+        Parameters
+        ----------
+        mode: str
+            The mode in which the soft nearest neighbor loss
+            will be used. Default: [classifier]
+        factor: float
+            The balance factor between SNNL and the primary loss.
+            A positive factor implies SNNL minimization, while a negative
+            factor implies SNNL maximization.
+        temperature: int
+            The SNNL temperature.
+        code_units: int
+            The number of units in which the SNNL will be applied.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
+        """
+        super().__init__()
+        mode = mode.lower()
+        if mode not in SNNLoss._supported_modes:
+            raise ValueError(f"Mode {mode.lower()} is not supported.")
+        if (mode == "latent_code") and (code_units <= 0):
+            raise ValueError(
+                "[code_units] must be greater than 0 when mode == 'latent_code'."
+            )
+        assert isinstance(
+            code_units, int
+        ), f"Expected dtype for [code_units]: int, but {code_units} is {type(code_units)}"
+        self.mode = mode
+        self.unsupervised = SNNLoss._supported_modes.get(self.mode)
+        self.factor = factor
+        self.temperature = temperature
+        self.code_units = code_units
+        self.stability_epsilon = stability_epsilon
+
+    def forward(
+        self,
+        model: torch.nn.Module,
+        features: torch.Tensor,
+        labels: torch.Tensor,
+        outputs: torch.Tensor,
+        epoch: int,
+    ):
+        """
+        Defines the forward pass for the Soft Nearest Neighbor Loss.
+
+        Parameters
+        ----------
+        model: torch.nn.Module
+            The model whose parameters will be optimized.
+        features: torch.Tensor
+            The input features.
+        labels: torch.Tensor
+            The corresponding labels for the input features.
+        outputs: torch.Tensor
+            The model outputs.
+        epoch: int
+            The current training epoch.
+        """
+        code_units = self.code_units
+        factor = self.factor
+        stability_epsilon = self.stability_epsilon
+        temperature = (
+            (1.0 / ((1.0 + epoch) ** 0.55))
+            if self.temperature is None
+            else self.temperature
+        )
+
+        if self.unsupervised:
+            primary_loss = model.criterion(outputs, features)
+        else:
+            primary_loss = model.criterion(outputs, labels)
+
+        if self.mode == "classifier":
+            activations = dict()
+            for index, layer in enumerate(model.layers[:-1]):
+                if index == 0:
+                    activations[index] = layer(features)
+                else:
+                    activations[index] = layer(activations[index - 1])
+        else:
+            activations = dict()
+            for index, layer in enumerate(model.layers):
+                if index == 0:
+                    activations[index] = layer(features)
+                else:
+                    activations[index] = layer(activations[index - 1])
+
+        layers_snnl = []
+        for key, value in activations.items():
+            if len(value.shape) > 2:
+                value = value.view(value.shape[0], -1)
+            if key == 7 and self.mode == "latent_code":
+                value = value[:, :code_units]
+            a = value.clone()
+            b = value.clone()
+            normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+            normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+            normalized_b = torch.conj(normalized_b).T
+            product = torch.matmul(normalized_a, normalized_b)
+            distance_matrix = torch.sub(torch.tensor(1.0), product)
+            pairwise_distance_matrix = torch.exp(-(distance_matrix / temperature))
+            pick_probability = pairwise_distance_matrix / (
+                stability_epsilon + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
+            )
+            masking_matrix = torch.squeeze(
+                torch.eq(labels, labels.unsqueeze(1)).float()
+            )
+            masked_pick_probability = pick_probability * masking_matrix
+            summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
+            snnl = torch.mean(
+                -torch.log(stability_epsilon + summed_masked_pick_probability)
+            )
+            if self.mode == "latent_code":
+                if key == 7:
+                    layers_snnl.append(snnl)
+                    break
+            else:
+                layers_snnl.append(snnl)
+        snn_loss = torch.stack(layers_snnl).sum()
+        train_loss = torch.add(primary_loss, torch.mul(factor, snn_loss))
+        return train_loss, primary_loss, snn_loss
+
+
 def composite_loss(
     model: torch.nn.Module,
     features: torch.Tensor,
