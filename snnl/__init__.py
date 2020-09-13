@@ -94,6 +94,22 @@ class SNNLoss(torch.nn.Module):
         outputs: torch.Tensor,
         epoch: int,
     ):
+        """
+        Defines the forward pass for the Soft Nearest Neighbor Loss.
+
+        Parameters
+        ----------
+        model: torch.nn.Module
+            The model whose parameters will be optimized.
+        features: torch.Tensor
+            The input features.
+        labels: torch.Tensor
+            The corresponding labels for the input features.
+        outputs: torch.Tensor
+            The model outputs.
+        epoch: int
+            The current training epoch.
+        """
         pass
 
 
