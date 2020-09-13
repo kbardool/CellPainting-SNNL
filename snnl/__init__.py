@@ -139,6 +139,16 @@ class SNNLoss(torch.nn.Module):
                 else:
                     activations[index] = layer(activations[index - 1])
 
+        layers_snnl = []
+        for key, value in activations.items():
+            a = value.clone()
+            b = value.clone()
+            normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+            normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+            normalized_b = torch.conj(normalized_b).T
+            product = torch.matmul(normalized_a, normalized_b)
+            distance_matrix = torch.sub(torch.tensor(1.0), product)
+
 
 def composite_loss(
     model: torch.nn.Module,
