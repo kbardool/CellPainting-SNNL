@@ -86,7 +86,14 @@ class SNNLoss(torch.nn.Module):
         self.code_units = code_units
         self.stability_epsilon = stability_epsilon
 
-    def forward(self, **kwargs):
+    def forward(
+        self,
+        model: torch.nn.Module,
+        features: torch.Tensor,
+        labels: torch.Tensor,
+        outputs: torch.Tensor,
+        epoch: int,
+    ):
         pass
 
 
