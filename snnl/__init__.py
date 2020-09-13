@@ -157,6 +157,7 @@ class SNNLoss(torch.nn.Module):
             masking_matrix = torch.squeeze(
                 torch.eq(labels, labels.unsqueeze(1)).float()
             )
+            masked_pick_probability = pick_probability * masking_matrix
 
 
 def composite_loss(
