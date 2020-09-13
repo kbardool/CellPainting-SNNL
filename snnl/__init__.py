@@ -41,6 +41,9 @@ class SNNLoss(torch.nn.Module):
             raise ValueError(
                 "[code_units] must be greater than 0 when mode == 'latent_code'."
             )
+        assert isinstance(
+            code_units, int
+        ), f"Expected dtype for [code_units]: int, but {code_units} is {type(code_units)}"
         self.mode = mode
         self.unsupervised = SNNLoss._supported_modes.get(self.mode)
         self.factor = factor
