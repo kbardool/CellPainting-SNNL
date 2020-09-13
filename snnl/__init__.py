@@ -124,6 +124,21 @@ class SNNLoss(torch.nn.Module):
         else:
             primary_loss = model.criterion(outputs, labels)
 
+        if self.mode == "classifier":
+            activations = dict()
+            for index, layer in enumerate(model.layers[:-1]):
+                if index == 0:
+                    activations[index] = layer(features)
+                else:
+                    activations[index] = layer(activations[index - 1])
+        else:
+            activations = dict()
+            for index, layer in enumerate(model.layers):
+                if index == 0:
+                    activations[index] = layer(features)
+                else:
+                    activations[index] = layer(activations[index - 1])
+
 
 def composite_loss(
     model: torch.nn.Module,
