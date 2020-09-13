@@ -27,7 +27,6 @@ class SNNLoss(torch.nn.Module):
 
     def __init__(
         self,
-        model: torch.nn.Module,
         mode: str = "classifier",
         unsupervised: bool = False,
         snnl_factor: float = 100.0,
@@ -37,7 +36,6 @@ class SNNLoss(torch.nn.Module):
         super().__init__()
         if mode.lower() not in SNNLoss._supported_modes:
             raise ValueError(f"Mode {mode.lower()} is not supported.")
-        self.model = model
         self.mode = mode
         self.unsupervised = unsupervised
         self.snnl_factor = snnl_factor
