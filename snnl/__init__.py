@@ -171,6 +171,8 @@ class SNNLoss(torch.nn.Module):
             else:
                 layers_snnl.append(snnl)
         snn_loss = torch.stack(layers_snnl).sum()
+        train_loss = torch.add(primary_loss, torch.mul(factor, snn_loss))
+        return train_loss, primary_loss, snn_loss
 
 
 def composite_loss(
