@@ -119,6 +119,11 @@ class SNNLoss(torch.nn.Module):
             else self.temperature
         )
 
+        if self.unsupervised:
+            primary_loss = model.criterion(outputs, features)
+        else:
+            primary_loss = model.criterion(outputs, labels)
+
 
 def composite_loss(
     model: torch.nn.Module,
