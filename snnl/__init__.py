@@ -22,6 +22,22 @@ __version__ = "1.0.0"
 
 
 class SNNLoss(torch.nn.Module):
+    """
+    A composite loss of the Soft Nearest Neighbor Loss
+    computed at each hidden layer, and a softmax
+    cross entropy (for classification) loss or binary
+    cross entropy (for reconstruction) loss.
+
+    Presented in
+    "Improving k-Means Clustering Performance with Disentangled Internal
+    Representations" by Abien Fred Agarap and Arnulfo P. Azcarraga (2020),
+    and in
+    "Analyzing and Improving Representations with the Soft Nearest Neighbor
+    Loss" by Nicholas Frosst, Nicolas Papernot, and Geoffrey Hinton (2019).
+
+    https://arxiv.org/abs/2006.04535/
+    https://arxiv.org/abs/1902.01889/
+    """
 
     _supported_modes = {"classifier": False, "autoencoding": True, "latent_code": True}
 
