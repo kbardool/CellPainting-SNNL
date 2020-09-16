@@ -32,6 +32,8 @@ class Autoencoder(torch.nn.Module):
     regularizer can be used with the binary cross entropy.
     """
 
+    _supported_modes = ["autoencoding", "latent_code"]
+
     def __init__(
         self,
         input_shape: int,
