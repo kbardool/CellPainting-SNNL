@@ -17,7 +17,7 @@
 import torch
 import torchvision
 from typing import Tuple
-from snnl import composite_loss, SNNL
+from snnl import composite_loss, SNNL, SNNLoss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -38,6 +38,12 @@ class Autoencoder(torch.nn.Module):
         code_dim: int,
         device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        temperature: int = None,
+        mode: str = "autoencoding",
+        code_units: int = None,
+        stability_epsilon: float = 1e-5,
     ):
         """
         Constructs the autoencoder model with the following units,
