@@ -104,6 +104,14 @@ class Autoencoder(torch.nn.Module):
         self.criterion = torch.nn.BCELoss().to(self.device)
         self.train_loss = []
         self.to(self.device)
+        if use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode=mode,
+                factor=factor,
+                temperature=temperature,
+                code_units=code_units,
+                stability_epsilon=stability_epsilon,
+            )
 
     def forward(self, features):
         """
