@@ -66,6 +66,10 @@ class Autoencoder(torch.nn.Module):
         mode = mode.lower()
         if mode not in Autoencoder._supported_modes:
             raise ValueError(f"Mode {mode} is not supported.")
+        if (mode == "latent_code") and (code_units <= 0):
+            raise ValueError(
+                "[code_units] must be greater than 0 when mode == 'latent_code'."
+            )
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=input_shape, out_features=500),
