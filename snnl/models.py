@@ -236,15 +236,12 @@ class Autoencoder(torch.nn.Module):
             batch_labels = batch_labels.to(model.device)
             if use_snnl:
                 outputs = model(batch_features)
-                train_loss, snn_loss, recon_loss = composite_loss(
+                train_loss, recon_loss, snn_loss = Autoencoder.snnl_criterion(
                     model=model,
-                    outputs=outputs,
                     features=batch_features,
                     labels=batch_labels,
+                    outputs=outputs,
                     epoch=epoch,
-                    temperature=temperature,
-                    factor=factor,
-                    unsupervised=True,
                 )
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
