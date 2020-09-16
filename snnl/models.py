@@ -137,15 +137,7 @@ class Autoencoder(torch.nn.Module):
         reconstruction = activations[len(activations) - 1]
         return reconstruction
 
-    def fit(
-        self,
-        data_loader,
-        epochs,
-        use_snnl=False,
-        factor=None,
-        temperature=None,
-        show_every=2,
-    ):
+    def fit(self, data_loader, epochs, show_every=2):
         """
         Trains the autoencoder model.
 
@@ -155,13 +147,6 @@ class Autoencoder(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
