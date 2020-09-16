@@ -151,14 +151,14 @@ class Autoencoder(torch.nn.Module):
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
-            assert (
-                self.factor is not None
-            ), "[factor] must not be None if use_snnl == True"
+            # assert (
+            #     self.factor is not None
+            # ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_recon_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(self, data_loader, epoch, self.use_snnl)
+            epoch_loss = self.epoch_train(self, data_loader, epoch)
 
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
@@ -202,9 +202,9 @@ class Autoencoder(torch.nn.Module):
         """
         if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-            assert (
-                self.factor is not None
-            ), "[factor] must not be None if use_snnl == True"
+            # assert (
+            #     self.factor is not None
+            # ), "[factor] must not be None if use_snnl == True"
             epoch_recon_loss = 0
             epoch_snn_loss = 0
         epoch_loss = 0
@@ -224,6 +224,9 @@ class Autoencoder(torch.nn.Module):
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
                 epoch_recon_loss += recon_loss.item()
+                train_loss.backward()
+                model.optimizer.step()
+                model.optimizer.zero_grad()
             else:
                 model.optimizer.zero_grad()
                 outputs = model(batch_features)
@@ -233,8 +236,8 @@ class Autoencoder(torch.nn.Module):
                 epoch_loss += train_loss.item()
         epoch_loss /= len(data_loader)
         if self.use_snnl:
-            epoch_snn_loss /= len(data_loader)
-            epoch_recon_loss /= len(data_loader)
+            # epoch_snn_loss /= len(data_loader)
+            # epoch_recon_loss /= len(data_loader)
             return epoch_loss, epoch_snn_loss, epoch_recon_loss
         else:
             return epoch_loss
