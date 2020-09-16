@@ -179,7 +179,13 @@ class Autoencoder(torch.nn.Module):
                     )
 
     def epoch_train(
-        model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+        self,
+        model,
+        data_loader,
+        epoch=None,
+        use_snnl=False,
+        factor=None,
+        temperature=None,
     ):
         """
         Trains a model for one epoch.
