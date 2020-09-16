@@ -70,6 +70,7 @@ class Autoencoder(torch.nn.Module):
             raise ValueError(
                 "[code_units] must be greater than 0 when mode == 'latent_code'."
             )
+        assert factor is not None, "[factor] must not be None if use_snnl == True."
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=input_shape, out_features=500),
@@ -156,9 +157,6 @@ class Autoencoder(torch.nn.Module):
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
-            # assert (
-            #     self.factor is not None
-            # ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_recon_loss = []
 
@@ -207,9 +205,6 @@ class Autoencoder(torch.nn.Module):
         """
         if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-            # assert (
-            #     self.factor is not None
-            # ), "[factor] must not be None if use_snnl == True"
             epoch_recon_loss = 0
             epoch_snn_loss = 0
         epoch_loss = 0
