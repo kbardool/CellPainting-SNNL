@@ -63,6 +63,9 @@ class Autoencoder(torch.nn.Module):
             The learning rate to use for optimization.
         """
         super().__init__()
+        mode = mode.lower()
+        if mode not in Autoencoder._supported_modes:
+            raise ValueError(f"Mode {mode} is not supported.")
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=input_shape, out_features=500),
