@@ -150,15 +150,15 @@ class Autoencoder(torch.nn.Module):
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        if use_snnl:
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
+        if self.use_snnl:
+            assert (
+                self.factor is not None
+            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_recon_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(
-                self, data_loader, epoch, use_snnl, factor, temperature=temperature
-            )
+            epoch_loss = self.epoch_train(self, data_loader, epoch, self.use_snnl)
 
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
