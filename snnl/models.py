@@ -104,7 +104,8 @@ class Autoencoder(torch.nn.Module):
         self.criterion = torch.nn.BCELoss().to(self.device)
         self.train_loss = []
         self.to(self.device)
-        if use_snnl:
+        self.use_snnl = use_snnl
+        if self.use_snnl:
             self.snnl_criterion = SNNLoss(
                 mode=mode,
                 factor=factor,
