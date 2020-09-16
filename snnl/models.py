@@ -178,7 +178,6 @@ class Autoencoder(torch.nn.Module):
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
 
-    @staticmethod
     def epoch_train(
         model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
     ):
