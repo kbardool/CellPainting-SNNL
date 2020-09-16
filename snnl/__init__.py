@@ -71,7 +71,7 @@ class SNNLoss(torch.nn.Module):
         super().__init__()
         mode = mode.lower()
         if mode not in SNNLoss._supported_modes:
-            raise ValueError(f"Mode {mode.lower()} is not supported.")
+            raise ValueError(f"Mode {mode} is not supported.")
         if (mode == "latent_code") and (code_units <= 0):
             raise ValueError(
                 "[code_units] must be greater than 0 when mode == 'latent_code'."
