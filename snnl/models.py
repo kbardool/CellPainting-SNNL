@@ -161,8 +161,7 @@ class Autoencoder(torch.nn.Module):
             self.train_recon_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(self, data_loader, epoch)
-
+            epoch_loss = self.epoch_train(data_loader, epoch)
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
@@ -181,7 +180,7 @@ class Autoencoder(torch.nn.Module):
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
 
-    def epoch_train(self, model, data_loader, epoch=None):
+    def epoch_train(self, data_loader, epoch=None):
         """
         Trains a model for one epoch.
 
@@ -210,12 +209,12 @@ class Autoencoder(torch.nn.Module):
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.view(batch_features.shape[0], -1)
-            batch_features = batch_features.to(model.device)
-            batch_labels = batch_labels.to(model.device)
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
             if self.use_snnl:
-                outputs = model(batch_features)
+                outputs = self(batch_features)
                 train_loss, recon_loss, snn_loss = self.snnl_criterion(
-                    model=model,
+                    model=self,
                     features=batch_features,
                     labels=batch_labels,
                     outputs=outputs,
@@ -225,19 +224,20 @@ class Autoencoder(torch.nn.Module):
                 epoch_snn_loss += snn_loss.item()
                 epoch_recon_loss += recon_loss.item()
                 train_loss.backward()
-                model.optimizer.step()
-                model.optimizer.zero_grad()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
             else:
-                model.optimizer.zero_grad()
-                outputs = model(batch_features)
-                train_loss = model.criterion(outputs, batch_features)
+                self.optimizer.zero_grad()
+                self.optimizer.zero_grad()
+                outputs = self(batch_features)
+                train_loss = self.criterion(outputs, batch_features)
                 train_loss.backward()
-                model.optimizer.step()
+                self.optimizer.step()
                 epoch_loss += train_loss.item()
         epoch_loss /= len(data_loader)
         if self.use_snnl:
-            # epoch_snn_loss /= len(data_loader)
-            # epoch_recon_loss /= len(data_loader)
+            epoch_snn_loss /= len(data_loader)
+            epoch_recon_loss /= len(data_loader)
             return epoch_loss, epoch_snn_loss, epoch_recon_loss
         else:
             return epoch_loss
