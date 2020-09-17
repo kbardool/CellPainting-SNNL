@@ -61,6 +61,21 @@ class Autoencoder(torch.nn.Module):
             The device to use for the model computations.
         learning_rate: float
             The learning rate to use for optimization.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance factor between SNNL and the primary loss.
+            A positive factor implies SNNL minimization, while a negative
+            factor implies SNNL maximization.
+        temperature: int
+            The SNNL temperature.
+        mode: str
+            The mode in which the soft nearest neighbor loss
+            will be used.
+        code_units: int
+            The number of units in which the SNNL will be applied.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
         """
         super().__init__()
         mode = mode.lower()
