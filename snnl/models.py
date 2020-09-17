@@ -53,12 +53,12 @@ class Autoencoder(torch.nn.Module):
 
         Parameters
         ----------
-        device: torch.device
-            The device to use for the model computations.
         input_shape: int
             The dimensionality of the input features.
         code_dim: int
             The dimensionality of the latent code.
+        device: torch.device
+            The device to use for the model computations.
         learning_rate: float
             The learning rate to use for optimization.
         """
