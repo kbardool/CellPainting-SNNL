@@ -84,6 +84,12 @@ def main(args):
         device = torch.device("cpu")
 
     train_dataset, test_dataset = load_dataset(name=dataset)
+    train_features = train_dataset.data.numpy().astype("float32") / 255.0
+    train_features = train_features[:10000]
+    train_features = torch.from_numpy(train_features)
+    train_labels = train_dataset.targets
+    train_labels = train_labels[:10000]
+    train_dataset = torch.utils.data.TensorDataset(train_features, train_labels)
     train_loader = create_dataloader(
         dataset=train_dataset, batch_size=batch_size, num_workers=1
     )
