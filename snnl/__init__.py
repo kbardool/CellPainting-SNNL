@@ -177,37 +177,6 @@ class SNNLoss(torch.nn.Module):
         return train_loss, primary_loss, snn_loss
 
 
-def compute_pairwise_distance(
-    features_a: torch.Tensor,
-    features_b: torch.Tensor,
-    temperature: int,
-    cosine_distance: bool,
-) -> torch.Tensor:
-    """
-    Returns the exponentiated pairwise distance between each element of
-    `features_a` and all those of `features_b`.
-
-    Parameters
-    ----------
-    features_a, features_b : tensor
-        The input features.
-    temperature : float
-        The temperature constant.
-    cosine_distance : bool
-        Boolean whether to use cosine or Euclidean distance.
-
-    Returns
-    -------
-    tensor
-        The exponentiated pairwise distance between `features_a` and `features_b`.
-    """
-    if cosine_distance:
-        distance_matrix = pairwise_cosine_distance(features_a, features_b)
-    else:
-        distance_matrix = pairwise_euclidean_distance(features_a, features_b)
-    return torch.exp(-(distance_matrix / temperature))
-
-
 def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """
     Returns the pairwise Euclidean distance between matrices `a` and `b`.
