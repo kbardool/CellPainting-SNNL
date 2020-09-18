@@ -177,50 +177,6 @@ class SNNLoss(torch.nn.Module):
         return train_loss, primary_loss, snn_loss
 
 
-def SNNL(
-    features: object, labels: object, distance: str = "cosine", temperature: int = 100.0
-) -> float:
-    """
-    Computes the Soft Nearest Neighbors Loss (Fross, Papernot, & Hinton, 2019)
-    https://arxiv.org/abs/1902.01889/
-
-    Parameters
-    ----------
-    features : array-like object
-        The input features.
-    labels : array-like object
-        The input labels.
-    distance : str
-        The distance metric to use.
-    temperature : int
-        The temperature factor.
-
-    Returns
-    -------
-    float
-        The soft nearest neighbors loss across all layers of a model.
-    """
-    distance = distance.lower()
-
-    stability_epsilon = 1e-5
-    if distance == "cosine":
-        summed_masked_pick_probability = torch.sum(
-            masked_pick_probability(
-                features, labels, temperature, True, stability_epsilon
-            ),
-            dim=1,
-        )
-    elif distance == "euclidean":
-        summed_masked_pick_probability = torch.sum(
-            masked_pick_probability(
-                features, labels, temperature, False, stability_epsilon
-            ),
-            dim=1,
-        )
-    snnl = torch.mean(-torch.log(stability_epsilon + summed_masked_pick_probability))
-    return snnl
-
-
 def masked_pick_probability(
     features, labels, temperature, cosine_distance, stability_epsilon
 ):
