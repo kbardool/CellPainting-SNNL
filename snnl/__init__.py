@@ -177,53 +177,6 @@ class SNNLoss(torch.nn.Module):
         return train_loss, primary_loss, snn_loss
 
 
-def pairwise_euclidean_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-    """
-    Returns the pairwise Euclidean distance between matrices `a` and `b`.
-
-    Parameters
-    ----------
-    a, b : torch.Tensor
-        The input features.
-
-    Returns
-    -------
-    torch.Tensor
-        The pairwise Euclidean distance between matrices `a` and `b`.
-
-    Example
-    -------
-    >>> import torch
-    >>> _ = torch.manual_seed(42)
-    >>> a = torch.rand((4, 2))
-    >>> b = torch.rand((4, 2))
-    >>> pairwise_euclidean_distance(a, b)
-    tensor([[0.6147, 0.9937, 0.5216, 0.9043],
-            [0.1061, 0.4382, 0.2962, 0.4997],
-            [0.1208, 0.3901, 0.2305, 0.4266],
-            [0.2557, 0.4091, 0.1524, 0.3674]])
-    """
-    a = torch.FloatTensor(a)
-    b = torch.FloatTensor(b)
-    batch_size_a = a.size()[0]
-    batch_size_b = b.size()[0]
-    squared_norm_a = torch.sum(torch.pow(a, 2), dim=1)
-    squared_norm_a = torch.reshape(squared_norm_a, [1, batch_size_a])
-    squared_norm_b = torch.sum(torch.pow(b, 2), dim=1)
-    squared_norm_b = torch.reshape(squared_norm_b, [batch_size_b, 1])
-
-    a = a.T
-    inner_product = torch.matmul(b, a)
-
-    tile_a = (
-        squared_norm_a.view(-1, 1)
-        .repeat(batch_size_b, 1)
-        .view((batch_size_b * squared_norm_a.size()[0]), -1)
-    )
-    tile_b = squared_norm_b.view(-1, 1).repeat(1, batch_size_a)
-    return tile_a + tile_b - 2.0 * inner_product
-
-
 def pairwise_cosine_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """
     Returns the pairwise cosine distance between matrices `a` and `b`.
