@@ -84,26 +84,38 @@ def main(args):
         device = torch.device("cpu")
 
     train_dataset, test_dataset = load_dataset(name=dataset)
-    train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
-
-    model = Autoencoder(
-        input_shape=input_shape,
-        code_dim=code_dim,
-        learning_rate=learning_rate,
-        device=device,
+    train_features = train_dataset.data.numpy().astype("float32") / 255.0
+    train_features = train_features[:10000]
+    train_features = torch.from_numpy(train_features)
+    train_labels = train_dataset.targets
+    train_labels = train_labels[:10000]
+    train_dataset = torch.utils.data.TensorDataset(train_features, train_labels)
+    train_loader = create_dataloader(
+        dataset=train_dataset, batch_size=batch_size, num_workers=1
     )
+
     if args.model.lower() == "baseline":
-        model.fit(data_loader=train_loader, epochs=epochs)
+        model = Autoencoder(
+            input_shape=input_shape,
+            code_dim=code_dim,
+            learning_rate=learning_rate,
+            device=device,
+        )
     elif args.model.lower() == "snnl":
-        model.fit(
-            data_loader=train_loader,
-            epochs=epochs,
+        model = Autoencoder(
+            input_shape=input_shape,
+            code_dim=code_dim,
+            learning_rate=learning_rate,
+            device=device,
             use_snnl=True,
             factor=snnl_factor,
             temperature=temperature,
+            mode="latent_code",
+            code_units=30,
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
+    model.fit(data_loader=train_loader, epochs=epochs, show_every=5)
 
 
 if __name__ == "__main__":

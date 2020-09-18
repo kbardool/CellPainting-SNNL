@@ -17,7 +17,7 @@
 import torch
 import torchvision
 from typing import Tuple
-from snnl import composite_loss, SNNL
+from snnl import composite_loss, SNNL, SNNLoss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -32,12 +32,20 @@ class Autoencoder(torch.nn.Module):
     regularizer can be used with the binary cross entropy.
     """
 
+    _supported_modes = ["autoencoding", "latent_code"]
+
     def __init__(
         self,
         input_shape: int,
         code_dim: int,
         device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        temperature: int = None,
+        mode: str = "autoencoding",
+        code_units: int = None,
+        stability_epsilon: float = 1e-5,
     ):
         """
         Constructs the autoencoder model with the following units,
@@ -45,16 +53,39 @@ class Autoencoder(torch.nn.Module):
 
         Parameters
         ----------
-        device: torch.device
-            The device to use for the model computations.
         input_shape: int
             The dimensionality of the input features.
         code_dim: int
             The dimensionality of the latent code.
+        device: torch.device
+            The device to use for the model computations.
         learning_rate: float
             The learning rate to use for optimization.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance factor between SNNL and the primary loss.
+            A positive factor implies SNNL minimization, while a negative
+            factor implies SNNL maximization.
+        temperature: int
+            The SNNL temperature.
+        mode: str
+            The mode in which the soft nearest neighbor loss
+            will be used.
+        code_units: int
+            The number of units in which the SNNL will be applied.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
         """
         super().__init__()
+        mode = mode.lower()
+        if mode not in Autoencoder._supported_modes:
+            raise ValueError(f"Mode {mode} is not supported.")
+        if (mode == "latent_code") and (code_units <= 0):
+            raise ValueError(
+                "[code_units] must be greater than 0 when mode == 'latent_code'."
+            )
+        assert factor is not None, "[factor] must not be None if use_snnl == True."
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=input_shape, out_features=500),
@@ -89,6 +120,20 @@ class Autoencoder(torch.nn.Module):
         self.criterion = torch.nn.BCELoss().to(self.device)
         self.train_loss = []
         self.to(self.device)
+        self.use_snnl = use_snnl
+        self.factor = factor
+        self.code_units = code_units
+        self.temperature = temperature
+        self.mode = mode
+        self.stability_epsilon = stability_epsilon
+        if self.use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode=self.mode,
+                factor=self.factor,
+                temperature=self.temperature,
+                code_units=self.code_units,
+                stability_epsilon=self.stability_epsilon,
+            )
 
     def forward(self, features):
         """
@@ -113,15 +158,7 @@ class Autoencoder(torch.nn.Module):
         reconstruction = activations[len(activations) - 1]
         return reconstruction
 
-    def fit(
-        self,
-        data_loader,
-        epochs,
-        use_snnl=False,
-        factor=None,
-        temperature=None,
-        show_every=2,
-    ):
+    def fit(self, data_loader, epochs, show_every=2):
         """
         Trains the autoencoder model.
 
@@ -131,26 +168,15 @@ class Autoencoder(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        if use_snnl:
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
+        if self.use_snnl:
             self.train_snn_loss = []
             self.train_recon_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(
-                self, data_loader, epoch, use_snnl, factor, temperature=temperature
-            )
-
+            epoch_loss = self.epoch_train(data_loader, epoch)
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
@@ -169,10 +195,7 @@ class Autoencoder(torch.nn.Module):
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
 
-    @staticmethod
-    def epoch_train(
-        model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
-    ):
+    def epoch_train(self, data_loader, epoch=None):
         """
         Trains a model for one epoch.
 
@@ -184,13 +207,6 @@ class Autoencoder(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epoch : int
             The epoch number of the training.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
 
         Returns
         -------
@@ -201,40 +217,40 @@ class Autoencoder(torch.nn.Module):
         epoch_recon_loss : float
             The reconstruction loss for an epoch.
         """
-        if use_snnl:
+        if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
             epoch_recon_loss = 0
             epoch_snn_loss = 0
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.view(batch_features.shape[0], -1)
-            batch_features = batch_features.to(model.device)
-            batch_labels = batch_labels.to(model.device)
-            if use_snnl:
-                outputs = model(batch_features)
-                train_loss, snn_loss, recon_loss = composite_loss(
-                    model=model,
-                    outputs=outputs,
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
+            if self.use_snnl:
+                outputs = self(batch_features)
+                train_loss, recon_loss, snn_loss = self.snnl_criterion(
+                    model=self,
                     features=batch_features,
                     labels=batch_labels,
+                    outputs=outputs,
                     epoch=epoch,
-                    temperature=temperature,
-                    factor=factor,
-                    unsupervised=True,
                 )
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
                 epoch_recon_loss += recon_loss.item()
-            else:
-                model.optimizer.zero_grad()
-                outputs = model(batch_features)
-                train_loss = model.criterion(outputs, batch_features)
                 train_loss.backward()
-                model.optimizer.step()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+            else:
+                self.optimizer.zero_grad()
+                self.optimizer.zero_grad()
+                outputs = self(batch_features)
+                train_loss = self.criterion(outputs, batch_features)
+                train_loss.backward()
+                self.optimizer.step()
                 epoch_loss += train_loss.item()
         epoch_loss /= len(data_loader)
-        if use_snnl:
+        if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_recon_loss /= len(data_loader)
             return epoch_loss, epoch_snn_loss, epoch_recon_loss
