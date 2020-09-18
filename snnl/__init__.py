@@ -177,25 +177,6 @@ class SNNLoss(torch.nn.Module):
         return train_loss, primary_loss, snn_loss
 
 
-def same_label_mask(labels_a: torch.Tensor, labels_b: torch.Tensor) -> torch.Tensor:
-    """
-    Returns a masking matrix such that element (i, j) is 1
-    iff labels[i] == labels_2[i].
-
-    Parameters
-    ----------
-    labels_a, labels_b : array-like object
-        The input labels.
-
-    Returns
-    -------
-    masking_matrix : tensor
-        The masking matrix, indicates whether labels are equal.
-    """
-    masking_matrix = torch.squeeze(torch.eq(labels_a, labels_b.unsqueeze(1)).float())
-    return masking_matrix
-
-
 def compute_pairwise_distance(
     features_a: torch.Tensor,
     features_b: torch.Tensor,
