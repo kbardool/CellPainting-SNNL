@@ -177,36 +177,6 @@ class SNNLoss(torch.nn.Module):
         return train_loss, primary_loss, snn_loss
 
 
-def masked_pick_probability(
-    features, labels, temperature, cosine_distance, stability_epsilon
-):
-    """
-    Returns the pairwise sampling probabilities for the `feature` elements
-    for neighbor points sharing the same labels.
-
-    Parameters
-    ----------
-    features : array-like object
-        The input features, it may be the raw features or hidden activations.
-    labels : array-like object
-        The input labels.
-    temperature : float
-        The temperature constant.
-    cosine_distance : bool
-        Boolean whether to use cosine or Euclidean distance.
-    stability_epsilon : float
-        A constant for making the calculation for SNNL more stable.
-
-    Returns
-    -------
-    tensor
-        A tensor for pairwise sampling probabilities.
-    """
-    return pick_probability(
-        features, temperature, cosine_distance, stability_epsilon
-    ) * same_label_mask(labels, labels)
-
-
 def pick_probability(features, temperature, cosine_distance, stability_epsilon=1e-5):
     """
     Returns a row normalized pairwise distance between all elements of `features`.
