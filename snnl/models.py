@@ -360,7 +360,9 @@ class DNN(torch.nn.Module):
         logits = activations[len(activations) - 1]
         return logits
 
-    def fit(self, data_loader, epochs, show_every=2):
+    def fit(
+        self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
+    ):
         """
         Trains the dnn model.
 
