@@ -322,6 +322,17 @@ class DNN(torch.nn.Module):
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.to(self.device)
+        self.use_snnl = use_snnl
+        self.factor = factor
+        self.temperature = temperature
+        self.stability_epsilon = stability_epsilon
+        if self.use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode="classifier",
+                factor=self.factor,
+                temperature=self.temperature,
+                stability_epsilon=self.stability_epsilon,
+            )
 
     def forward(self, features):
         """
