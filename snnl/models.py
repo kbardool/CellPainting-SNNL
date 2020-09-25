@@ -14,9 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of models"""
+from typing import List, Tuple
+
 import torch
 import torchvision
-from typing import Tuple
+
 from snnl import composite_loss, SNNL, SNNLoss
 
 __author__ = "Abien Fred Agarap"
@@ -269,21 +271,35 @@ class DNN(torch.nn.Module):
 
     def __init__(
         self,
-        units: list or tuple,
+        units: List or Tuple = [(784, 500), (500, 500), (500, 10)],
         device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        temperature: int = None,
+        stability_epsilon: float = 1e-5,
     ):
         """
         Constructs a feed-forward neural network classifier.
 
         Parameters
         ----------
-        device: torch.device
-            The device to use for model computations.
         units: list or tuple
             An iterable that consists of the number of units in each hidden layer.
+        device: torch.device
+            The device to use for model computations.
         learning_rate: float
             The learning rate to use for optimization.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance between SNNL and the primary loss.
+            A positive factor implies SNNL minimization,
+            while a negative factor implies SNNL maximization.
+        temperature: int
+            The SNNL temperature.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability
         """
         super().__init__()
         self.device = device
@@ -303,11 +319,23 @@ class DNN(torch.nn.Module):
                 pass
 
         self.train_loss = []
+        self.train_accuracy = []
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.to(self.device)
+        self.use_snnl = use_snnl
+        self.factor = factor
+        self.temperature = temperature
+        self.stability_epsilon = stability_epsilon
+        if self.use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode="classifier",
+                factor=self.factor,
+                temperature=self.temperature,
+                stability_epsilon=self.stability_epsilon,
+            )
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Defines the forward pass by the model.
 
@@ -333,13 +361,7 @@ class DNN(torch.nn.Module):
         return logits
 
     def fit(
-        self,
-        data_loader,
-        epochs,
-        use_snnl=False,
-        factor=None,
-        temperature=None,
-        show_every=2,
+        self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
     ):
         """
         Trains the dnn model.
@@ -350,45 +372,42 @@ class DNN(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        if use_snnl:
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
+        if self.use_snnl:
+            assert (
+                self.factor is not None
+            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(
-                self, data_loader, epoch, use_snnl, factor, temperature
-            )
-
-            if type(epoch_loss) is tuple:
+            if self.use_snnl:
+                *epoch_loss, epoch_accuracy = self.epoch_train(data_loader, epoch)
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
                 self.train_xent_loss.append(epoch_loss[2])
+                self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
+                    print(f"epoch {epoch + 1}/{epochs}")
                     print(
-                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                        f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
                     print(
                         f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
                     )
             else:
+                epoch_loss, epoch_accuracy = self.epoch_train(data_loader)
                 self.train_loss.append(epoch_loss)
                 if (epoch + 1) % show_every == 0:
                     print(
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
 
-    def predict(self, features, return_likelihoods=False):
+    def predict(
+        self, features: torch.Tensor, return_likelihoods: bool = False
+    ) -> torch.Tensor:
         """
         Returns model classifications
 
@@ -410,75 +429,75 @@ class DNN(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    @staticmethod
     def epoch_train(
-        model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
-    ):
+        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+    ) -> Tuple:
         """
         Trains a model for one epoch.
 
         Parameters
         ----------
-        model : torch.nn.Module
-            The model to train.
         data_loader : torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
+        epoch: int
+            The current epoch training index.
 
         Returns
         -------
-        epoch_loss : float
+        epoch_loss: float
             The epoch loss.
-        epoch_snn_loss : float
+        epoch_snn_loss: float
             The soft nearest neighbor loss for an epoch.
-        epoch_xent_loss : float
+        epoch_xent_loss: float
             The cross entropy loss for an epoch.
+        epoch_accuracy: float
+            The epoch accuracy.
         """
-        if use_snnl:
+        if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
             epoch_xent_loss = 0
             epoch_snn_loss = 0
+        epoch_accuracy = 0
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.view(batch_features.shape[0], -1)
-            batch_features = batch_features.to(model.device)
-            batch_labels = batch_labels.to(model.device)
-            if use_snnl:
-                outputs = model(batch_features)
-                train_loss, snn_loss, xent_loss = composite_loss(
-                    model=model,
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
+            if self.use_snnl:
+                outputs = self.forward(batch_features)
+                train_loss, snn_loss, xent_loss = self.snnl_criterion(
+                    model=self,
                     outputs=outputs,
                     features=batch_features,
                     labels=batch_labels,
                     epoch=epoch,
-                    temperature=temperature,
-                    factor=factor,
                 )
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
                 epoch_xent_loss += xent_loss.item()
-            else:
-                model.optimizer.zero_grad()
-                outputs = model(batch_features)
-                train_loss = model.criterion(outputs, batch_labels)
                 train_loss.backward()
-                model.optimizer.step()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
+            else:
+                self.optimizer.zero_grad()
+                outputs = self.forward(batch_features)
+                train_loss = self.criterion(outputs, batch_labels)
+                train_loss.backward()
+                self.optimizer.step()
                 epoch_loss += train_loss.item()
 
         epoch_loss /= len(data_loader)
-
-        if use_snnl:
+        epoch_accuracy /= len(data_loader)
+        if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
-            return epoch_loss, epoch_snn_loss, epoch_xent_loss
+            return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
         else:
-            return epoch_loss
+            return epoch_loss, epoch_accuracy
 
 
 class CNN(torch.nn.Module):
