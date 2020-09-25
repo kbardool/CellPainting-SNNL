@@ -436,26 +436,19 @@ class DNN(torch.nn.Module):
 
         Parameters
         ----------
-        model : torch.nn.Module
-            The model to train.
         data_loader : torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
 
         Returns
         -------
-        epoch_loss : float
+        epoch_loss: float
             The epoch loss.
-        epoch_snn_loss : float
+        epoch_snn_loss: float
             The soft nearest neighbor loss for an epoch.
-        epoch_xent_loss : float
+        epoch_xent_loss: float
             The cross entropy loss for an epoch.
+        epoch_accuracy: float
+            The epoch accuracy.
         """
         if use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
