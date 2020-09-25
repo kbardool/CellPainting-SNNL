@@ -435,6 +435,8 @@ class DNN(torch.nn.Module):
         ----------
         data_loader : torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
+        epoch: int
+            The current epoch training index.
 
         Returns
         -------
