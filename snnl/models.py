@@ -14,9 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of models"""
+from typing import List, Tuple
+
 import torch
 import torchvision
-from typing import Tuple
+
 from snnl import composite_loss, SNNL, SNNLoss
 
 __author__ = "Abien Fred Agarap"
@@ -269,21 +271,35 @@ class DNN(torch.nn.Module):
 
     def __init__(
         self,
-        units: list or tuple,
+        units: List or Tuple = [(784, 500), (500, 500), (500, 10)],
         device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-3,
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        temperature: int = None,
+        stability_epsilon: float = 1e-5,
     ):
         """
         Constructs a feed-forward neural network classifier.
 
         Parameters
         ----------
-        device: torch.device
-            The device to use for model computations.
         units: list or tuple
             An iterable that consists of the number of units in each hidden layer.
+        device: torch.device
+            The device to use for model computations.
         learning_rate: float
             The learning rate to use for optimization.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance between SNNL and the primary loss.
+            A positive factor implies SNNL minimization,
+            while a negative factor implies SNNL maximization.
+        temperature: int
+            The SNNL temperature.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability
         """
         super().__init__()
         self.device = device
