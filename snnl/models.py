@@ -319,6 +319,7 @@ class DNN(torch.nn.Module):
                 pass
 
         self.train_loss = []
+        self.train_accuracy = []
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.to(self.device)
@@ -334,7 +335,7 @@ class DNN(torch.nn.Module):
                 stability_epsilon=self.stability_epsilon,
             )
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Defines the forward pass by the model.
 
@@ -359,15 +360,7 @@ class DNN(torch.nn.Module):
         logits = activations[len(activations) - 1]
         return logits
 
-    def fit(
-        self,
-        data_loader,
-        epochs,
-        use_snnl=False,
-        factor=None,
-        temperature=None,
-        show_every=2,
-    ):
+    def fit(self, data_loader, epochs, show_every=2):
         """
         Trains the dnn model.
 
@@ -377,38 +370,33 @@ class DNN(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        if use_snnl:
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
+        if self.use_snnl:
+            assert (
+                self.factor is not None
+            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(
-                self, data_loader, epoch, use_snnl, factor, temperature
-            )
-
-            if type(epoch_loss) is tuple:
+            if self.use_snnl:
+                *epoch_loss, epoch_accuracy = self.epoch_train(data_loader, epoch)
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
                 self.train_xent_loss.append(epoch_loss[2])
+                self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
+                    print(f"epoch {epoch + 1}/{epochs}")
                     print(
-                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                        f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
                     print(
                         f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
                     )
             else:
+                epoch_loss, epoch_accuracy = self.epoch_train(data_loader)
                 self.train_loss.append(epoch_loss)
                 if (epoch + 1) % show_every == 0:
                     print(
