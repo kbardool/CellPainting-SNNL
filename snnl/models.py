@@ -427,9 +427,8 @@ class DNN(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    @staticmethod
     def epoch_train(
-        model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
+        self, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
     ):
         """
         Trains a model for one epoch.
@@ -450,45 +449,51 @@ class DNN(torch.nn.Module):
         epoch_accuracy: float
             The epoch accuracy.
         """
-        if use_snnl:
+        if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
             epoch_xent_loss = 0
             epoch_snn_loss = 0
+        epoch_accuracy = 0
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.view(batch_features.shape[0], -1)
-            batch_features = batch_features.to(model.device)
-            batch_labels = batch_labels.to(model.device)
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
             if use_snnl:
-                outputs = model(batch_features)
-                train_loss, snn_loss, xent_loss = composite_loss(
-                    model=model,
+                outputs = self.forward(batch_features)
+                train_loss, snn_loss, xent_loss = self.snnl_criterion(
+                    model=self,
                     outputs=outputs,
                     features=batch_features,
                     labels=batch_labels,
                     epoch=epoch,
-                    temperature=temperature,
-                    factor=factor,
                 )
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
                 epoch_xent_loss += xent_loss.item()
-            else:
-                model.optimizer.zero_grad()
-                outputs = model(batch_features)
-                train_loss = model.criterion(outputs, batch_labels)
                 train_loss.backward()
-                model.optimizer.step()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
+            else:
+                self.optimizer.zero_grad()
+                outputs = self.forward(batch_features)
+                train_loss = self.criterion(outputs, batch_labels)
+                train_loss.backward()
+                self.optimizer.step()
                 epoch_loss += train_loss.item()
 
         epoch_loss /= len(data_loader)
-
+        epoch_accuracy /= len(data_loader)
         if use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
-            return epoch_loss, epoch_snn_loss, epoch_xent_loss
+            return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
         else:
-            return epoch_loss
+            return epoch_loss, epoch_accuracy
 
 
 class CNN(torch.nn.Module):
