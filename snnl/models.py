@@ -427,9 +427,7 @@ class DNN(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    def epoch_train(
-        self, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
-    ):
+    def epoch_train(self, data_loader: torch.utils.data.DataLoader, epoch: int = None):
         """
         Trains a model for one epoch.
 
@@ -459,7 +457,7 @@ class DNN(torch.nn.Module):
             batch_features = batch_features.view(batch_features.shape[0], -1)
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
-            if use_snnl:
+            if self.use_snnl:
                 outputs = self.forward(batch_features)
                 train_loss, snn_loss, xent_loss = self.snnl_criterion(
                     model=self,
@@ -488,7 +486,7 @@ class DNN(torch.nn.Module):
 
         epoch_loss /= len(data_loader)
         epoch_accuracy /= len(data_loader)
-        if use_snnl:
+        if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
             return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
