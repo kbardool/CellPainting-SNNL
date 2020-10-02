@@ -515,6 +515,10 @@ class CNN(torch.nn.Module):
         num_classes: int,
         device: torch.device = torch.device("cpu"),
         learning_rate: float = 1e-4,
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        temperature: int = None,
+        stability_epsilon: float = 1e-5,
     ):
         """
         Constructs a convolutional neural network classifier.
