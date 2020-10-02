@@ -685,10 +685,7 @@ class CNN(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    @staticmethod
-    def epoch_train(
-        model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
-    ):
+    def epoch_train(self, data_loader: torch.utils.data.DataLoader, epoch: int = None):
         """
         Trains a model for one epoch.
 
@@ -715,39 +712,38 @@ class CNN(torch.nn.Module):
         epoch_xent_loss : float
             The cross entropy loss for an epoch.
         """
-        if use_snnl:
+        if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
             epoch_xent_loss = 0
             epoch_snn_loss = 0
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
-            batch_features = batch_features.to(model.device)
-            batch_labels = batch_labels.to(model.device)
-            if use_snnl:
-                outputs = model(batch_features)
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
+            if self.use_snnl:
+                outputs = self.forward(batch_features)
                 train_loss, snn_loss, xent_loss = composite_loss(
-                    model=model,
+                    model=self,
                     outputs=outputs,
                     features=batch_features,
                     labels=batch_labels,
                     epoch=epoch,
-                    factor=factor,
                 )
                 del outputs
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
                 epoch_xent_loss += xent_loss.item()
             else:
-                model.optimizer.zero_grad()
-                outputs = model(batch_features)
-                train_loss = model.criterion(outputs, batch_labels)
+                self.optimizer.zero_grad()
+                outputs = self.forward(batch_features)
+                train_loss = self.criterion(outputs, batch_labels)
                 train_loss.backward()
-                model.optimizer.step()
+                self.optimizer.step()
                 epoch_loss += train_loss.item()
 
         epoch_loss /= len(data_loader)
 
-        if use_snnl:
+        if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
             return epoch_loss, epoch_snn_loss, epoch_xent_loss
