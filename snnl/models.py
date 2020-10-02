@@ -533,6 +533,16 @@ class CNN(torch.nn.Module):
             The number of classes in the dataset.
         learning_rate: float
             The learning rate to use for optimization.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance between SNNL and the primary loss.
+            A positive factor implies SNNL minimization,
+            while a negative factor implies SNNL maximization.
+        temperature: int
+            The SNNL temperature.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
         """
         super().__init__()
         self.layers = torch.nn.ModuleList(
