@@ -612,13 +612,7 @@ class CNN(torch.nn.Module):
         return logits
 
     def fit(
-        self,
-        data_loader,
-        epochs,
-        use_snnl=False,
-        factor=None,
-        temperature=None,
-        show_every=2,
+        self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
     ):
         """
         Trains the cnn model.
@@ -639,15 +633,12 @@ class CNN(torch.nn.Module):
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        if use_snnl:
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
+        if self.use_snnl:
             self.train_snn_loss = []
             self.train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(
-                self, data_loader, epoch, use_snnl, factor, temperature
-            )
+            epoch_loss = self.epoch_train(self, data_loader, epoch)
 
             if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
