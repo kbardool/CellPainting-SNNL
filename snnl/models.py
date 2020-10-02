@@ -658,7 +658,9 @@ class CNN(torch.nn.Module):
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
 
-    def predict(self, features, return_likelihoods=False):
+    def predict(
+        self, features: torch.Tensor, return_likelihoods: bool = False
+    ) -> torch.Tensor:
         """
         Returns model classifications
 
