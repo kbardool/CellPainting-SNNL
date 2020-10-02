@@ -575,6 +575,17 @@ class CNN(torch.nn.Module):
         self.train_loss = []
         self.train_accuracy = []
         self.to(self.device)
+        self.use_snnl = use_snnl
+        self.factor = factor
+        self.temperature = temperature
+        self.stability_epsilon = stability_epsilon
+        if self.use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode="classifier",
+                factor=self.factor,
+                temperature=self.temperature,
+                stability_epsilon=self.stability_epsilon,
+            )
 
     def forward(self, features):
         """
