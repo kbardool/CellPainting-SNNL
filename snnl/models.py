@@ -587,7 +587,7 @@ class CNN(torch.nn.Module):
                 stability_epsilon=self.stability_epsilon,
             )
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Defines the forward pass by the model.
 
