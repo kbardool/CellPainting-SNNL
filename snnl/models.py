@@ -796,6 +796,9 @@ class ResNet(torch.nn.Module):
         super().__init__()
         self.criterion = torch.nn.CrossEntropyLoss()
         self.train_loss = []
+        self.train_accuracy = []
+        self.device = device
+        self.to(self.device)
 
     def forward(self, features):
         pass
