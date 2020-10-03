@@ -775,8 +775,6 @@ class ResNet(torch.nn.Module):
 
     def __init__(
         self,
-        num_classes: int,
-        learning_rate: float,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
@@ -786,10 +784,6 @@ class ResNet(torch.nn.Module):
 
         Parameters
         ----------
-        num_classes: int
-            The number of classes in the dataset.
-        learning_rate: float
-            The learning rate to use for optimization.
         device: torch.device
             The device to use for model computations.
         """
@@ -1040,9 +1034,7 @@ class ResNet18(ResNet):
         device:
             The device to use for computations.
         """
-        super().__init__(
-            num_classes=num_classes, learning_rate=learning_rate, device=device
-        )
+        super().__init__(device=device)
         self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
@@ -1072,9 +1064,7 @@ class ResNet34(ResNet):
         device:
             The device to use for computations.
         """
-        super().__init__(
-            num_classes=num_classes, learning_rate=learning_rate, device=device
-        )
+        super().__init__(device=device)
         self.resnet = torchvision.models.resnet.resnet34(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
