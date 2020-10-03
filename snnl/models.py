@@ -831,7 +831,6 @@ class ResNet(torch.nn.Module):
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        self.to(self.device)
         if use_snnl:
             assert factor is not None, "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
