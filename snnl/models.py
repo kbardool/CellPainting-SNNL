@@ -753,9 +753,9 @@ class CNN(torch.nn.Module):
         if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
-            return epoch_loss, epoch_snn_loss, epoch_xent_loss
+            return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
         else:
-            return epoch_loss
+            return epoch_loss, epoch_accuracy
 
 
 class ResNet(torch.nn.Module):
