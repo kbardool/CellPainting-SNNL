@@ -1043,7 +1043,6 @@ class ResNet18(ResNet):
         super().__init__(
             num_classes=num_classes, learning_rate=learning_rate, device=device
         )
-        self.device = device
         self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
@@ -1076,7 +1075,6 @@ class ResNet34(ResNet):
         super().__init__(
             num_classes=num_classes, learning_rate=learning_rate, device=device
         )
-        self.device = device
         self.resnet = torchvision.models.resnet.resnet34(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
