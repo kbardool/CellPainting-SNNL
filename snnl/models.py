@@ -716,6 +716,7 @@ class CNN(torch.nn.Module):
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
             epoch_xent_loss = 0
             epoch_snn_loss = 0
+        epoch_accuracy = 0
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.to(self.device)
@@ -729,10 +730,13 @@ class CNN(torch.nn.Module):
                     labels=batch_labels,
                     epoch=epoch,
                 )
-                del outputs
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
                 epoch_xent_loss += xent_loss.item()
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
             else:
                 self.optimizer.zero_grad()
                 outputs = self.forward(batch_features)
