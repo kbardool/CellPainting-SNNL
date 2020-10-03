@@ -685,7 +685,9 @@ class CNN(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    def epoch_train(self, data_loader: torch.utils.data.DataLoader, epoch: int = None):
+    def epoch_train(
+        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+    ) -> Tuple:
         """
         Trains a model for one epoch.
 
