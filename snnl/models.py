@@ -40,7 +40,9 @@ class Autoencoder(torch.nn.Module):
         self,
         input_shape: int,
         code_dim: int,
-        device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
         learning_rate: float = 1e-3,
         use_snnl: bool = False,
         factor: float = 100.0,
@@ -272,7 +274,9 @@ class DNN(torch.nn.Module):
     def __init__(
         self,
         units: List or Tuple = [(784, 500), (500, 500), (500, 10)],
-        device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
         learning_rate: float = 1e-3,
         use_snnl: bool = False,
         factor: float = 100.0,
@@ -516,7 +520,9 @@ class CNN(torch.nn.Module):
         self,
         input_dim: int,
         num_classes: int,
-        device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
         learning_rate: float = 1e-4,
         use_snnl: bool = False,
         factor: float = 100.0,
@@ -771,7 +777,9 @@ class ResNet(torch.nn.Module):
         self,
         num_classes: int,
         learning_rate: float,
-        device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ):
         """
         Constructs a residual neural network classifier.
