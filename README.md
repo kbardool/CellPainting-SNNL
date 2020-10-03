@@ -1,7 +1,5 @@
 # Soft Nearest Neighbor Loss
 
-![pt-snnl](https://github.com/AFAgarap/pt-snnl/workflows/pt-snnl/badge.svg?branch=master)
-
 ## Overview
 
 ## Usage
