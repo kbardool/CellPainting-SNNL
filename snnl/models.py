@@ -641,15 +641,16 @@ class CNN(torch.nn.Module):
             self.train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(self, data_loader, epoch)
-
-            if type(epoch_loss) is tuple:
+            if self.use_snnl:
+                *epoch_loss, epoch_accuracy = self.epoch_train(data_loader, epoch)
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
                 self.train_xent_loss.append(epoch_loss[2])
+                self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
+                    print(f"epoch {epoch + 1}/{epochs}")
                     print(
-                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                        f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
                     print(
                         f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
