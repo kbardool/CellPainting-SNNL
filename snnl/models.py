@@ -749,7 +749,7 @@ class CNN(torch.nn.Module):
                 epoch_loss += train_loss.item()
 
         epoch_loss /= len(data_loader)
-
+        epoch_accuracy /= len(data_loader)
         if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
