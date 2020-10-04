@@ -19,7 +19,7 @@ from typing import List, Tuple
 import torch
 import torchvision
 
-from snnl import composite_loss, SNNL, SNNLoss
+from snnl import SNNL, SNNLoss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -726,7 +726,7 @@ class CNN(torch.nn.Module):
             batch_labels = batch_labels.to(self.device)
             if self.use_snnl:
                 outputs = self.forward(batch_features)
-                train_loss, snn_loss, xent_loss = composite_loss(
+                train_loss, snn_loss, xent_loss = self.snnl_criterion(
                     model=self,
                     outputs=outputs,
                     features=batch_features,
