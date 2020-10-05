@@ -39,7 +39,12 @@ class SNNLoss(torch.nn.Module):
     https://arxiv.org/abs/1902.01889/
     """
 
-    _supported_modes = {"classifier": False, "autoencoding": True, "latent_code": True}
+    _supported_modes = {
+        "classifier": False,
+        "resnet": False,
+        "autoencoding": True,
+        "latent_code": True,
+    }
 
     def __init__(
         self,
