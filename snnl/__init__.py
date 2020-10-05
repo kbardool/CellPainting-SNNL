@@ -190,7 +190,6 @@ class SNNLoss(torch.nn.Module):
             elif self.mode == "resnet":
                 if key > 6:
                     layers_snnl.append(snnl)
-                    break
             else:
                 layers_snnl.append(snnl)
         snn_loss = torch.stack(layers_snnl).sum()
