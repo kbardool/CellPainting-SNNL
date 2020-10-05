@@ -136,6 +136,18 @@ class SNNLoss(torch.nn.Module):
                     activations[index] = layer(features)
                 else:
                     activations[index] = layer(activations[index - 1])
+        elif self.mode == "resnet":
+            activations = dict()
+            for index, (name, layer) in enumerate(list(model.resnet.named_children())):
+                if index == 0:
+                    activations[index] = layer(features)
+                elif index == 9:
+                    value = activations[index - 1].view(
+                        activations[index - 1].shape[0], -1
+                    )
+                    activations[index] = layer(value)
+                else:
+                    activations[index] = layer(activations[index - 1])
         else:
             activations = dict()
             for index, layer in enumerate(model.layers):
