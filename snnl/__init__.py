@@ -39,7 +39,12 @@ class SNNLoss(torch.nn.Module):
     https://arxiv.org/abs/1902.01889/
     """
 
-    _supported_modes = {"classifier": False, "autoencoding": True, "latent_code": True}
+    _supported_modes = {
+        "classifier": False,
+        "resnet": False,
+        "autoencoding": True,
+        "latent_code": True,
+    }
 
     def __init__(
         self,
@@ -131,6 +136,18 @@ class SNNLoss(torch.nn.Module):
                     activations[index] = layer(features)
                 else:
                     activations[index] = layer(activations[index - 1])
+        elif self.mode == "resnet":
+            activations = dict()
+            for index, (name, layer) in enumerate(list(model.resnet.named_children())):
+                if index == 0:
+                    activations[index] = layer(features)
+                elif index == 9:
+                    value = activations[index - 1].view(
+                        activations[index - 1].shape[0], -1
+                    )
+                    activations[index] = layer(value)
+                else:
+                    activations[index] = layer(activations[index - 1])
         else:
             activations = dict()
             for index, layer in enumerate(model.layers):
@@ -170,6 +187,9 @@ class SNNLoss(torch.nn.Module):
                 if key == 7:
                     layers_snnl.append(snnl)
                     break
+            elif self.mode == "resnet":
+                if key > 6:
+                    layers_snnl.append(snnl)
             else:
                 layers_snnl.append(snnl)
         snn_loss = torch.stack(layers_snnl).sum()
