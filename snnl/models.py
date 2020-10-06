@@ -796,6 +796,16 @@ class ResNet(torch.nn.Module):
         self.train_loss = []
         self.train_accuracy = []
         self.device = device
+        self.use_snnl = use_snnl
+        self.factor = factor
+        self.mode = mode
+        self.stability_epsilon = stability_epsilon
+        if self.use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode=self.mode,
+                factor=self.factor,
+                stability_epsilon=self.stability_epsilon,
+            )
 
     def forward(self, features):
         pass
