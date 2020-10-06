@@ -796,7 +796,6 @@ class ResNet(torch.nn.Module):
         self.train_loss = []
         self.train_accuracy = []
         self.device = device
-        self.to(self.device)
 
     def forward(self, features):
         pass
@@ -972,6 +971,7 @@ class ResNet18(ResNet):
             in_features=self.resnet.fc.in_features, out_features=num_classes
         )
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        self.resnet.to(self.device)
 
     def forward(self, features):
         return self.resnet.forward(features)
@@ -1002,6 +1002,7 @@ class ResNet34(ResNet):
             in_features=self.resnet.fc.in_features, out_features=num_classes
         )
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        self.resnet.to(self.device)
 
     def forward(self, features):
         return self.resnet.forward(features)
