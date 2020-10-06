@@ -778,6 +778,10 @@ class ResNet(torch.nn.Module):
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        mode: str = "resnet",
+        stability_epsilon: float = 1e-5,
     ):
         """
         Constructs a residual neural network classifier.
