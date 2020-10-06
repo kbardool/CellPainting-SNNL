@@ -19,7 +19,7 @@ from typing import List, Tuple
 import torch
 import torchvision
 
-from snnl import SNNL, SNNLoss
+from snnl import SNNLoss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -775,40 +775,42 @@ class ResNet(torch.nn.Module):
 
     def __init__(
         self,
-        num_classes: int,
-        learning_rate: float,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        mode: str = "resnet",
+        stability_epsilon: float = 1e-5,
     ):
         """
         Constructs a residual neural network classifier.
 
         Parameters
         ----------
-        num_classes: int
-            The number of classes in the dataset.
-        learning_rate: float
-            The learning rate to use for optimization.
         device: torch.device
             The device to use for model computations.
         """
         super().__init__()
         self.criterion = torch.nn.CrossEntropyLoss()
         self.train_loss = []
+        self.train_accuracy = []
+        self.device = device
+        self.use_snnl = use_snnl
+        self.factor = factor
+        self.mode = mode
+        self.stability_epsilon = stability_epsilon
+        if self.use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode=self.mode,
+                factor=self.factor,
+                stability_epsilon=self.stability_epsilon,
+            )
 
     def forward(self, features):
         pass
 
-    def fit(
-        self,
-        data_loader,
-        epochs,
-        use_snnl=False,
-        factor=None,
-        temperature=None,
-        show_every=2,
-    ):
+    def fit(self, data_loader, epochs, show_every=2):
         """
         Finetunes the ResNet18 model.
 
@@ -818,43 +820,40 @@ class ResNet(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        self.to(self.device)
-        if use_snnl:
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
+        if self.use_snnl:
+            assert (
+                self.factor is not None
+            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(
-                self, data_loader, epoch, use_snnl, factor, temperature
-            )
+            if self.use_snnl:
+                *epoch_loss, epoch_accuracy = self.epoch_train(data_loader, epoch)
 
-            if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
                 self.train_xent_loss.append(epoch_loss[2])
+                self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
+                    print(f"epoch {epoch + 1}/{epochs}")
                     print(
-                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                        f"mean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
                     print(
                         f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
                     )
             else:
+                epoch_loss, epoch_accuracy = self.epoch_train(data_loader)
                 self.train_loss.append(epoch_loss)
+                self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
+                    print(f"epoch {epoch + 1}/{epochs}")
                     print(
-                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
+                        f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
 
     def predict(self, features, return_likelihoods=False):
@@ -879,10 +878,7 @@ class ResNet(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    @staticmethod
-    def epoch_train(
-        model, data_loader, epoch=None, use_snnl=False, factor=None, temperature=None
-    ):
+    def epoch_train(self, data_loader, epoch=None):
         """
         Trains a model for one epoch.
 
@@ -892,13 +888,6 @@ class ResNet(torch.nn.Module):
             The model to train.
         data_loader : torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
 
         Returns
         -------
@@ -909,122 +898,67 @@ class ResNet(torch.nn.Module):
         epoch_xent_loss : float
             The cross entropy loss for an epoch.
         """
-        if use_snnl:
+        if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
             epoch_xent_loss = 0
             epoch_snn_loss = 0
         epoch_loss = 0
+        epoch_accuracy = 0
         for batch_features, batch_labels in data_loader:
-            batch_features = batch_features.to(model.device)
-            batch_labels = batch_labels.to(model.device)
-            if use_snnl:
-                outputs = model(batch_features)
-                train_loss, snn_loss, xent_loss = ResNet.composite_loss(
-                    model=model,
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
+            if self.use_snnl:
+                outputs = self.forward(batch_features)
+                train_loss, snn_loss, xent_loss = self.snnl_criterion(
+                    model=self,
                     outputs=outputs,
-                    batch_features=batch_features,
-                    batch_labels=batch_labels,
+                    features=batch_features,
+                    labels=batch_labels,
                     epoch=epoch,
-                    factor=factor,
                 )
-                del outputs
                 epoch_loss += train_loss.item()
                 epoch_snn_loss = snn_loss.item()
                 epoch_xent_loss = xent_loss.item()
-            else:
-                model.optimizer.zero_grad()
-                outputs = model(batch_features)
-                train_loss = model.criterion(outputs, batch_labels)
                 train_loss.backward()
-                model.optimizer.step()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
+            else:
+                self.optimizer.zero_grad()
+                outputs = self(batch_features)
+                train_loss = self.criterion(outputs, batch_labels)
+                train_loss.backward()
+                self.optimizer.step()
                 epoch_loss += train_loss.item()
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
         epoch_loss /= len(data_loader)
-        if use_snnl:
+        epoch_accuracy /= len(data_loader)
+        if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
-            return epoch_loss, epoch_snn_loss, epoch_xent_loss
+            return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
         else:
-            return epoch_loss
-
-    @staticmethod
-    def composite_loss(
-        model: torch.nn.Module,
-        outputs: torch.Tensor,
-        batch_features: torch.Tensor,
-        batch_labels: torch.Tensor,
-        epoch: int,
-        temperature: int = None,
-        factor: float = 100.0,
-    ) -> Tuple[float, float, float]:
-        """
-        Returns the composite loss with soft nearest neighbor loss.
-        If the objective is unsupervised learning, the primary loss
-        is reconstruction loss.
-
-        Parameters
-        ----------
-        model : torch.nn.Module
-            The model to train.
-        outputs : torch.Tensor
-            The model outputs.
-        batch_features : torch.Tensor
-            The input features.
-        batch_labels : torch.Tensor
-            The input labels.
-        epoch : int
-            The training epoch.
-        temperature : int
-            Use fixed temperature if not None.
-        factor : float
-            The SNNL factor.
-
-        Returns
-        -------
-        train_loss : torch.Tensor
-            The total reconstruction and soft nearest neighbor loss.
-        snn_loss : torch.Tensor
-            The soft nearest neighbor loss.
-        primary_loss : torch.Tensor
-            The loss on primary objective of the model.
-        """
-        model.optimizer.zero_grad()
-        primary_loss = model.criterion(outputs, batch_labels)
-        activations = {}
-        for index, (_, layer) in enumerate(list(model.resnet.named_children())):
-            if index == 0:
-                activations[index] = layer(batch_features)
-            elif index == 9:
-                value = activations[index - 1].view(activations[index - 1].shape[0], -1)
-                activations[index] = layer(value)
-            else:
-                activations[index] = layer(activations[index - 1])
-        layers_snnl = []
-        if temperature is None:
-            temperature = 1.0 / ((1.0 + epoch) ** 0.55)
-        for key, value in activations.items():
-            if key > 6:
-                if len(value.shape) > 2:
-                    value = value.view(value.shape[0], -1)
-                layer_snnl = SNNL(
-                    features=value, labels=batch_labels, temperature=temperature
-                )
-                layers_snnl.append(layer_snnl)
-        del activations
-        layers_snnl = torch.FloatTensor(layers_snnl)
-        layers_snnl = layers_snnl.to(model.device)
-        snn_loss = sum(layers_snnl)
-        train_loss = primary_loss + (factor * snn_loss)
-        train_loss.backward(snn_loss)
-        model.optimizer.step()
-        return train_loss, snn_loss, primary_loss
+            return epoch_loss, epoch_accuracy
 
 
 class ResNet18(ResNet):
     def __init__(
         self,
         num_classes: int,
-        learning_rate: float,
-        device: torch.device = torch.device("cpu"),
+        learning_rate: float = 1e-3,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        mode: str = "resnet",
+        stability_epsilon: float = 1e-5,
     ):
         """
         Loads a pretrained ResNet18 classifier.
@@ -1039,14 +973,18 @@ class ResNet18(ResNet):
             The device to use for computations.
         """
         super().__init__(
-            num_classes=num_classes, learning_rate=learning_rate, device=device
+            device=device,
+            use_snnl=use_snnl,
+            factor=factor,
+            mode=mode,
+            stability_epsilon=stability_epsilon,
         )
-        self.device = device
         self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
         )
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        self.resnet.to(self.device)
 
     def forward(self, features):
         return self.resnet.forward(features)
@@ -1056,8 +994,14 @@ class ResNet34(ResNet):
     def __init__(
         self,
         num_classes: int,
-        learning_rate: float,
-        device: torch.device = torch.device("cpu"),
+        learning_rate: float = 1e-3,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        mode: str = "resnet",
+        stability_epsilon: float = 1e-5,
     ):
         """
         Loads a pretrained ResNet34 classifier.
@@ -1072,14 +1016,18 @@ class ResNet34(ResNet):
             The device to use for computations.
         """
         super().__init__(
-            num_classes=num_classes, learning_rate=learning_rate, device=device
+            device=device,
+            use_snnl=use_snnl,
+            factor=factor,
+            mode=mode,
+            stability_epsilon=stability_epsilon,
         )
-        self.device = device
         self.resnet = torchvision.models.resnet.resnet34(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
         )
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        self.resnet.to(self.device)
 
     def forward(self, features):
         return self.resnet.forward(features)
