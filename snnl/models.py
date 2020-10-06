@@ -981,7 +981,13 @@ class ResNet18(ResNet):
         device:
             The device to use for computations.
         """
-        super().__init__(device=device)
+        super().__init__(
+            device=device,
+            use_snnl=use_snnl,
+            factor=factor,
+            mode=mode,
+            stability_epsilon=stability_epsilon,
+        )
         self.resnet = torchvision.models.resnet.resnet18(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
@@ -1018,7 +1024,13 @@ class ResNet34(ResNet):
         device:
             The device to use for computations.
         """
-        super().__init__(device=device)
+        super().__init__(
+            device=device,
+            use_snnl=use_snnl,
+            factor=factor,
+            mode=mode,
+            stability_epsilon=stability_epsilon,
+        )
         self.resnet = torchvision.models.resnet.resnet34(pretrained=True)
         self.resnet.fc = torch.nn.Linear(
             in_features=self.resnet.fc.in_features, out_features=num_classes
