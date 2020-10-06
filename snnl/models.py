@@ -19,7 +19,7 @@ from typing import List, Tuple
 import torch
 import torchvision
 
-from snnl import SNNL, SNNLoss
+from snnl import SNNLoss
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -941,78 +941,6 @@ class ResNet(torch.nn.Module):
             return epoch_loss, epoch_snn_loss, epoch_xent_loss
         else:
             return epoch_loss
-
-    @staticmethod
-    def composite_loss(
-        model: torch.nn.Module,
-        outputs: torch.Tensor,
-        batch_features: torch.Tensor,
-        batch_labels: torch.Tensor,
-        epoch: int,
-        temperature: int = None,
-        factor: float = 100.0,
-    ) -> Tuple[float, float, float]:
-        """
-        Returns the composite loss with soft nearest neighbor loss.
-        If the objective is unsupervised learning, the primary loss
-        is reconstruction loss.
-
-        Parameters
-        ----------
-        model : torch.nn.Module
-            The model to train.
-        outputs : torch.Tensor
-            The model outputs.
-        batch_features : torch.Tensor
-            The input features.
-        batch_labels : torch.Tensor
-            The input labels.
-        epoch : int
-            The training epoch.
-        temperature : int
-            Use fixed temperature if not None.
-        factor : float
-            The SNNL factor.
-
-        Returns
-        -------
-        train_loss : torch.Tensor
-            The total reconstruction and soft nearest neighbor loss.
-        snn_loss : torch.Tensor
-            The soft nearest neighbor loss.
-        primary_loss : torch.Tensor
-            The loss on primary objective of the model.
-        """
-        model.optimizer.zero_grad()
-        primary_loss = model.criterion(outputs, batch_labels)
-        activations = {}
-        for index, (_, layer) in enumerate(list(model.resnet.named_children())):
-            if index == 0:
-                activations[index] = layer(batch_features)
-            elif index == 9:
-                value = activations[index - 1].view(activations[index - 1].shape[0], -1)
-                activations[index] = layer(value)
-            else:
-                activations[index] = layer(activations[index - 1])
-        layers_snnl = []
-        if temperature is None:
-            temperature = 1.0 / ((1.0 + epoch) ** 0.55)
-        for key, value in activations.items():
-            if key > 6:
-                if len(value.shape) > 2:
-                    value = value.view(value.shape[0], -1)
-                layer_snnl = SNNL(
-                    features=value, labels=batch_labels, temperature=temperature
-                )
-                layers_snnl.append(layer_snnl)
-        del activations
-        layers_snnl = torch.FloatTensor(layers_snnl)
-        layers_snnl = layers_snnl.to(model.device)
-        snn_loss = sum(layers_snnl)
-        train_loss = primary_loss + (factor * snn_loss)
-        train_loss.backward(snn_loss)
-        model.optimizer.step()
-        return train_loss, snn_loss, primary_loss
 
 
 class ResNet18(ResNet):
