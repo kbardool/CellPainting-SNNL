@@ -920,6 +920,7 @@ class ResNet(torch.nn.Module):
             epoch_xent_loss = 0
             epoch_snn_loss = 0
         epoch_loss = 0
+        epoch_accuracy = 0
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
@@ -935,6 +936,10 @@ class ResNet(torch.nn.Module):
                 epoch_loss += train_loss.item()
                 epoch_snn_loss = snn_loss.item()
                 epoch_xent_loss = xent_loss.item()
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
             else:
                 self.optimizer.zero_grad()
                 outputs = self(batch_features)
@@ -942,13 +947,18 @@ class ResNet(torch.nn.Module):
                 train_loss.backward()
                 self.optimizer.step()
                 epoch_loss += train_loss.item()
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
         epoch_loss /= len(data_loader)
+        epoch_accuracy /= len(data_loader)
         if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_xent_loss /= len(data_loader)
-            return epoch_loss, epoch_snn_loss, epoch_xent_loss
+            return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
         else:
-            return epoch_loss
+            return epoch_loss, epoch_accuracy
 
 
 class ResNet18(ResNet):
