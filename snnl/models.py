@@ -810,15 +810,7 @@ class ResNet(torch.nn.Module):
     def forward(self, features):
         pass
 
-    def fit(
-        self,
-        data_loader,
-        epochs,
-        use_snnl=False,
-        factor=None,
-        temperature=None,
-        show_every=2,
-    ):
+    def fit(self, data_loader, epochs, show_every=2):
         """
         Finetunes the ResNet18 model.
 
@@ -828,30 +820,24 @@ class ResNet(torch.nn.Module):
             The data loader object that consists of the data pipeline.
         epochs : int
             The number of epochs to train the model.
-        use_snnl : bool
-            Whether to use soft nearest neighbor loss or not. Default: [False].
-        factor : float
-            The soft nearest neighbor loss scaling factor.
-        temperature : int
-            The temperature to use for soft nearest neighbor loss.
-            If None, annealing temperature will be used.
         show_every : int
             The interval in terms of epoch on displaying training progress.
         """
-        if use_snnl:
-            assert factor is not None, "[factor] must not be None if use_snnl == True"
+        if self.use_snnl:
+            assert (
+                self.factor is not None
+            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_xent_loss = []
 
         for epoch in range(epochs):
-            epoch_loss = self.epoch_train(
-                self, data_loader, epoch, use_snnl, factor, temperature
-            )
+            if self.use_snnl:
+                *epoch_loss, epoch_accuracy = self.epoch_train(data_loader, epoch)
 
-            if type(epoch_loss) is tuple:
                 self.train_loss.append(epoch_loss[0])
                 self.train_snn_loss.append(epoch_loss[1])
                 self.train_xent_loss.append(epoch_loss[2])
+                self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
                     print(
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
