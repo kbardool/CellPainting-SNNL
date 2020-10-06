@@ -851,7 +851,7 @@ class ResNet(torch.nn.Module):
                 self.train_loss.append(epoch_loss)
                 self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
-                    print("epoch {epoch + 1}/{epochs}")
+                    print(f"epoch {epoch + 1}/{epochs}")
                     print(
                         f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
