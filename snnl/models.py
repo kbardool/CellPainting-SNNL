@@ -936,6 +936,9 @@ class ResNet(torch.nn.Module):
                 epoch_loss += train_loss.item()
                 epoch_snn_loss = snn_loss.item()
                 epoch_xent_loss = xent_loss.item()
+                train_loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
                 train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
                     batch_labels
                 )
