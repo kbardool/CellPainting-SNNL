@@ -139,18 +139,18 @@ class Autoencoder(torch.nn.Module):
                 stability_epsilon=self.stability_epsilon,
             )
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Defines the forward pass by the model.
 
         Parameter
         ---------
-        features : torch.Tensor
+        features: torch.Tensor
             The input features.
 
         Returns
         -------
-        reconstruction : torch.Tensor
+        reconstruction: torch.Tensor
             The model output.
         """
         activations = {}
@@ -162,17 +162,19 @@ class Autoencoder(torch.nn.Module):
         reconstruction = activations[len(activations) - 1]
         return reconstruction
 
-    def fit(self, data_loader, epochs, show_every=2):
+    def fit(
+        self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
+    ) -> None:
         """
         Trains the autoencoder model.
 
         Parameters
         ----------
-        data_loader : torch.utils.dataloader.DataLoader
+        data_loader: torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
-        epochs : int
+        epochs: int
             The number of epochs to train the model.
-        show_every : int
+        show_every: int
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
@@ -199,17 +201,19 @@ class Autoencoder(torch.nn.Module):
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
 
-    def epoch_train(self, data_loader, epoch=None):
+    def epoch_train(
+        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+    ) -> Tuple:
         """
         Trains a model for one epoch.
 
         Parameters
         ----------
-        model : torch.nn.Module
+        model: torch.nn.Module
             The model to train.
-        data_loader : torch.utils.dataloader.DataLoader
+        data_loader: torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
-        epoch : int
+        epoch: int
             The epoch number of the training.
 
         Returns
@@ -345,12 +349,12 @@ class DNN(torch.nn.Module):
 
         Parameter
         ---------
-        features : torch.Tensor
+        features: torch.Tensor
             The input features.
 
         Returns
         -------
-        logits : torch.Tensor
+        logits: torch.Tensor
             The model output.
         """
         activations = {}
@@ -366,17 +370,17 @@ class DNN(torch.nn.Module):
 
     def fit(
         self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
-    ):
+    ) -> None:
         """
         Trains the dnn model.
 
         Parameters
         ----------
-        data_loader : torch.utils.dataloader.DataLoader
+        data_loader: torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
-        epochs : int
+        epochs: int
             The number of epochs to train the model.
-        show_every : int
+        show_every: int
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
@@ -622,7 +626,7 @@ class CNN(torch.nn.Module):
 
     def fit(
         self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
-    ):
+    ) -> None:
         """
         Trains the cnn model.
 
@@ -807,10 +811,12 @@ class ResNet(torch.nn.Module):
                 stability_epsilon=self.stability_epsilon,
             )
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         pass
 
-    def fit(self, data_loader, epochs, show_every=2):
+    def fit(
+        self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
+    ) -> None:
         """
         Finetunes the ResNet18 model.
 
@@ -856,7 +862,9 @@ class ResNet(torch.nn.Module):
                         f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
 
-    def predict(self, features, return_likelihoods=False):
+    def predict(
+        self, features: torch.Tensor, return_likelihoods: bool = False
+    ) -> torch.Tensor:
         """
         Returns model classifications
 
@@ -878,7 +886,9 @@ class ResNet(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    def epoch_train(self, data_loader, epoch=None):
+    def epoch_train(
+        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+    ) -> Tuple:
         """
         Trains a model for one epoch.
 
@@ -986,7 +996,7 @@ class ResNet18(ResNet):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
         self.resnet.to(self.device)
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         return self.resnet.forward(features)
 
 
@@ -1029,5 +1039,5 @@ class ResNet34(ResNet):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
         self.resnet.to(self.device)
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         return self.resnet.forward(features)
