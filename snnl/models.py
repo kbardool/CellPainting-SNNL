@@ -218,11 +218,11 @@ class Autoencoder(torch.nn.Module):
 
         Returns
         -------
-        epoch_loss : float
+        epoch_loss: float
             The epoch loss.
-        epoch_snn_loss : float
+        epoch_snn_loss: float
             The soft nearest neighbor loss for an epoch.
-        epoch_recon_loss : float
+        epoch_recon_loss: float
             The reconstruction loss for an epoch.
         """
         if self.use_snnl:
@@ -372,7 +372,7 @@ class DNN(torch.nn.Module):
         self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
     ) -> None:
         """
-        Trains the dnn model.
+        Trains the DNN model.
 
         Parameters
         ----------
@@ -606,12 +606,12 @@ class CNN(torch.nn.Module):
 
         Parameter
         ---------
-        features : torch.Tensor
+        features: torch.Tensor
             The input features.
 
         Returns
         -------
-        logits : torch.Tensor
+        logits: torch.Tensor
             The model output.
         """
         activations = {}
@@ -632,11 +632,11 @@ class CNN(torch.nn.Module):
 
         Parameters
         ----------
-        data_loader : torch.utils.dataloader.DataLoader
+        data_loader: torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
-        epochs : int
+        epochs: int
             The number of epochs to train the model.
-        show_every : int
+        show_every: int
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
@@ -794,6 +794,17 @@ class ResNet(torch.nn.Module):
         ----------
         device: torch.device
             The device to use for model computations.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance factor between SNNL and the primary loss.
+            A positive factor implies SNNL minimization,
+            while a negative factor implies SNNL maximization.
+        mode: str
+            The mode in which the soft nearest neighbor loss
+            will be used.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
         """
         super().__init__()
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -894,19 +905,21 @@ class ResNet(torch.nn.Module):
 
         Parameters
         ----------
-        model : torch.nn.Module
+        model: torch.nn.Module
             The model to train.
-        data_loader : torch.utils.dataloader.DataLoader
+        data_loader: torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
 
         Returns
         -------
-        epoch_loss : float
+        epoch_loss: float
             The epoch loss.
-        epoch_snn_loss : float
+        epoch_snn_loss: float
             The soft nearest neighbor loss for an epoch.
-        epoch_xent_loss : float
+        epoch_xent_loss: float
             The cross entropy loss for an epoch.
+        epoch_accuracy: float
+            The epoch accuracy.
         """
         if self.use_snnl:
             assert epoch is not None, "[epoch] must not be None if use_snnl == True"
@@ -979,8 +992,19 @@ class ResNet18(ResNet):
             The number of classes in the dataset.
         learning_rate: float
             The learning rate to use for optimization.
-        device:
+        device: torch.device
             The device to use for computations.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance between SNNL and the primary loss.
+            A positive factor implies SNNL minimization,
+            while a negative factor implies SNNL maximization.
+        mode: str
+            The mode in which the soft nearest neighbor loss
+            will be used.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
         """
         super().__init__(
             device=device,
@@ -997,6 +1021,19 @@ class ResNet18(ResNet):
         self.resnet.to(self.device)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
+        """
+        Defines the forward pass by the model.
+
+        Parameter
+        ---------
+        features: torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        torch.Tensor
+            The model output.
+        """
         return self.resnet.forward(features)
 
 
@@ -1022,8 +1059,19 @@ class ResNet34(ResNet):
             The number of classes in the dataset.
         learning_rate: float
             The learning rate to use for optimization.
-        device:
+        device: torch.device
             The device to use for computations.
+        use_snnl: bool
+            Whether to use soft nearest neighbor loss or not.
+        factor: float
+            The balance between SNNL and the primary loss.
+            A positive factor implies SNNL minimization,
+            while a negative factor implies SNNL maximization.
+        mode: str
+            The mode in which the soft nearest neighbor loss
+            will be used.
+        stability_epsilon: float
+            A constant for helping SNNL computation stability.
         """
         super().__init__(
             device=device,
@@ -1040,4 +1088,17 @@ class ResNet34(ResNet):
         self.resnet.to(self.device)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
+        """
+        Defines the forward pass by the model.
+
+        Parameter
+        ---------
+        features: torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        torch.Tensor
+            The model output.
+        """
         return self.resnet.forward(features)
