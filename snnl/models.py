@@ -48,7 +48,7 @@ class Autoencoder(torch.nn.Module):
         factor: float = 100.0,
         temperature: int = None,
         mode: str = "autoencoding",
-        code_units: int = None,
+        code_units: int = 0,
         stability_epsilon: float = 1e-5,
     ):
         """
