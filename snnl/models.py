@@ -309,7 +309,6 @@ class DNN(torch.nn.Module):
             The device to use for model computations.
         """
         super().__init__()
-        self.device = device
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=in_features, out_features=out_features)
@@ -325,10 +324,11 @@ class DNN(torch.nn.Module):
             else:
                 pass
 
-        self.train_loss = []
-        self.train_accuracy = []
+        self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
+        self.train_loss = []
+        self.train_accuracy = []
         self.to(self.device)
         self.use_snnl = use_snnl
         self.factor = factor
