@@ -39,14 +39,6 @@ def parse_args():
         help="the random seed value to use, default: [1234]",
     )
     group.add_argument(
-        "-d",
-        "--device",
-        required=False,
-        default="cpu",
-        type=str,
-        help="the device to use, default: [cpu]",
-    )
-    group.add_argument(
         "-m",
         "--model",
         required=False,
