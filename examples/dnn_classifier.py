@@ -74,20 +74,16 @@ def main(args):
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
-    model = DNN(units=units, learning_rate=learning_rate)
-
     if args.model.lower() == "baseline":
-        model.fit(data_loader=train_loader, epochs=epochs)
+        model = DNN(units=units, learning_rate=learning_rate)
     elif args.model.lower() == "snnl":
-        model.fit(
-            data_loader=train_loader,
-            epochs=epochs,
-            use_snnl=True,
-            factor=snnl_factor,
-            temperature=temperature,
+        model = DNN(
+            units=units, learning_rate=learning_rate, use_snnl=True, factor=snnl_factor
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
+
+    model.fit(data_loader=train_loader, epochs=epochs)
 
     test_features = test_dataset.data.reshape(-1, 784) / 255.0
     model.eval()
