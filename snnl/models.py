@@ -40,9 +40,6 @@ class Autoencoder(torch.nn.Module):
         self,
         input_shape: int,
         code_dim: int,
-        device: torch.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        ),
         learning_rate: float = 1e-3,
         use_snnl: bool = False,
         factor: float = 100.0,
@@ -50,6 +47,9 @@ class Autoencoder(torch.nn.Module):
         mode: str = "autoencoding",
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ):
         """
         Constructs the autoencoder model with the following units,
@@ -61,8 +61,6 @@ class Autoencoder(torch.nn.Module):
             The dimensionality of the input features.
         code_dim: int
             The dimensionality of the latent code.
-        device: torch.device
-            The device to use for the model computations.
         learning_rate: float
             The learning rate to use for optimization.
         use_snnl: bool
@@ -80,6 +78,8 @@ class Autoencoder(torch.nn.Module):
             The number of units in which the SNNL will be applied.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
+        device: torch.device
+            The device to use for the model computations.
         """
         super().__init__()
         mode = mode.lower()
@@ -278,14 +278,14 @@ class DNN(torch.nn.Module):
     def __init__(
         self,
         units: List or Tuple = [(784, 500), (500, 500), (500, 10)],
-        device: torch.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        ),
         learning_rate: float = 1e-3,
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: int = None,
         stability_epsilon: float = 1e-5,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ):
         """
         Constructs a feed-forward neural network classifier.
@@ -294,8 +294,6 @@ class DNN(torch.nn.Module):
         ----------
         units: list or tuple
             An iterable that consists of the number of units in each hidden layer.
-        device: torch.device
-            The device to use for model computations.
         learning_rate: float
             The learning rate to use for optimization.
         use_snnl: bool
@@ -308,6 +306,8 @@ class DNN(torch.nn.Module):
             The SNNL temperature.
         stability_epsilon: float
             A constant for helping SNNL computation stability
+        device: torch.device
+            The device to use for model computations.
         """
         super().__init__()
         self.device = device
@@ -524,14 +524,14 @@ class CNN(torch.nn.Module):
         self,
         input_dim: int,
         num_classes: int,
-        device: torch.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        ),
         learning_rate: float = 1e-4,
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: int = None,
         stability_epsilon: float = 1e-5,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ):
         """
         Constructs a convolutional neural network classifier.
@@ -779,21 +779,19 @@ class ResNet(torch.nn.Module):
 
     def __init__(
         self,
-        device: torch.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        ),
         use_snnl: bool = False,
         factor: float = 100.0,
         mode: str = "resnet",
         stability_epsilon: float = 1e-5,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ):
         """
         Constructs a residual neural network classifier.
 
         Parameters
         ----------
-        device: torch.device
-            The device to use for model computations.
         use_snnl: bool
             Whether to use soft nearest neighbor loss or not.
         factor: float
@@ -805,6 +803,8 @@ class ResNet(torch.nn.Module):
             will be used.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
+        device: torch.device
+            The device to use for model computations.
         """
         super().__init__()
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -975,13 +975,13 @@ class ResNet18(ResNet):
         self,
         num_classes: int,
         learning_rate: float = 1e-3,
-        device: torch.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        ),
         use_snnl: bool = False,
         factor: float = 100.0,
         mode: str = "resnet",
         stability_epsilon: float = 1e-5,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ):
         """
         Loads a pretrained ResNet18 classifier.
@@ -992,8 +992,6 @@ class ResNet18(ResNet):
             The number of classes in the dataset.
         learning_rate: float
             The learning rate to use for optimization.
-        device: torch.device
-            The device to use for computations.
         use_snnl: bool
             Whether to use soft nearest neighbor loss or not.
         factor: float
@@ -1005,6 +1003,8 @@ class ResNet18(ResNet):
             will be used.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
+        device: torch.device
+            The device to use for computations.
         """
         super().__init__(
             device=device,
@@ -1042,13 +1042,13 @@ class ResNet34(ResNet):
         self,
         num_classes: int,
         learning_rate: float = 1e-3,
-        device: torch.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        ),
         use_snnl: bool = False,
         factor: float = 100.0,
         mode: str = "resnet",
         stability_epsilon: float = 1e-5,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ):
         """
         Loads a pretrained ResNet34 classifier.
@@ -1059,8 +1059,6 @@ class ResNet34(ResNet):
             The number of classes in the dataset.
         learning_rate: float
             The learning rate to use for optimization.
-        device: torch.device
-            The device to use for computations.
         use_snnl: bool
             Whether to use soft nearest neighbor loss or not.
         factor: float
@@ -1072,6 +1070,8 @@ class ResNet34(ResNet):
             will be used.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
+        device: torch.device
+            The device to use for computations.
         """
         super().__init__(
             device=device,
