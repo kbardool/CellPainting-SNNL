@@ -89,7 +89,6 @@ class Autoencoder(torch.nn.Module):
             raise ValueError(
                 "[code_units] must be greater than 0 when mode == 'latent_code'."
             )
-        assert factor is not None, "[factor] must not be None if use_snnl == True."
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=input_shape, out_features=500),
