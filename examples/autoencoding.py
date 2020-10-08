@@ -37,14 +37,6 @@ def parse_args():
         help="the random seed value to use, default: [1234]",
     )
     group.add_argument(
-        "-d",
-        "--device",
-        required=False,
-        default="cpu",
-        type=str,
-        help="the device to use, default: [cpu]",
-    )
-    group.add_argument(
         "-m",
         "--model",
         required=False,
@@ -78,11 +70,6 @@ def main(args):
 
     set_global_seed(args.seed)
 
-    if args.device == "gpu":
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device("cpu")
-
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_features = train_dataset.data.numpy().astype("float32") / 255.0
     train_features = train_features[:10000]
@@ -96,17 +83,13 @@ def main(args):
 
     if args.model.lower() == "baseline":
         model = Autoencoder(
-            input_shape=input_shape,
-            code_dim=code_dim,
-            learning_rate=learning_rate,
-            device=device,
+            input_shape=input_shape, code_dim=code_dim, learning_rate=learning_rate
         )
     elif args.model.lower() == "snnl":
         model = Autoencoder(
             input_shape=input_shape,
             code_dim=code_dim,
             learning_rate=learning_rate,
-            device=device,
             use_snnl=True,
             factor=snnl_factor,
             temperature=temperature,
