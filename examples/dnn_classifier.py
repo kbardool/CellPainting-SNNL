@@ -16,8 +16,6 @@
 """Sample module for using DNN classifier with SNNL"""
 import argparse
 
-import torch
-
 from snnl.models import DNN
 from snnl.utils import get_hyperparameters, set_global_seed
 from snnl.utils.data import create_dataloader, load_dataset
@@ -37,14 +35,6 @@ def parse_args():
         default=1234,
         type=int,
         help="the random seed value to use, default: [1234]",
-    )
-    group.add_argument(
-        "-d",
-        "--device",
-        required=False,
-        default="cpu",
-        type=str,
-        help="the device to use, default: [cpu]",
     )
     group.add_argument(
         "-m",
@@ -79,28 +69,19 @@ def main(args):
 
     set_global_seed(args.seed)
 
-    if args.device == "gpu":
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device("cpu")
-
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
-    model = DNN(units=units, learning_rate=learning_rate, device=device)
-
     if args.model.lower() == "baseline":
-        model.fit(data_loader=train_loader, epochs=epochs)
+        model = DNN(units=units, learning_rate=learning_rate)
     elif args.model.lower() == "snnl":
-        model.fit(
-            data_loader=train_loader,
-            epochs=epochs,
-            use_snnl=True,
-            factor=snnl_factor,
-            temperature=temperature,
+        model = DNN(
+            units=units, learning_rate=learning_rate, use_snnl=True, factor=snnl_factor
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
+
+    model.fit(data_loader=train_loader, epochs=epochs)
 
     test_features = test_dataset.data.reshape(-1, 784) / 255.0
     model.eval()
