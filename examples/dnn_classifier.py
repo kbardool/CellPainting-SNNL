@@ -16,8 +16,6 @@
 """Sample module for using DNN classifier with SNNL"""
 import argparse
 
-import torch
-
 from snnl.models import DNN
 from snnl.utils import get_hyperparameters, set_global_seed
 from snnl.utils.data import create_dataloader, load_dataset
