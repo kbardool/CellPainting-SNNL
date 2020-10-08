@@ -379,9 +379,6 @@ class DNN(torch.nn.Module):
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
-            assert (
-                self.factor is not None
-            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_xent_loss = []
 
@@ -635,9 +632,6 @@ class CNN(torch.nn.Module):
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
-            assert (
-                self.factor is not None
-            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_xent_loss = []
 
@@ -836,9 +830,6 @@ class ResNet(torch.nn.Module):
             The interval in terms of epoch on displaying training progress.
         """
         if self.use_snnl:
-            assert (
-                self.factor is not None
-            ), "[factor] must not be None if use_snnl == True"
             self.train_snn_loss = []
             self.train_xent_loss = []
 
