@@ -79,12 +79,6 @@ def main(args):
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
-    model = CNN(
-        input_dim=input_dim,
-        num_classes=num_classes,
-        learning_rate=learning_rate,
-        device=device,
-    )
     if args.model.lower() == "baseline":
         model = CNN(
             input_dim=input_dim, num_classes=num_classes, learning_rate=learning_rate
