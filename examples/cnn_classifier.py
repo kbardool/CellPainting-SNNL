@@ -86,11 +86,14 @@ def main(args):
         device=device,
     )
     if args.model.lower() == "baseline":
-        model.fit(data_loader=train_loader, epochs=epochs)
+        model = CNN(
+            input_dim=input_dim, num_classes=num_classes, learning_rate=learning_rate
+        )
     elif args.model.lower() == "snnl":
-        model.fit(
-            data_loader=train_loader,
-            epochs=epochs,
+        model = CNN(
+            input_dim=input_dim,
+            num_classes=num_classes,
+            learning_rate=learning_rate,
             use_snnl=True,
             factor=snnl_factor,
             temperature=temperature,
