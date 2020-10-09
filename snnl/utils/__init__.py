@@ -157,7 +157,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
         return (dataset, batch_size, epochs, learning_rate, snnl_factor, temperature)
 
 
-def export_results(model, filename):
+def export_results(model: torch.nn.Module, filename: str):
     """
     Exports the training results stored in model class to a JSON file.
 
