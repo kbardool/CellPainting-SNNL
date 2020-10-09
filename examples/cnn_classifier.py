@@ -94,6 +94,7 @@ def main(args):
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
+    model.fit(train_loader, epochs)
     test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
     model.eval()
     model = model.cpu()
