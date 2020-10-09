@@ -658,7 +658,7 @@ class CNN(torch.nn.Module):
                 if (epoch + 1) % show_every == 0:
                     print(f"epoch {epoch + 1}/{epochs}")
                     print(
-                        "\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
+                        f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
                     )
 
     def predict(
