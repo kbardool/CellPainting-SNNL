@@ -744,9 +744,9 @@ class CNN(torch.nn.Module):
                 train_loss.backward()
                 self.optimizer.step()
                 epoch_loss += train_loss.item()
-                train_accuracy += (
-                    outputs.argmax(1) == batch_labels
-                ).sum().item() / len(batch_labels)
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
                 epoch_accuracy += train_accuracy
         epoch_loss /= len(data_loader)
         epoch_accuracy /= len(data_loader)
