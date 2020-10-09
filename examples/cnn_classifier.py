@@ -38,14 +38,6 @@ def parse_args():
         help="the random seed value to use, default: [1234]",
     )
     group.add_argument(
-        "-d",
-        "--device",
-        required=False,
-        default="cpu",
-        type=str,
-        help="the device to use, default: [cpu]",
-    )
-    group.add_argument(
         "-m",
         "--model",
         required=False,
@@ -79,32 +71,25 @@ def main(args):
 
     set_global_seed(args.seed)
 
-    if args.device == "gpu":
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device("cpu")
-
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
-    model = CNN(
-        input_dim=input_dim,
-        num_classes=num_classes,
-        learning_rate=learning_rate,
-        device=device,
-    )
     if args.model.lower() == "baseline":
-        model.fit(data_loader=train_loader, epochs=epochs)
+        model = CNN(
+            input_dim=input_dim, num_classes=num_classes, learning_rate=learning_rate
+        )
     elif args.model.lower() == "snnl":
-        model.fit(
-            data_loader=train_loader,
-            epochs=epochs,
+        model = CNN(
+            input_dim=input_dim,
+            num_classes=num_classes,
+            learning_rate=learning_rate,
             use_snnl=True,
             factor=snnl_factor,
             temperature=temperature,
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
+    model.fit(train_loader, epochs)
     test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
     model.eval()
     model = model.cpu()
