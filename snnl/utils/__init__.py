@@ -32,7 +32,7 @@ def set_global_seed(seed: int) -> None:
 
     Parameter
     ---------
-    seed : int
+    seed: int
         The seed value to use.
     """
     random.seed(seed)
@@ -49,33 +49,33 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 
     Parameters
     ----------
-    hyperparameters_path : str
+    hyperparameters_path: str
         The path to the hyperparameters JSON file.
 
     Returns
     -------
     Tuple
-        dataset : str
+        dataset: str
             The name of the dataset to use.
-        batch_size : int
+        batch_size: int
             The mini-batch size.
-        epochs : int
+        epochs: int
             The number of training epochs.
-        learning_rate : float
+        learning_rate: float
             The learning rate to use for optimization.
-        units : list
+        units: list
             The list of units per hidden layer if using [dnn].
-        input_dim : int
+        input_dim: int
             The dimensionality of the input feature channel.
-        num_classes : int
+        num_classes: int
             The number of classes in a dataset.
-        input_shape : int
+        input_shape: int
             The dimensionality of flattened input features.
-        code_dim : int
+        code_dim: int
             The dimensionality of the latent code.
-        snnl_factor : int or float
+        snnl_factor: int or float
             The SNNL factor.
-        temperature : int
+        temperature: int
             The soft nearest neighbor loss temperature factor.
             If temperature == 0, use annealing temperature.
     """
@@ -163,9 +163,9 @@ def export_results(model: torch.nn.Module, filename: str):
 
     Parameters
     ----------
-    model : torch.nn.Module
+    model: torch.nn.Module
         The trained model object.
-    filename : str
+    filename: str
         The filename of the JSON file to write.
     """
     model_attributes = model.__dict__
@@ -183,9 +183,9 @@ def save_model(model: torch.nn.Module, filename: str):
 
     Parameters
     ----------
-    model : torch.nn.Module
+    model: torch.nn.Module
         The (presumably) trained model object.
-    filename : str
+    filename: str
         The filename for the trained model to export.
     """
     path = os.path.join("examples", "export")
