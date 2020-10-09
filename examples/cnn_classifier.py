@@ -71,11 +71,6 @@ def main(args):
 
     set_global_seed(args.seed)
 
-    if args.device == "gpu":
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device("cpu")
-
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
