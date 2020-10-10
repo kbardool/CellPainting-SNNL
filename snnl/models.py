@@ -400,6 +400,7 @@ class DNN(torch.nn.Module):
             else:
                 epoch_loss, epoch_accuracy = self.epoch_train(data_loader)
                 self.train_loss.append(epoch_loss)
+                self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
                     print(f"epoch {epoch + 1}/{epochs}")
                     print(
