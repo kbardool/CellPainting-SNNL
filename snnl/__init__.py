@@ -126,15 +126,14 @@ class SNNLoss(torch.nn.Module):
         else:
             primary_loss = model.criterion(outputs, labels)
 
+        activations = dict()
         if self.mode == "classifier":
-            activations = dict()
             for index, layer in enumerate(model.layers[:-1]):
                 if index == 0:
                     activations[index] = layer(features)
                 else:
                     activations[index] = layer(activations[index - 1])
         elif self.mode == "resnet":
-            activations = dict()
             for index, (name, layer) in enumerate(list(model.resnet.named_children())):
                 if index == 0:
                     activations[index] = layer(features)
@@ -146,7 +145,6 @@ class SNNLoss(torch.nn.Module):
                 else:
                     activations[index] = layer(activations[index - 1])
         else:
-            activations = dict()
             for index, layer in enumerate(model.layers):
                 if index == 0:
                     activations[index] = layer(features)
