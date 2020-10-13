@@ -115,9 +115,6 @@ class SNNLoss(torch.nn.Module):
         epoch: int
             The current training epoch.
         """
-        code_units = self.code_units
-        factor = self.factor
-        stability_epsilon = self.stability_epsilon
         temperature = (
             (1.0 / ((1.0 + epoch) ** 0.55))
             if self.temperature is None
@@ -161,7 +158,7 @@ class SNNLoss(torch.nn.Module):
             if len(value.shape) > 2:
                 value = value.view(value.shape[0], -1)
             if key == 7 and self.mode == "latent_code":
-                value = value[:, :code_units]
+                value = value[:, : self.code_units]
             a = value.clone()
             b = value.clone()
             normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
@@ -173,7 +170,8 @@ class SNNLoss(torch.nn.Module):
                 -(distance_matrix / temperature)
             ) - torch.eye(value.shape[0]).to(model.device)
             pick_probability = pairwise_distance_matrix / (
-                stability_epsilon + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
+                self.stability_epsilon
+                + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
             )
             masking_matrix = torch.squeeze(
                 torch.eq(labels, labels.unsqueeze(1)).float()
@@ -181,7 +179,7 @@ class SNNLoss(torch.nn.Module):
             masked_pick_probability = pick_probability * masking_matrix
             summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
             snnl = torch.mean(
-                -torch.log(stability_epsilon + summed_masked_pick_probability)
+                -torch.log(self.stability_epsilon + summed_masked_pick_probability)
             )
             if self.mode == "latent_code":
                 if key == 7:
@@ -193,5 +191,5 @@ class SNNLoss(torch.nn.Module):
             else:
                 layers_snnl.append(snnl)
         snn_loss = torch.stack(layers_snnl).sum()
-        train_loss = torch.add(primary_loss, torch.mul(factor, snn_loss))
+        train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
         return train_loss, primary_loss, snn_loss
