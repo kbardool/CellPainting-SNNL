@@ -561,18 +561,18 @@ class CNN(torch.nn.Module):
                     stride=2,
                     padding=1,
                 ),
-                torch.nn.ReLU(),
+                torch.nn.ReLU(inplace=True),
                 torch.nn.Conv2d(
                     in_channels=64, out_channels=128, kernel_size=6, stride=2, padding=1
                 ),
-                torch.nn.ReLU(),
+                torch.nn.ReLU(inplace=True),
                 torch.nn.Flatten(),
                 torch.nn.Linear(in_features=(128 * 5 * 5), out_features=1024),
-                torch.nn.ReLU(),
+                torch.nn.ReLU(inplace=True),
                 torch.nn.Linear(in_features=1024, out_features=1024),
-                torch.nn.ReLU(),
+                torch.nn.ReLU(inplace=True),
                 torch.nn.Linear(in_features=1024, out_features=512),
-                torch.nn.ReLU(),
+                torch.nn.ReLU(inplace=True),
                 torch.nn.Linear(in_features=512, out_features=num_classes),
             ]
         )
