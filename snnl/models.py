@@ -246,7 +246,6 @@ class Autoencoder(torch.nn.Module):
                 self.optimizer.zero_grad()
             else:
                 self.optimizer.zero_grad()
-                self.optimizer.zero_grad()
                 outputs = self(batch_features)
                 train_loss = self.criterion(outputs, batch_features)
                 train_loss.backward()
