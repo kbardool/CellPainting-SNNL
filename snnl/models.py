@@ -230,6 +230,7 @@ class Autoencoder(torch.nn.Module):
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
             if self.use_snnl:
+                self.optimizer.zero_grad()
                 outputs = self(batch_features)
                 train_loss, recon_loss, snn_loss = self.snnl_criterion(
                     model=self,
@@ -243,7 +244,6 @@ class Autoencoder(torch.nn.Module):
                 epoch_recon_loss += recon_loss.item()
                 train_loss.backward()
                 self.optimizer.step()
-                self.optimizer.zero_grad()
             else:
                 self.optimizer.zero_grad()
                 outputs = self(batch_features)
@@ -465,6 +465,7 @@ class DNN(torch.nn.Module):
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
             if self.use_snnl:
+                self.optimizer.zero_grad()
                 outputs = self.forward(batch_features)
                 train_loss, snn_loss, xent_loss = self.snnl_criterion(
                     model=self,
@@ -478,7 +479,6 @@ class DNN(torch.nn.Module):
                 epoch_xent_loss += xent_loss.item()
                 train_loss.backward()
                 self.optimizer.step()
-                self.optimizer.zero_grad()
                 train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
                     batch_labels
                 )
@@ -719,6 +719,7 @@ class CNN(torch.nn.Module):
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
             if self.use_snnl:
+                self.optimizer.zero_grad()
                 outputs = self.forward(batch_features)
                 train_loss, snn_loss, xent_loss = self.snnl_criterion(
                     model=self,
@@ -732,7 +733,6 @@ class CNN(torch.nn.Module):
                 epoch_xent_loss += xent_loss.item()
                 train_loss.backward()
                 self.optimizer.step()
-                self.optimizer.zero_grad()
                 train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
                     batch_labels
                 )
@@ -918,6 +918,7 @@ class ResNet(torch.nn.Module):
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
             if self.use_snnl:
+                self.optimizer.zero_grad()
                 outputs = self.forward(batch_features)
                 train_loss, snn_loss, xent_loss = self.snnl_criterion(
                     model=self,
@@ -931,7 +932,6 @@ class ResNet(torch.nn.Module):
                 epoch_xent_loss = xent_loss.item()
                 train_loss.backward()
                 self.optimizer.step()
-                self.optimizer.zero_grad()
                 train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
                     batch_labels
                 )
