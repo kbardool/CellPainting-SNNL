@@ -61,8 +61,86 @@ class Model(torch.nn.Module):
     def fit(self, **kwargs):
         raise NotImplementedError
 
-    def epoch_train(self, **kwargs):
-        raise NotImplementedError
+    def epoch_train(
+        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+    ) -> Tuple:
+        """
+        Trains a model for one epoch.
+
+        Parameters
+        ----------
+        data_loader : torch.utils.dataloader.DataLoader
+            The data loader object that consists of the data pipeline.
+        epoch: int
+            The current epoch training index.
+
+        Returns
+        -------
+        epoch_loss: float
+            The epoch loss.
+        epoch_snn_loss: float
+            The soft nearest neighbor loss for an epoch.
+        epoch_xent_loss: float
+            The cross entropy loss for an epoch.
+        epoch_accuracy: float
+            The epoch accuracy.
+        """
+        if self.use_snnl:
+            assert epoch is not None, "[epoch] must not be None if use_snnl == True"
+            epoch_primary_loss = 0
+            epoch_snn_loss = 0
+        if self.name == "DNN" or self.name == "CNN":
+            epoch_accuracy = 0
+        epoch_loss = 0
+        for batch_features, batch_labels in data_loader:
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
+            if self.use_snnl:
+                self.optimizer.zero_grad()
+                outputs = self.forward(batch_features)
+                train_loss, snn_loss, primary_loss = self.snnl_criterion(
+                    model=self,
+                    outputs=outputs,
+                    features=batch_features,
+                    labels=batch_labels,
+                    epoch=epoch,
+                )
+                epoch_loss += train_loss.item()
+                epoch_snn_loss += snn_loss.item()
+                epoch_primary_loss += primary_loss.item()
+                train_loss.backward()
+                self.optimizer.step()
+                if self.name == "DNN" or self.name == "CNN":
+                    train_accuracy = (
+                        outputs.argmax(1) == batch_labels
+                    ).sum().item() / len(batch_labels)
+                    epoch_accuracy += train_accuracy
+            else:
+                self.optimizer.zero_grad()
+                outputs = self.forward(batch_features)
+                train_loss = self.criterion(outputs, batch_labels)
+                train_loss.backward()
+                self.optimizer.step()
+                epoch_loss += train_loss.item()
+                if self.name == "DNN" or self.name == "CNN":
+                    train_accuracy = (
+                        outputs.argmax(1) == batch_labels
+                    ).sum().item() / len(batch_labels)
+                    epoch_accuracy += train_accuracy
+        epoch_loss /= len(data_loader)
+        epoch_accuracy /= len(data_loader)
+        if self.use_snnl:
+            epoch_snn_loss /= len(data_loader)
+            epoch_primary_loss /= len(data_loader)
+            if self.name == "DNN" or self.name == "CNN":
+                return epoch_loss, epoch_snn_loss, epoch_primary_loss, epoch_accuracy
+            else:
+                return epoch_loss, epoch_snn_loss, epoch_primary_loss
+        else:
+            if self.name == "DNN" or self.name == "CNN":
+                return epoch_loss, epoch_accuracy
+            else:
+                return epoch_loss
 
 
 class Autoencoder(torch.nn.Module):
