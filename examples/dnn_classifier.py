@@ -17,7 +17,7 @@
 import argparse
 
 from snnl.models import DNN
-from snnl.utils import get_hyperparameters, set_global_seed
+from snnl.utils import export_results, get_hyperparameters, set_global_seed
 from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
@@ -87,8 +87,10 @@ def main(args):
     model.eval()
     model = model.cpu()
     predictions = model.predict(test_features)
-    test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
-    print(f"accuracy: {test_accuracy}%")
+    model.test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
+    print(f"accuracy: {model.test_accuracy}%")
+    filename = f"DNN-{args.model.lower()}-{args.seed}.json"
+    export_results(model=model, filename=filename)
 
 
 if __name__ == "__main__":
