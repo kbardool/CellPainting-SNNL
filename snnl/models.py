@@ -26,8 +26,34 @@ __version__ = "1.0.0"
 
 
 class Model(torch.nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+        learning_rate: float = 1e-3,
+        use_snnl: bool = False,
+        factor: float = 100.0,
+        temperature: int = None,
+        stability_epsilon: float = 1e-5,
+    ):
         super().__init__()
+        self.device = device
+        self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
+        self.train_loss = []
+        self.to(self.device)
+        self.use_snnl = use_snnl
+        self.factor = factor
+        self.temperature = temperature
+        self.stability_epsilon = stability_epsilon
+        if self.use_snnl:
+            self.snnl_criterion = SNNLoss(
+                mode=self.mode,
+                factor=self.factor,
+                temperature=self.temperature,
+                code_units=self.code_units,
+                stability_epsilon=self.stability_epsilon,
+            )
 
     def forward(self, features):
         raise NotImplementedError
