@@ -28,6 +28,7 @@ __version__ = "1.0.0"
 class Model(torch.nn.Module):
     def __init__(
         self,
+        mode: str,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
@@ -38,6 +39,7 @@ class Model(torch.nn.Module):
         stability_epsilon: float = 1e-5,
     ):
         super().__init__()
+        mode = mode.lower()
         self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.train_loss = []
