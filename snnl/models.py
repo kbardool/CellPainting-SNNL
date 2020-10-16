@@ -25,6 +25,20 @@ __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 
 
+class Model(torch.nn.Module):
+    def __init__(self, **kwargs):
+        super().__init__()
+
+    def forward(self, features):
+        raise NotImplementedError
+
+    def fit(self, **kwargs):
+        raise NotImplementedError
+
+    def epoch_train(self, **kwargs):
+        raise NotImplementedError
+
+
 class Autoencoder(torch.nn.Module):
     """
     A feed-forward autoencoder neural network that optimizes
