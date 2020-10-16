@@ -143,7 +143,7 @@ class Model(torch.nn.Module):
                 return epoch_loss
 
 
-class Autoencoder(torch.nn.Module):
+class Autoencoder(Model):
     """
     A feed-forward autoencoder neural network that optimizes
     binary cross entropy using Adam optimizer.
@@ -199,8 +199,15 @@ class Autoencoder(torch.nn.Module):
         device: torch.device
             The device to use for the model computations.
         """
-        super().__init__()
-        mode = mode.lower()
+        super().__init__(
+            mode=mode,
+            device=device,
+            use_snnl=use_snnl,
+            factor=factor,
+            code_units=code_units,
+            temperature=temperature,
+            stability_epsilon=stability_epsilon,
+        )
         if mode not in Autoencoder._supported_modes:
             raise ValueError(f"Mode {mode} is not supported.")
         self.layers = torch.nn.ModuleList(
@@ -233,25 +240,26 @@ class Autoencoder(torch.nn.Module):
                 pass
 
         self.name = "Autoencoder"
-        self.device = device
-        self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        self.criterion = torch.nn.BCELoss().to(self.device)
-        self.train_loss = []
-        self.to(self.device)
-        self.use_snnl = use_snnl
-        self.factor = factor
-        self.code_units = code_units
-        self.temperature = temperature
-        self.mode = mode
-        self.stability_epsilon = stability_epsilon
-        if self.use_snnl:
-            self.snnl_criterion = SNNLoss(
-                mode=self.mode,
-                factor=self.factor,
-                temperature=self.temperature,
-                code_units=self.code_units,
-                stability_epsilon=self.stability_epsilon,
-            )
+
+    #         self.device = device
+    #         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
+    #         self.criterion = torch.nn.BCELoss().to(self.device)
+    #         self.train_loss = []
+    #         self.to(self.device)
+    #         self.use_snnl = use_snnl
+    #         self.factor = factor
+    #         self.code_units = code_units
+    #         self.temperature = temperature
+    #         self.mode = mode
+    #         self.stability_epsilon = stability_epsilon
+    #         if self.use_snnl:
+    #             self.snnl_criterion = SNNLoss(
+    #                 mode=self.mode,
+    #                 factor=self.factor,
+    #                 temperature=self.temperature,
+    #                 code_units=self.code_units,
+    #                 stability_epsilon=self.stability_epsilon,
+    #             )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
