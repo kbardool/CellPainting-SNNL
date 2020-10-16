@@ -242,6 +242,7 @@ class Autoencoder(Model):
                 pass
 
         self.name = "Autoencoder"
+        self.criterion = torch.nn.BCELoss().to(self.device)
 
     #         self.device = device
     #         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
