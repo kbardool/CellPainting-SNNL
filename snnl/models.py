@@ -55,7 +55,7 @@ class Model(torch.nn.Module):
                 stability_epsilon=self.stability_epsilon,
             )
 
-    def forward(self, features):
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     def fit(self, **kwargs):
