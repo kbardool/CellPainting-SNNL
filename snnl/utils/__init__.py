@@ -170,6 +170,11 @@ def export_results(model: torch.nn.Module, filename: str):
     """
     model_attributes = model.__dict__
     results = dict()
+    results_dir = "results"
+    if not os.path.exists(results_dir):
+        os.mkdir(results_dir)
+    filename = os.path.join(results_dir, filename)
+    print(filename)
     for key, value in model_attributes.items():
         if isinstance(value, list):
             results[key] = value
