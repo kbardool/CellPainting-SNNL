@@ -36,6 +36,7 @@ class Model(torch.nn.Module):
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: int = None,
+        code_units: int = 0,
         stability_epsilon: float = 1e-5,
     ):
         super().__init__()
@@ -46,6 +47,7 @@ class Model(torch.nn.Module):
         self.to(self.device)
         self.use_snnl = use_snnl
         self.factor = factor
+        self.code_units = code_units
         self.temperature = temperature
         self.stability_epsilon = stability_epsilon
         if self.use_snnl:
