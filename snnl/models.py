@@ -42,7 +42,6 @@ class Model(torch.nn.Module):
         super().__init__()
         mode = mode.lower()
         self.device = device
-        self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.train_loss = []
         self.to(self.device)
         self.use_snnl = use_snnl
@@ -245,6 +244,7 @@ class Autoencoder(Model):
 
         self.name = "Autoencoder"
         self.criterion = torch.nn.BCELoss().to(self.device)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     #         self.device = device
     #         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
