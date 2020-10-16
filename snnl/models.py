@@ -267,6 +267,7 @@ class Autoencoder(torch.nn.Module):
         reconstruction: torch.Tensor
             The model output.
         """
+        features = features.view(features.shape[0], -1)
         activations = {}
         for index, layer in enumerate(self.layers):
             if index == 0:
@@ -471,6 +472,7 @@ class DNN(torch.nn.Module):
         logits: torch.Tensor
             The model output.
         """
+        features = features.view(features.shape[0], -1)
         activations = {}
         for index, layer in enumerate(self.layers):
             if index == 0:
