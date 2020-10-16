@@ -175,7 +175,7 @@ def export_results(model: torch.nn.Module, filename: str):
         os.mkdir(results_dir)
     filename = os.path.join(results_dir, filename)
     for key, value in model_attributes.items():
-        if isinstance(value, list):
+        if isinstance(value, list) or "test_accuracy" in key:
             results[key] = value
     with open(filename, "w") as file:
         json.dump(results, file)
