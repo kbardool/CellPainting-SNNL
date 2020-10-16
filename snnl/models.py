@@ -232,6 +232,7 @@ class Autoencoder(torch.nn.Module):
             else:
                 pass
 
+        self.name = "Autoencoder"
         self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.BCELoss().to(self.device)
@@ -437,6 +438,7 @@ class DNN(torch.nn.Module):
             else:
                 pass
 
+        self.name = "DNN"
         self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
@@ -693,6 +695,8 @@ class CNN(torch.nn.Module):
                 torch.nn.Linear(in_features=512, out_features=num_classes),
             ]
         )
+
+        self.name = "CNN"
         self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
@@ -915,6 +919,7 @@ class ResNet(torch.nn.Module):
             The device to use for model computations.
         """
         super().__init__()
+        self.name = "ResNet"
         self.criterion = torch.nn.CrossEntropyLoss()
         self.train_loss = []
         self.train_accuracy = []
