@@ -41,6 +41,7 @@ class Model(torch.nn.Module):
     ):
         super().__init__()
         mode = mode.lower()
+        self.mode = mode
         self.device = device
         self.train_loss = []
         self.use_snnl = use_snnl
