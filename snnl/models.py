@@ -83,9 +83,11 @@ class Model(torch.nn.Module):
         for epoch in range(epochs):
             epoch_loss = 0
             for batch_features, batch_labels in data_loader:
-                self.optimizer.zero_grad()
+                if self.name in ["Autoencoder", "DNN"]:
+                    batch_features = batch_features.view(batch_features.shape[0], -1)
                 batch_features = batch_features.to(self.device)
                 batch_labels = batch_labels.to(self.device)
+                self.optimizer.zero_grad()
                 outputs = self.forward(features=batch_features)
                 train_loss = self.criterion(
                     outputs,
