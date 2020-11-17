@@ -646,7 +646,7 @@ class DNN(Model):
     #         return epoch_loss, epoch_accuracy
 
 
-class CNN(torch.nn.Module):
+class CNN(Model):
     """
     A convolutional neural network that optimizes
     softmax cross entropy using Adam optimizer.
@@ -692,7 +692,14 @@ class CNN(torch.nn.Module):
         stability_epsilon: float
             A constant for helping SNNL computation stability.
         """
-        super().__init__()
+        super().__init__(
+            mode="classifier",
+            device=device,
+            use_snnl=use_snnl,
+            factor=factor,
+            temperature=temperature,
+            stability_epsilon=stability_epsilon,
+        )
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Conv2d(
@@ -719,23 +726,23 @@ class CNN(torch.nn.Module):
         )
 
         self.name = "CNN"
-        self.device = device
+        # self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
-        self.train_loss = []
+        # self.train_loss = []
         self.train_accuracy = []
         self.to(self.device)
-        self.use_snnl = use_snnl
-        self.factor = factor
-        self.temperature = temperature
-        self.stability_epsilon = stability_epsilon
-        if self.use_snnl:
-            self.snnl_criterion = SNNLoss(
-                mode="classifier",
-                factor=self.factor,
-                temperature=self.temperature,
-                stability_epsilon=self.stability_epsilon,
-            )
+        # self.use_snnl = use_snnl
+        # self.factor = factor
+        # self.temperature = temperature
+        # self.stability_epsilon = stability_epsilon
+        # if self.use_snnl:
+        #     self.snnl_criterion = SNNLoss(
+        #         mode="classifier",
+        #         factor=self.factor,
+        #         temperature=self.temperature,
+        #         stability_epsilon=self.stability_epsilon,
+        #     )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -829,77 +836,77 @@ class CNN(torch.nn.Module):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    def epoch_train(
-        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
-    ) -> Tuple:
-        """
-        Trains a model for one epoch.
-
-        Parameters
-        ----------
-        data_loader: torch.utils.dataloader.DataLoader
-            The data loader object that consists of the data pipeline.
-        epoch: int
-            The current epoch training index.
-
-        Returns
-        -------
-        epoch_loss: float
-            The epoch loss.
-        epoch_snn_loss: float
-            The soft nearest neighbor loss for an epoch.
-        epoch_xent_loss: float
-            The cross entropy loss for an epoch.
-        epoch_accuracy: float
-            The epoch accuracy.
-        """
-        if self.use_snnl:
-            assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-            epoch_xent_loss = 0
-            epoch_snn_loss = 0
-        epoch_accuracy = 0
-        epoch_loss = 0
-        for batch_features, batch_labels in data_loader:
-            batch_features = batch_features.to(self.device)
-            batch_labels = batch_labels.to(self.device)
-            if self.use_snnl:
-                self.optimizer.zero_grad()
-                outputs = self.forward(batch_features)
-                train_loss, snn_loss, xent_loss = self.snnl_criterion(
-                    model=self,
-                    outputs=outputs,
-                    features=batch_features,
-                    labels=batch_labels,
-                    epoch=epoch,
-                )
-                epoch_loss += train_loss.item()
-                epoch_snn_loss += snn_loss.item()
-                epoch_xent_loss += xent_loss.item()
-                train_loss.backward()
-                self.optimizer.step()
-                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
-                    batch_labels
-                )
-                epoch_accuracy += train_accuracy
-            else:
-                self.optimizer.zero_grad()
-                outputs = self.forward(batch_features)
-                train_loss = self.criterion(outputs, batch_labels)
-                train_loss.backward()
-                self.optimizer.step()
-                epoch_loss += train_loss.item()
-                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
-                    batch_labels
-                )
-                epoch_accuracy += train_accuracy
-        epoch_loss /= len(data_loader)
-        epoch_accuracy /= len(data_loader)
-        if self.use_snnl:
-            epoch_snn_loss /= len(data_loader)
-            epoch_xent_loss /= len(data_loader)
-            return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
-        else:
-            return epoch_loss, epoch_accuracy
+    # def epoch_train(
+    #     self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+    # ) -> Tuple:
+    #     """
+    #     Trains a model for one epoch.
+    #
+    #     Parameters
+    #     ----------
+    #     data_loader: torch.utils.dataloader.DataLoader
+    #         The data loader object that consists of the data pipeline.
+    #     epoch: int
+    #         The current epoch training index.
+    #
+    #     Returns
+    #     -------
+    #     epoch_loss: float
+    #         The epoch loss.
+    #     epoch_snn_loss: float
+    #         The soft nearest neighbor loss for an epoch.
+    #     epoch_xent_loss: float
+    #         The cross entropy loss for an epoch.
+    #     epoch_accuracy: float
+    #         The epoch accuracy.
+    #     """
+    #     if self.use_snnl:
+    #         assert epoch is not None, "[epoch] must not be None if use_snnl == True"
+    #         epoch_xent_loss = 0
+    #         epoch_snn_loss = 0
+    #     epoch_accuracy = 0
+    #     epoch_loss = 0
+    #     for batch_features, batch_labels in data_loader:
+    #         batch_features = batch_features.to(self.device)
+    #         batch_labels = batch_labels.to(self.device)
+    #         if self.use_snnl:
+    #             self.optimizer.zero_grad()
+    #             outputs = self.forward(batch_features)
+    #             train_loss, snn_loss, xent_loss = self.snnl_criterion(
+    #                 model=self,
+    #                 outputs=outputs,
+    #                 features=batch_features,
+    #                 labels=batch_labels,
+    #                 epoch=epoch,
+    #             )
+    #             epoch_loss += train_loss.item()
+    #             epoch_snn_loss += snn_loss.item()
+    #             epoch_xent_loss += xent_loss.item()
+    #             train_loss.backward()
+    #             self.optimizer.step()
+    #             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+    #                 batch_labels
+    #             )
+    #             epoch_accuracy += train_accuracy
+    #         else:
+    #             self.optimizer.zero_grad()
+    #             outputs = self.forward(batch_features)
+    #             train_loss = self.criterion(outputs, batch_labels)
+    #             train_loss.backward()
+    #             self.optimizer.step()
+    #             epoch_loss += train_loss.item()
+    #             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+    #                 batch_labels
+    #             )
+    #             epoch_accuracy += train_accuracy
+    #     epoch_loss /= len(data_loader)
+    #     epoch_accuracy /= len(data_loader)
+    #     if self.use_snnl:
+    #         epoch_snn_loss /= len(data_loader)
+    #         epoch_xent_loss /= len(data_loader)
+    #         return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
+    #     else:
+    #         return epoch_loss, epoch_accuracy
 
 
 class ResNet(torch.nn.Module):
