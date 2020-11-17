@@ -70,6 +70,18 @@ class Model(torch.nn.Module):
         epochs: int = 10,
         show_every: int = 2,
     ):
+        """
+        Trains the model on a subset of the dataset.
+
+        Parameters
+        ----------
+        data_loader: torch.utils.data.DataLoader
+            The data loader that consists of the data pipeline.
+        epochs: int
+            The number of epochs to train the model.
+        show_every:
+            The epoch interval between progress displays.
+        """
         batch_size = data_loader.batch_size
         subset = len(data_loader.dataset.data) * 0.10
         subset = int(subset)
