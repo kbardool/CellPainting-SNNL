@@ -129,11 +129,12 @@ class Model(torch.nn.Module):
             train_loss.backward()
             self.optimizer.step()
         epoch_loss /= len(data_loader)
+        if self.name in ["DNN", "CNN"]:
+            epoch_accuracy /= len(data_loader)
         if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_primary_loss /= len(data_loader)
             if self.name == "DNN" or self.name == "CNN":
-                epoch_accuracy /= len(data_loader)
                 return epoch_loss, epoch_snn_loss, epoch_primary_loss, epoch_accuracy
             else:
                 return epoch_loss, epoch_snn_loss, epoch_primary_loss
