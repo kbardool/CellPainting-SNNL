@@ -69,7 +69,9 @@ class Model(torch.nn.Module):
         epochs: int = 10,
         show_every: int = 2,
     ):
-        pass
+        batch_size = data_loader.batch_size
+        subset = len(data_loader.dataset.data) * 0.10
+        subset = int(subset)
 
     def epoch_train(
         self, data_loader: torch.utils.data.DataLoader, epoch: int = None
