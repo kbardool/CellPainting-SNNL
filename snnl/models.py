@@ -20,6 +20,7 @@ import torch
 import torchvision
 
 from snnl import SNNLoss
+from snnl.utils.data import create_dataloader
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -62,6 +63,55 @@ class Model(torch.nn.Module):
 
     def fit(self, **kwargs):
         raise NotImplementedError
+
+    def sanity_check(
+        self,
+        data_loader: torch.utils.data.DataLoader,
+        epochs: int = 10,
+        show_every: int = 2,
+    ):
+        """
+        Trains the model on a subset of the dataset.
+
+        Parameters
+        ----------
+        data_loader: torch.utils.data.DataLoader
+            The data loader that consists of the data pipeline.
+        epochs: int
+            The number of epochs to train the model.
+        show_every:
+            The epoch interval between progress displays.
+        """
+        batch_size = data_loader.batch_size
+        subset = len(data_loader.dataset.data) * 0.10
+        subset = int(subset)
+        assert subset > batch_size, "[subset] must be greater than [batch_size]."
+        features = data_loader.dataset.data[:subset] / 255.0
+        labels = data_loader.dataset.targets[:subset]
+        dataset = torch.utils.data.TensorDataset(features, labels)
+        data_loader = create_dataloader(
+            dataset=dataset, batch_size=batch_size, num_workers=0
+        )
+        for epoch in range(epochs):
+            epoch_loss = 0
+            for batch_features, batch_labels in data_loader:
+                if self.name in ["Autoencoder", "DNN"]:
+                    batch_features = batch_features.view(batch_features.shape[0], -1)
+                batch_features = batch_features.to(self.device)
+                batch_labels = batch_labels.to(self.device)
+                self.optimizer.zero_grad()
+                outputs = self.forward(features=batch_features)
+                train_loss = self.criterion(
+                    outputs,
+                    batch_labels if self.name in ["CNN", "DNN"] else batch_features,
+                )
+                epoch_loss += train_loss.item()
+                train_loss.backward()
+                self.optimizer.step()
+            epoch_loss /= len(data_loader)
+            if (epoch + 1) % show_every == 0:
+                print(f"epoch {epoch + 1}/{epochs}")
+                print(f"mean loss = {epoch_loss:4f}")
 
     def epoch_train(
         self, data_loader: torch.utils.data.DataLoader, epoch: int = None
