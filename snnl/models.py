@@ -96,6 +96,8 @@ class Model(torch.nn.Module):
             epoch_accuracy = 0
         epoch_loss = 0
         for batch_features, batch_labels in data_loader:
+            if self.name in ["Autoencoder", "DNN"]:
+                batch_features = batch_features.view(batch_features.shape[0], -1)
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
             self.optimizer.zero_grad()
@@ -326,68 +328,68 @@ class Autoencoder(Model):
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
 
-    def epoch_train(
-        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
-    ) -> Tuple:
-        """
-        Trains a model for one epoch.
-
-        Parameters
-        ----------
-        model: torch.nn.Module
-            The model to train.
-        data_loader: torch.utils.dataloader.DataLoader
-            The data loader object that consists of the data pipeline.
-        epoch: int
-            The epoch number of the training.
-
-        Returns
-        -------
-        epoch_loss: float
-            The epoch loss.
-        epoch_snn_loss: float
-            The soft nearest neighbor loss for an epoch.
-        epoch_recon_loss: float
-            The reconstruction loss for an epoch.
-        """
-        if self.use_snnl:
-            assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-            epoch_recon_loss = 0
-            epoch_snn_loss = 0
-        epoch_loss = 0
-        for batch_features, batch_labels in data_loader:
-            batch_features = batch_features.view(batch_features.shape[0], -1)
-            batch_features = batch_features.to(self.device)
-            batch_labels = batch_labels.to(self.device)
-            if self.use_snnl:
-                self.optimizer.zero_grad()
-                outputs = self(batch_features)
-                train_loss, recon_loss, snn_loss = self.snnl_criterion(
-                    model=self,
-                    features=batch_features,
-                    labels=batch_labels,
-                    outputs=outputs,
-                    epoch=epoch,
-                )
-                epoch_loss += train_loss.item()
-                epoch_snn_loss += snn_loss.item()
-                epoch_recon_loss += recon_loss.item()
-                train_loss.backward()
-                self.optimizer.step()
-            else:
-                self.optimizer.zero_grad()
-                outputs = self(batch_features)
-                train_loss = self.criterion(outputs, batch_features)
-                train_loss.backward()
-                self.optimizer.step()
-                epoch_loss += train_loss.item()
-        epoch_loss /= len(data_loader)
-        if self.use_snnl:
-            epoch_snn_loss /= len(data_loader)
-            epoch_recon_loss /= len(data_loader)
-            return epoch_loss, epoch_snn_loss, epoch_recon_loss
-        else:
-            return epoch_loss
+    # def epoch_train(
+    #     self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+    # ) -> Tuple:
+    #     """
+    #     Trains a model for one epoch.
+    #
+    #     Parameters
+    #     ----------
+    #     model: torch.nn.Module
+    #         The model to train.
+    #     data_loader: torch.utils.dataloader.DataLoader
+    #         The data loader object that consists of the data pipeline.
+    #     epoch: int
+    #         The epoch number of the training.
+    #
+    #     Returns
+    #     -------
+    #     epoch_loss: float
+    #         The epoch loss.
+    #     epoch_snn_loss: float
+    #         The soft nearest neighbor loss for an epoch.
+    #     epoch_recon_loss: float
+    #         The reconstruction loss for an epoch.
+    #     """
+    #     if self.use_snnl:
+    #         assert epoch is not None, "[epoch] must not be None if use_snnl == True"
+    #         epoch_recon_loss = 0
+    #         epoch_snn_loss = 0
+    #     epoch_loss = 0
+    #     for batch_features, batch_labels in data_loader:
+    #         batch_features = batch_features.view(batch_features.shape[0], -1)
+    #         batch_features = batch_features.to(self.device)
+    #         batch_labels = batch_labels.to(self.device)
+    #         if self.use_snnl:
+    #             self.optimizer.zero_grad()
+    #             outputs = self(batch_features)
+    #             train_loss, recon_loss, snn_loss = self.snnl_criterion(
+    #                 model=self,
+    #                 features=batch_features,
+    #                 labels=batch_labels,
+    #                 outputs=outputs,
+    #                 epoch=epoch,
+    #             )
+    #             epoch_loss += train_loss.item()
+    #             epoch_snn_loss += snn_loss.item()
+    #             epoch_recon_loss += recon_loss.item()
+    #             train_loss.backward()
+    #             self.optimizer.step()
+    #         else:
+    #             self.optimizer.zero_grad()
+    #             outputs = self(batch_features)
+    #             train_loss = self.criterion(outputs, batch_features)
+    #             train_loss.backward()
+    #             self.optimizer.step()
+    #             epoch_loss += train_loss.item()
+    #     epoch_loss /= len(data_loader)
+    #     if self.use_snnl:
+    #         epoch_snn_loss /= len(data_loader)
+    #         epoch_recon_loss /= len(data_loader)
+    #         return epoch_loss, epoch_snn_loss, epoch_recon_loss
+    #     else:
+    #         return epoch_loss
 
 
 class DNN(torch.nn.Module):
