@@ -99,8 +99,8 @@ class Model(torch.nn.Module):
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
             self.optimizer.zero_grad()
+            outputs = self.forward(features=batch_features)
             if self.use_snnl:
-                outputs = self.forward(batch_features)
                 train_loss, snn_loss, primary_loss = self.snnl_criterion(
                     model=self,
                     outputs=outputs,
@@ -119,7 +119,6 @@ class Model(torch.nn.Module):
                     ).sum().item() / len(batch_labels)
                     epoch_accuracy += train_accuracy
             else:
-                outputs = self.forward(batch_features)
                 train_loss = self.criterion(outputs, batch_labels)
                 train_loss.backward()
                 self.optimizer.step()
