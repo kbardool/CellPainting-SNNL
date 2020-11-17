@@ -32,7 +32,6 @@ class Model(torch.nn.Module):
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
-        learning_rate: float = 1e-3,
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: int = None,
