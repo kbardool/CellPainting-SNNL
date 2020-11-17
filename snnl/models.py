@@ -246,26 +246,6 @@ class Autoencoder(Model):
         self.criterion = torch.nn.BCELoss().to(self.device)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
-    #         self.device = device
-    #         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-    #         self.criterion = torch.nn.BCELoss().to(self.device)
-    #         self.train_loss = []
-    #         self.to(self.device)
-    #         self.use_snnl = use_snnl
-    #         self.factor = factor
-    #         self.code_units = code_units
-    #         self.temperature = temperature
-    #         self.mode = mode
-    #         self.stability_epsilon = stability_epsilon
-    #         if self.use_snnl:
-    #             self.snnl_criterion = SNNLoss(
-    #                 mode=self.mode,
-    #                 factor=self.factor,
-    #                 temperature=self.temperature,
-    #                 code_units=self.code_units,
-    #                 stability_epsilon=self.stability_epsilon,
-    #             )
-
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Defines the forward pass by the model.
@@ -328,69 +308,6 @@ class Autoencoder(Model):
                     print(
                         f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
                     )
-
-    # def epoch_train(
-    #     self, data_loader: torch.utils.data.DataLoader, epoch: int = None
-    # ) -> Tuple:
-    #     """
-    #     Trains a model for one epoch.
-    #
-    #     Parameters
-    #     ----------
-    #     model: torch.nn.Module
-    #         The model to train.
-    #     data_loader: torch.utils.dataloader.DataLoader
-    #         The data loader object that consists of the data pipeline.
-    #     epoch: int
-    #         The epoch number of the training.
-    #
-    #     Returns
-    #     -------
-    #     epoch_loss: float
-    #         The epoch loss.
-    #     epoch_snn_loss: float
-    #         The soft nearest neighbor loss for an epoch.
-    #     epoch_recon_loss: float
-    #         The reconstruction loss for an epoch.
-    #     """
-    #     if self.use_snnl:
-    #         assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-    #         epoch_recon_loss = 0
-    #         epoch_snn_loss = 0
-    #     epoch_loss = 0
-    #     for batch_features, batch_labels in data_loader:
-    #         batch_features = batch_features.view(batch_features.shape[0], -1)
-    #         batch_features = batch_features.to(self.device)
-    #         batch_labels = batch_labels.to(self.device)
-    #         if self.use_snnl:
-    #             self.optimizer.zero_grad()
-    #             outputs = self(batch_features)
-    #             train_loss, recon_loss, snn_loss = self.snnl_criterion(
-    #                 model=self,
-    #                 features=batch_features,
-    #                 labels=batch_labels,
-    #                 outputs=outputs,
-    #                 epoch=epoch,
-    #             )
-    #             epoch_loss += train_loss.item()
-    #             epoch_snn_loss += snn_loss.item()
-    #             epoch_recon_loss += recon_loss.item()
-    #             train_loss.backward()
-    #             self.optimizer.step()
-    #         else:
-    #             self.optimizer.zero_grad()
-    #             outputs = self(batch_features)
-    #             train_loss = self.criterion(outputs, batch_features)
-    #             train_loss.backward()
-    #             self.optimizer.step()
-    #             epoch_loss += train_loss.item()
-    #     epoch_loss /= len(data_loader)
-    #     if self.use_snnl:
-    #         epoch_snn_loss /= len(data_loader)
-    #         epoch_recon_loss /= len(data_loader)
-    #         return epoch_loss, epoch_snn_loss, epoch_recon_loss
-    #     else:
-    #         return epoch_loss
 
 
 class DNN(Model):
@@ -460,23 +377,10 @@ class DNN(Model):
                 pass
 
         self.name = "DNN"
-        # self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
-        # self.train_loss = []
         self.train_accuracy = []
         self.to(self.device)
-        # self.use_snnl = use_snnl
-        # self.factor = factor
-        # self.temperature = temperature
-        # self.stability_epsilon = stability_epsilon
-        # if self.use_snnl:
-        #     self.snnl_criterion = SNNLoss(
-        #         mode="classifier",
-        #         factor=self.factor,
-        #         temperature=self.temperature,
-        #         stability_epsilon=self.stability_epsilon,
-        #     )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -572,79 +476,6 @@ class DNN(Model):
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
 
-    # def epoch_train(
-    #     self, data_loader: torch.utils.data.DataLoader, epoch: int = None
-    # ) -> Tuple:
-    #     """
-    #     Trains a model for one epoch.
-    #
-    #     Parameters
-    #     ----------
-    #     data_loader : torch.utils.dataloader.DataLoader
-    #         The data loader object that consists of the data pipeline.
-    #     epoch: int
-    #         The current epoch training index.
-    #
-    #     Returns
-    #     -------
-    #     epoch_loss: float
-    #         The epoch loss.
-    #     epoch_snn_loss: float
-    #         The soft nearest neighbor loss for an epoch.
-    #     epoch_xent_loss: float
-    #         The cross entropy loss for an epoch.
-    #     epoch_accuracy: float
-    #         The epoch accuracy.
-    #     """
-    #     if self.use_snnl:
-    #         assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-    #         epoch_xent_loss = 0
-    #         epoch_snn_loss = 0
-    #     epoch_accuracy = 0
-    #     epoch_loss = 0
-    #     for batch_features, batch_labels in data_loader:
-    #         batch_features = batch_features.view(batch_features.shape[0], -1)
-    #         batch_features = batch_features.to(self.device)
-    #         batch_labels = batch_labels.to(self.device)
-    #         if self.use_snnl:
-    #             self.optimizer.zero_grad()
-    #             outputs = self.forward(batch_features)
-    #             train_loss, snn_loss, xent_loss = self.snnl_criterion(
-    #                 model=self,
-    #                 outputs=outputs,
-    #                 features=batch_features,
-    #                 labels=batch_labels,
-    #                 epoch=epoch,
-    #             )
-    #             epoch_loss += train_loss.item()
-    #             epoch_snn_loss += snn_loss.item()
-    #             epoch_xent_loss += xent_loss.item()
-    #             train_loss.backward()
-    #             self.optimizer.step()
-    #             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
-    #                 batch_labels
-    #             )
-    #             epoch_accuracy += train_accuracy
-    #         else:
-    #             self.optimizer.zero_grad()
-    #             outputs = self.forward(batch_features)
-    #             train_loss = self.criterion(outputs, batch_labels)
-    #             train_loss.backward()
-    #             self.optimizer.step()
-    #             epoch_loss += train_loss.item()
-    #             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
-    #                 batch_labels
-    #             )
-    #             epoch_accuracy += train_accuracy
-    #     epoch_loss /= len(data_loader)
-    #     epoch_accuracy /= len(data_loader)
-    #     if self.use_snnl:
-    #         epoch_snn_loss /= len(data_loader)
-    #         epoch_xent_loss /= len(data_loader)
-    #         return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
-    #     else:
-    #         return epoch_loss, epoch_accuracy
-
 
 class CNN(Model):
     """
@@ -726,23 +557,10 @@ class CNN(Model):
         )
 
         self.name = "CNN"
-        # self.device = device
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
-        # self.train_loss = []
         self.train_accuracy = []
         self.to(self.device)
-        # self.use_snnl = use_snnl
-        # self.factor = factor
-        # self.temperature = temperature
-        # self.stability_epsilon = stability_epsilon
-        # if self.use_snnl:
-        #     self.snnl_criterion = SNNLoss(
-        #         mode="classifier",
-        #         factor=self.factor,
-        #         temperature=self.temperature,
-        #         stability_epsilon=self.stability_epsilon,
-        #     )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -835,78 +653,6 @@ class CNN(Model):
         outputs = self.forward(features)
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
-
-    # def epoch_train(
-    #     self, data_loader: torch.utils.data.DataLoader, epoch: int = None
-    # ) -> Tuple:
-    #     """
-    #     Trains a model for one epoch.
-    #
-    #     Parameters
-    #     ----------
-    #     data_loader: torch.utils.dataloader.DataLoader
-    #         The data loader object that consists of the data pipeline.
-    #     epoch: int
-    #         The current epoch training index.
-    #
-    #     Returns
-    #     -------
-    #     epoch_loss: float
-    #         The epoch loss.
-    #     epoch_snn_loss: float
-    #         The soft nearest neighbor loss for an epoch.
-    #     epoch_xent_loss: float
-    #         The cross entropy loss for an epoch.
-    #     epoch_accuracy: float
-    #         The epoch accuracy.
-    #     """
-    #     if self.use_snnl:
-    #         assert epoch is not None, "[epoch] must not be None if use_snnl == True"
-    #         epoch_xent_loss = 0
-    #         epoch_snn_loss = 0
-    #     epoch_accuracy = 0
-    #     epoch_loss = 0
-    #     for batch_features, batch_labels in data_loader:
-    #         batch_features = batch_features.to(self.device)
-    #         batch_labels = batch_labels.to(self.device)
-    #         if self.use_snnl:
-    #             self.optimizer.zero_grad()
-    #             outputs = self.forward(batch_features)
-    #             train_loss, snn_loss, xent_loss = self.snnl_criterion(
-    #                 model=self,
-    #                 outputs=outputs,
-    #                 features=batch_features,
-    #                 labels=batch_labels,
-    #                 epoch=epoch,
-    #             )
-    #             epoch_loss += train_loss.item()
-    #             epoch_snn_loss += snn_loss.item()
-    #             epoch_xent_loss += xent_loss.item()
-    #             train_loss.backward()
-    #             self.optimizer.step()
-    #             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
-    #                 batch_labels
-    #             )
-    #             epoch_accuracy += train_accuracy
-    #         else:
-    #             self.optimizer.zero_grad()
-    #             outputs = self.forward(batch_features)
-    #             train_loss = self.criterion(outputs, batch_labels)
-    #             train_loss.backward()
-    #             self.optimizer.step()
-    #             epoch_loss += train_loss.item()
-    #             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
-    #                 batch_labels
-    #             )
-    #             epoch_accuracy += train_accuracy
-    #     epoch_loss /= len(data_loader)
-    #     epoch_accuracy /= len(data_loader)
-    #     if self.use_snnl:
-    #         epoch_snn_loss /= len(data_loader)
-    #         epoch_xent_loss /= len(data_loader)
-    #         return epoch_loss, epoch_snn_loss, epoch_xent_loss, epoch_accuracy
-    #     else:
-    #         return epoch_loss, epoch_accuracy
 
 
 class ResNet(torch.nn.Module):
