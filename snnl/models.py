@@ -80,6 +80,24 @@ class Model(torch.nn.Module):
         data_loader = create_dataloader(
             dataset=dataset, batch_size=batch_size, num_workers=0
         )
+        for epoch in range(epochs):
+            epoch_loss = 0
+            for batch_features, batch_labels in data_loader:
+                self.optimizer.zero_grad()
+                batch_features = batch_features.to(self.device)
+                batch_labels = batch_labels.to(self.device)
+                outputs = self.forward(features=batch_features)
+                train_loss = self.criterion(
+                    outputs,
+                    batch_labels if self.name in ["CNN", "DNN"] else batch_features,
+                )
+                epoch_loss += train_loss.item()
+                train_loss.backward()
+                self.optimizer.step()
+            epoch_loss /= len(data_loader)
+            if (epoch + 1) % show_every == 0:
+                print(f"epoch {epoch + 1}/{epochs}")
+                print(f"mean loss = {epoch_loss:4f}")
 
     def epoch_train(
         self, data_loader: torch.utils.data.DataLoader, epoch: int = None
