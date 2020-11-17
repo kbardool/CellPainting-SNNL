@@ -63,6 +63,14 @@ class Model(torch.nn.Module):
     def fit(self, **kwargs):
         raise NotImplementedError
 
+    def sanity_check(
+        self,
+        data_loader: torch.utils.data.DataLoader,
+        epochs: int = 10,
+        show_every: int = 2,
+    ):
+        pass
+
     def epoch_train(
         self, data_loader: torch.utils.data.DataLoader, epoch: int = None
     ) -> Tuple:
