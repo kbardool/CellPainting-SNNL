@@ -72,7 +72,7 @@ class Model(torch.nn.Module):
 
         Parameters
         ----------
-        data_loader : torch.utils.dataloader.DataLoader
+        data_loader: torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
         epoch: int
             The current epoch training index.
@@ -98,8 +98,8 @@ class Model(torch.nn.Module):
         for batch_features, batch_labels in data_loader:
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
+            self.optimizer.zero_grad()
             if self.use_snnl:
-                self.optimizer.zero_grad()
                 outputs = self.forward(batch_features)
                 train_loss, snn_loss, primary_loss = self.snnl_criterion(
                     model=self,
@@ -119,7 +119,6 @@ class Model(torch.nn.Module):
                     ).sum().item() / len(batch_labels)
                     epoch_accuracy += train_accuracy
             else:
-                self.optimizer.zero_grad()
                 outputs = self.forward(batch_features)
                 train_loss = self.criterion(outputs, batch_labels)
                 train_loss.backward()
