@@ -72,6 +72,7 @@ class Model(torch.nn.Module):
         batch_size = data_loader.batch_size
         subset = len(data_loader.dataset.data) * 0.10
         subset = int(subset)
+        assert subset > batch_size, "[subset] must be greater than [batch_size]."
 
     def epoch_train(
         self, data_loader: torch.utils.data.DataLoader, epoch: int = None
