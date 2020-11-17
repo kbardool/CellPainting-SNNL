@@ -20,6 +20,7 @@ import torch
 import torchvision
 
 from snnl import SNNLoss
+from snnl.utils.data import create_dataloader
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
@@ -73,8 +74,12 @@ class Model(torch.nn.Module):
         subset = len(data_loader.dataset.data) * 0.10
         subset = int(subset)
         assert subset > batch_size, "[subset] must be greater than [batch_size]."
-        features = data_loader.dataset.data[:subset] / 255.
+        features = data_loader.dataset.data[:subset] / 255.0
         labels = data_loader.dataset.targets[:subset]
+        dataset = torch.utils.data.TensorDataset(features, labels)
+        data_loader = create_dataloader(
+            dataset=dataset, batch_size=batch_size, num_workers=0
+        )
 
     def epoch_train(
         self, data_loader: torch.utils.data.DataLoader, epoch: int = None
