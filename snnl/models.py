@@ -793,6 +793,8 @@ class ResNet(torch.nn.Module):
             The model to train.
         data_loader: torch.utils.dataloader.DataLoader
             The data loader object that consists of the data pipeline.
+        epoch: int
+            The epoch training index.
 
         Returns
         -------
