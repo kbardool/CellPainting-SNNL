@@ -111,11 +111,6 @@ class Model(torch.nn.Module):
                 epoch_loss += train_loss.item()
                 epoch_snn_loss += snn_loss.item()
                 epoch_primary_loss += primary_loss.item()
-                if self.name == "DNN" or self.name == "CNN":
-                    train_accuracy = (
-                        outputs.argmax(1) == batch_labels
-                    ).sum().item() / len(batch_labels)
-                    epoch_accuracy += train_accuracy
             else:
                 train_loss = self.criterion(
                     outputs,
@@ -124,11 +119,11 @@ class Model(torch.nn.Module):
                     else batch_features,
                 )
                 epoch_loss += train_loss.item()
-                if self.name == "DNN" or self.name == "CNN":
-                    train_accuracy = (
-                        outputs.argmax(1) == batch_labels
-                    ).sum().item() / len(batch_labels)
-                    epoch_accuracy += train_accuracy
+            if self.name == "DNN" or self.name == "CNN":
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
+                    batch_labels
+                )
+                epoch_accuracy += train_accuracy
             train_loss.backward()
             self.optimizer.step()
         epoch_loss /= len(data_loader)
