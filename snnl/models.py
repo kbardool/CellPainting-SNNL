@@ -73,6 +73,8 @@ class Model(torch.nn.Module):
         subset = len(data_loader.dataset.data) * 0.10
         subset = int(subset)
         assert subset > batch_size, "[subset] must be greater than [batch_size]."
+        features = data_loader.dataset.data[:subset] / 255.
+        labels = data_loader.dataset.targets[:subset]
 
     def epoch_train(
         self, data_loader: torch.utils.data.DataLoader, epoch: int = None
