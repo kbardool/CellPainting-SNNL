@@ -123,7 +123,7 @@ class SNNLoss(torch.nn.Module):
             else self.temperature
         )
 
-        primary_loss = self.primary_criteriont(
+        primary_loss = self.primary_criterion(
             outputs, features if self.unsupervised else labels
         )
 
