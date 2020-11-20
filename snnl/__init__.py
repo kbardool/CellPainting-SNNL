@@ -64,6 +64,8 @@ class SNNLoss(torch.nn.Module):
         mode: str
             The mode in which the soft nearest neighbor loss
             will be used. Default: [classifier]
+        criterion: object
+            The primary loss to use.
         factor: float
             The balance factor between SNNL and the primary loss.
             A positive factor implies SNNL minimization, while a negative
