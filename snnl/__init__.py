@@ -128,8 +128,9 @@ class SNNLoss(torch.nn.Module):
         )
 
         activations = dict()
-        if self.mode == "classifier":
-            for index, layer in enumerate(model.layers[:-1]):
+        if self.mode in ["classifier", "autoencoding", "latent_code"]:
+            layers = model.layers[:-1] if self.mode == "classifier" else model.layers
+            for index, layer in enumerate(layers):
                 if index == 0:
                     activations[index] = layer(features)
                 else:
@@ -143,12 +144,6 @@ class SNNLoss(torch.nn.Module):
                         activations[index - 1].shape[0], -1
                     )
                     activations[index] = layer(value)
-                else:
-                    activations[index] = layer(activations[index - 1])
-        else:
-            for index, layer in enumerate(model.layers):
-                if index == 0:
-                    activations[index] = layer(features)
                 else:
                     activations[index] = layer(activations[index - 1])
 
