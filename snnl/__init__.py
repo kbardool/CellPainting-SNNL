@@ -121,10 +121,6 @@ class SNNLoss(torch.nn.Module):
             else self.temperature
         )
 
-        if model.name in ["Autoencoder", "DNN"]:
-            if len(features.shape) > 2:
-                features = features.view(features.shape[0], -1)
-
         if self.unsupervised:
             primary_loss = model.criterion(outputs, features)
         else:
