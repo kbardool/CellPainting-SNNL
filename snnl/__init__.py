@@ -146,6 +146,11 @@ class SNNLoss(torch.nn.Module):
                     activations[index] = layer(value)
                 else:
                     activations[index] = layer(activations[index - 1])
+        elif self.mode == "custom":
+            for index, layer in enumerate(list(model.children())):
+                activations[index] = (
+                    layer(features) if index == 0 else layer(activations[index - 1])
+                )
 
         layers_snnl = []
         for key, value in activations.items():
