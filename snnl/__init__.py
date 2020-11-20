@@ -49,6 +49,7 @@ class SNNLoss(torch.nn.Module):
     def __init__(
         self,
         mode: str = "classifier",
+        criterion: object = torch.nn.CrossEntropyLoss(),
         factor: float = 100.0,
         temperature: int = None,
         code_units: int = 30,
@@ -85,6 +86,7 @@ class SNNLoss(torch.nn.Module):
             code_units, int
         ), f"Expected dtype for [code_units]: int, but {code_units} is {type(code_units)}"
         self.mode = mode
+        self.primary_criterion = criterion
         self.unsupervised = SNNLoss._supported_modes.get(self.mode)
         self.factor = factor
         self.temperature = temperature
