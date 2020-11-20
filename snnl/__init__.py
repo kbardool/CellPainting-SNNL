@@ -44,11 +44,13 @@ class SNNLoss(torch.nn.Module):
         "resnet": False,
         "autoencoding": True,
         "latent_code": True,
+        "custom": False,
     }
 
     def __init__(
         self,
         mode: str = "classifier",
+        criterion: object = torch.nn.CrossEntropyLoss(),
         factor: float = 100.0,
         temperature: int = None,
         code_units: int = 30,
@@ -62,6 +64,8 @@ class SNNLoss(torch.nn.Module):
         mode: str
             The mode in which the soft nearest neighbor loss
             will be used. Default: [classifier]
+        criterion: object
+            The primary loss to use.
         factor: float
             The balance factor between SNNL and the primary loss.
             A positive factor implies SNNL minimization, while a negative
@@ -85,6 +89,7 @@ class SNNLoss(torch.nn.Module):
             code_units, int
         ), f"Expected dtype for [code_units]: int, but {code_units} is {type(code_units)}"
         self.mode = mode
+        self.primary_criterion = criterion
         self.unsupervised = SNNLoss._supported_modes.get(self.mode)
         self.factor = factor
         self.temperature = temperature
@@ -121,18 +126,14 @@ class SNNLoss(torch.nn.Module):
             else self.temperature
         )
 
-        if model.name in ["Autoencoder", "DNN"]:
-            if len(features.shape) > 2:
-                features = features.view(features.shape[0], -1)
-
-        if self.unsupervised:
-            primary_loss = model.criterion(outputs, features)
-        else:
-            primary_loss = model.criterion(outputs, labels)
+        primary_loss = self.primary_criterion(
+            outputs, features if self.unsupervised else labels
+        )
 
         activations = dict()
-        if self.mode == "classifier":
-            for index, layer in enumerate(model.layers[:-1]):
+        if self.mode in ["classifier", "autoencoding", "latent_code"]:
+            layers = model.layers[:-1] if self.mode == "classifier" else model.layers
+            for index, layer in enumerate(layers):
                 if index == 0:
                     activations[index] = layer(features)
                 else:
@@ -148,12 +149,11 @@ class SNNLoss(torch.nn.Module):
                     activations[index] = layer(value)
                 else:
                     activations[index] = layer(activations[index - 1])
-        else:
-            for index, layer in enumerate(model.layers):
-                if index == 0:
-                    activations[index] = layer(features)
-                else:
-                    activations[index] = layer(activations[index - 1])
+        elif self.mode == "custom":
+            for index, layer in enumerate(list(model.children())):
+                activations[index] = (
+                    layer(features) if index == 0 else layer(activations[index - 1])
+                )
 
         layers_snnl = []
         for key, value in activations.items():
