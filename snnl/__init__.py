@@ -44,6 +44,7 @@ class SNNLoss(torch.nn.Module):
         "resnet": False,
         "autoencoding": True,
         "latent_code": True,
+        "custom": False,
     }
 
     def __init__(
