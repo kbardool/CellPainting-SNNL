@@ -373,6 +373,8 @@ class DNN(Model):
     regularizer can be used with the softmax cross entropy.
     """
 
+    _criterion = torch.nn.CrossEntropyLoss()
+
     def __init__(
         self,
         units: List or Tuple = [(784, 500), (500, 500), (500, 10)],
