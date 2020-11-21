@@ -30,6 +30,7 @@ class Model(torch.nn.Module):
     def __init__(
         self,
         mode: str,
+        criterion: object,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
@@ -52,6 +53,7 @@ class Model(torch.nn.Module):
         if self.use_snnl:
             self.snnl_criterion = SNNLoss(
                 mode=self.mode,
+                criterion=criterion,
                 factor=self.factor,
                 temperature=self.temperature,
                 code_units=self.code_units,
