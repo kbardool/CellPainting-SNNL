@@ -253,6 +253,7 @@ class Autoencoder(Model):
         """
         super().__init__(
             mode=mode,
+            criterion=Autoencoder._criterion.to(device),
             device=device,
             use_snnl=use_snnl,
             factor=factor,
