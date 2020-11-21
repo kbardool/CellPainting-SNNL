@@ -585,6 +585,7 @@ class CNN(Model):
         """
         super().__init__(
             mode="classifier",
+            criterion=CNN._criterion.to(device),
             device=device,
             use_snnl=use_snnl,
             factor=factor,
