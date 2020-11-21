@@ -619,7 +619,8 @@ class CNN(Model):
 
         self.name = "CNN"
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
+        if not use_snnl:
+            self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.train_accuracy = []
         self.to(self.device)
 
