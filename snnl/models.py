@@ -544,6 +544,8 @@ class CNN(Model):
     regularizer can be used with the softmax cross entropy.
     """
 
+    _criterion = torch.nn.CrossEntropyLoss()
+
     def __init__(
         self,
         input_dim: int,
