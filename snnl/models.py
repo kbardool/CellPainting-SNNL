@@ -373,6 +373,8 @@ class DNN(Model):
     regularizer can be used with the softmax cross entropy.
     """
 
+    _criterion = torch.nn.CrossEntropyLoss()
+
     def __init__(
         self,
         units: List or Tuple = [(784, 500), (500, 500), (500, 10)],
@@ -409,6 +411,7 @@ class DNN(Model):
         """
         super().__init__(
             mode="classifier",
+            criterion=DNN._criterion.to(device),
             device=device,
             use_snnl=use_snnl,
             factor=factor,
@@ -432,7 +435,8 @@ class DNN(Model):
 
         self.name = "DNN"
         self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
+        if not use_snnl:
+            self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.train_accuracy = []
         self.to(self.device)
 
