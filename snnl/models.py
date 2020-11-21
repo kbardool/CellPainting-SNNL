@@ -206,6 +206,7 @@ class Autoencoder(Model):
     """
 
     _supported_modes = ["autoencoding", "latent_code"]
+    _criterion = torch.nn.BCELoss()
 
     def __init__(
         self,
@@ -254,6 +255,7 @@ class Autoencoder(Model):
         """
         super().__init__(
             mode=mode,
+            criterion=Autoencoder._criterion.to(device),
             device=device,
             use_snnl=use_snnl,
             factor=factor,
@@ -294,7 +296,8 @@ class Autoencoder(Model):
 
         self.name = "Autoencoder"
         self.to(self.device)
-        self.criterion = torch.nn.BCELoss().to(self.device)
+        if not use_snnl:
+            self.criterion = Autoencoder._criterion.to(device)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
