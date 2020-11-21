@@ -294,7 +294,8 @@ class Autoencoder(Model):
 
         self.name = "Autoencoder"
         self.to(self.device)
-        self.criterion = torch.nn.BCELoss().to(self.device)
+        if not use_snnl:
+            self.criterion = Autoencoder._criterion.to(device)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
