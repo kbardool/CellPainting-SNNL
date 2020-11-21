@@ -204,6 +204,7 @@ class Autoencoder(Model):
     """
 
     _supported_modes = ["autoencoding", "latent_code"]
+    _criterion = torch.nn.BCELoss()
 
     def __init__(
         self,
