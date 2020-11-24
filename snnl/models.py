@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of models"""
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 import torchvision
@@ -546,8 +546,12 @@ class CNN(Model):
 
     _criterion = torch.nn.CrossEntropyLoss()
 
+    _conv1_params = {"out_channels": 64, "kernel_size": 8, "padding": 1, "stride": 2}
+    _conv2_params = {"out_channels": 128, "kernel_size": 6, "padding": 1, "stride": 2}
+
     def __init__(
         self,
+        dim: int,
         input_dim: int,
         num_classes: int,
         learning_rate: float = 1e-4,
@@ -592,22 +596,33 @@ class CNN(Model):
             temperature=temperature,
             stability_epsilon=stability_epsilon,
         )
+        conv1_out = self.compute_conv_out(dim, CNN._conv1_params)
+        conv2_out = self.compute_conv_out(conv1_out, CNN._conv2_params)
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Conv2d(
                     in_channels=input_dim,
-                    out_channels=64,
-                    kernel_size=8,
-                    stride=2,
-                    padding=1,
+                    out_channels=CNN._conv1_params.get("out_channels"),
+                    kernel_size=CNN._conv1_params.get("kernel_size"),
+                    stride=CNN._conv1_params.get("stride"),
+                    padding=CNN._conv1_params.get("padding"),
                 ),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.Conv2d(
-                    in_channels=64, out_channels=128, kernel_size=6, stride=2, padding=1
+                    in_channels=CNN._conv1_params.get("out_channels"),
+                    out_channels=CNN._conv2_params.get("out_channels"),
+                    kernel_size=CNN._conv2_params.get("kernel_size"),
+                    stride=CNN._conv2_params.get("stride"),
+                    padding=CNN._conv2_params.get("padding"),
                 ),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.Flatten(),
-                torch.nn.Linear(in_features=(128 * 5 * 5), out_features=1024),
+                torch.nn.Linear(
+                    in_features=int(
+                        CNN._conv2_params.get("out_channels") * conv2_out * conv2_out
+                    ),
+                    out_features=1024,
+                ),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.Linear(in_features=1024, out_features=1024),
                 torch.nn.ReLU(inplace=True),
@@ -623,6 +638,27 @@ class CNN(Model):
             self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.train_accuracy = []
         self.to(self.device)
+
+    @staticmethod
+    def compute_conv_out(dim: int, params: Dict) -> int:
+        """
+        Computes the convolutional layer output size.
+
+        Parameters
+        ----------
+        dim: int
+            The dimensionality of the input to the convolutional layer.
+        params: Dict
+            The parameters of the convolutional layer.
+
+        Returns
+        -------
+        int
+            The output size of the convolutional layer.
+        """
+        return (
+            dim - params.get("kernel_size") + 2 * params.get("padding")
+        ) / params.get("stride") + 1
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
