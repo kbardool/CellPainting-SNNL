@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of models"""
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 import torchvision
@@ -626,6 +626,12 @@ class CNN(Model):
             self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
         self.train_accuracy = []
         self.to(self.device)
+
+    @staticmethod
+    def compute_conv_out(dim: int, params: Dict) -> int:
+        return (
+            dim - params.get("kernel_size") + 2 * params.get("padding")
+        ) / params.get("stride") + 1
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
