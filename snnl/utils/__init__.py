@@ -65,6 +65,9 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             The learning rate to use for optimization.
         units: list
             The list of units per hidden layer if using [dnn].
+        image_dim: int
+            The dimensionality of the image feature [W, H]
+            such that W == H.
         input_dim: int
             The dimensionality of the input feature channel.
         num_classes: int
@@ -120,6 +123,9 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             temperature,
         )
     elif "cnn" in hyperparameters_filename:
+        image_dim = config.get("image_dim")
+        assert isinstance(image_dim, int), "[image_dim] must be [int]."
+
         input_dim = config.get("input_dim")
         assert isinstance(input_dim, int), "[input_dim] must be [int]."
 
@@ -131,6 +137,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             batch_size,
             epochs,
             learning_rate,
+            image_dim,
             input_dim,
             num_classes,
             snnl_factor,
