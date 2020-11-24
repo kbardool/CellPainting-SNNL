@@ -748,8 +748,6 @@ class CNN(Model):
         classes: torch.Tensor
             The class prediction by the model.
         """
-        if not isinstance(features, torch.Tensor):
-            features = torch.from_numpy(features)
         outputs = self.forward(features)
         predictions, classes = torch.max(outputs.data, dim=1)
         return (predictions, classes) if return_likelihoods else classes
