@@ -73,7 +73,9 @@ def main(args):
 
     train_dataset, test_dataset = load_dataset(name=dataset)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
-
+    test_loader = create_dataloader(
+        dataset=train_dataset, batch_size=len(test_dataset.data)
+    )
     if args.model.lower() == "baseline":
         model = CNN(
             input_dim=input_dim, num_classes=num_classes, learning_rate=learning_rate
@@ -90,11 +92,11 @@ def main(args):
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
     model.fit(train_loader, epochs)
-    test_features = test_dataset.data.reshape(-1, 1, 28, 28) / 255.0
     model.eval()
     model = model.cpu()
-    predictions = model.predict(test_features)
-    test_accuracy = accuracy(y_true=test_dataset.targets, y_pred=predictions)
+    for test_features, test_labels in test_loader:
+        predictions = model.predict(test_features)
+        test_accuracy = accuracy(y_true=test_labels, y_pred=predictions)
     print(f"accuracy: {test_accuracy}%")
 
 
