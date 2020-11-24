@@ -551,6 +551,7 @@ class CNN(Model):
 
     def __init__(
         self,
+        dim: int,
         input_dim: int,
         num_classes: int,
         learning_rate: float = 1e-4,
@@ -595,7 +596,7 @@ class CNN(Model):
             temperature=temperature,
             stability_epsilon=stability_epsilon,
         )
-        conv1_out = self.compute_conv_out(input_dim, CNN._conv1_params)
+        conv1_out = self.compute_conv_out(dim, CNN._conv1_params)
         conv2_out = self.compute_conv_out(conv1_out, CNN._conv2_params)
         self.layers = torch.nn.ModuleList(
             [
