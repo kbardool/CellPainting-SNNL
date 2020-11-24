@@ -63,6 +63,7 @@ def main(args):
         batch_size,
         epochs,
         learning_rate,
+        image_dim,
         input_dim,
         num_classes,
         snnl_factor,
@@ -78,10 +79,14 @@ def main(args):
     )
     if args.model.lower() == "baseline":
         model = CNN(
-            input_dim=input_dim, num_classes=num_classes, learning_rate=learning_rate
+            dim=image_dim,
+            input_dim=input_dim,
+            num_classes=num_classes,
+            learning_rate=learning_rate,
         )
     elif args.model.lower() == "snnl":
         model = CNN(
+            dim=image_dim,
             input_dim=input_dim,
             num_classes=num_classes,
             learning_rate=learning_rate,
