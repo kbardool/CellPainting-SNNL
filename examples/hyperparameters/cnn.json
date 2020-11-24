@@ -1,10 +1,11 @@
 {
-  "input_dim": 1,
+  "image_dim": 32,
+  "input_dim": 3,
   "num_classes": 10,
   "epochs": 10,
   "batch_size": 128,
   "learning_rate": 1e-4,
-  "dataset": "mnist",
+  "dataset": "cifar10",
   "snnl_factor": 10.0,
   "temperature": 0
 }
