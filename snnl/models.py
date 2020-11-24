@@ -546,8 +546,8 @@ class CNN(Model):
 
     _criterion = torch.nn.CrossEntropyLoss()
 
-    _conv1_params = {"out_channels": 64, "kernel_size": 8, "padding": 1}
-    _conv2_params = {"out_channels": 128, "kernel_size": 6, "padding": 1}
+    _conv1_params = {"out_channels": 64, "kernel_size": 8, "padding": 1, "stride": 2}
+    _conv2_params = {"out_channels": 128, "kernel_size": 6, "padding": 1, "stride": 2}
 
     def __init__(
         self,
