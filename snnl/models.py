@@ -629,6 +629,21 @@ class CNN(Model):
 
     @staticmethod
     def compute_conv_out(dim: int, params: Dict) -> int:
+        """
+        Computes the convolutional layer output size.
+
+        Parameters
+        ----------
+        dim: int
+            The dimensionality of the input to the convolutional layer.
+        params: Dict
+            The parameters of the convolutional layer.
+
+        Returns
+        -------
+        int
+            The output size of the convolutional layer.
+        """
         return (
             dim - params.get("kernel_size") + 2 * params.get("padding")
         ) / params.get("stride") + 1
