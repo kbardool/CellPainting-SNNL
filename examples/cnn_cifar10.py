@@ -1,5 +1,6 @@
 from typing import Tuple
 
+from pt_datasets import create_dataloader, load_dataset
 import torch
 
 
@@ -49,3 +50,7 @@ class CNN(torch.nn.Module):
                 activations[index] = layer(activations.get(index - 1))
         logits = activations.get(len(activations) - 1)
         return logits
+
+
+train_data, test_data = load_dataset("cifar10")
+train_loader = create_dataloader(train_data, batch_size=256)
