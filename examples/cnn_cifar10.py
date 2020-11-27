@@ -57,3 +57,5 @@ train_loader = create_dataloader(train_data, batch_size=256)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = CNN()
+model = model.to(device)
+model.device = device
