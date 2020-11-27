@@ -28,6 +28,19 @@ class CNN(torch.nn.Module):
                 torch.nn.init.kaiming_uniform_(layer.weight, nonlinearity="relu")
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass by the model.
+
+        Parameter
+        ---------
+        features: torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        logits: torch.Tensor
+            The output of the model.
+        """
         activations = dict()
         for index, layer in enumerate(self.children()):
             if index == 0:
