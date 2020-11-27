@@ -59,3 +59,4 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = CNN()
 model = model.to(device)
 model.device = device
+optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
