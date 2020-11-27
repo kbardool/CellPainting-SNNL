@@ -97,3 +97,15 @@ for epoch in range(epochs):
         print(f"epoch {epoch + 1}/{epochs}")
         print(f"\tmean loss = {epoch_loss:.4f}\t|\tmean acc = {epoch_accuracy:.4f}")
         print(f"\tmean xent = {epoch_xent:.4f}\t|\tmean snnl = {epoch_snnl:.4f}")
+
+test_loader = create_dataloader(test_data, batch_size=10000)
+
+with torch.no_grad():
+    model.eval()
+    model.cpu()
+    for test_features, test_labels in test_loader:
+        outputs = model(test_features)
+        test_accuracy = (outputs.argmax(1) == test_labels).sum().item() / len(
+            test_labels
+        )
+print(f"acc: {test_accuracy:.4f}")
