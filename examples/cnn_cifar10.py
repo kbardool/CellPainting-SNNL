@@ -4,6 +4,7 @@ from pt_datasets import create_dataloader, load_dataset
 import torch
 
 from snnl import SNNLoss
+from snnl.utils import set_global_seed
 
 
 class CNN(torch.nn.Module):
@@ -54,6 +55,7 @@ class CNN(torch.nn.Module):
         return logits
 
 
+set_global_seed(42)
 train_data, test_data = load_dataset("cifar10")
 train_loader = create_dataloader(train_data, batch_size=256)
 
