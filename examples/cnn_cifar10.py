@@ -1,3 +1,19 @@
+# Soft Nearest Neighbor Loss
+# Copyright (C) 2020  Abien Fred Agarap
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Sample module for using custom CNN classifier with SNNL"""
 from typing import Tuple
 
 from pt_datasets import create_dataloader, load_dataset
@@ -5,6 +21,9 @@ import torch
 
 from snnl import SNNLoss
 from snnl.utils import set_global_seed
+
+__author__ = "Abien Fred Agarap"
+__version__ = "1.0.0"
 
 
 class CNN(torch.nn.Module):
