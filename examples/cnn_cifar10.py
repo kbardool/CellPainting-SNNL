@@ -54,3 +54,6 @@ class CNN(torch.nn.Module):
 
 train_data, test_data = load_dataset("cifar10")
 train_loader = create_dataloader(train_data, batch_size=256)
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+model = CNN()
