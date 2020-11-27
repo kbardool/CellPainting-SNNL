@@ -64,7 +64,7 @@ model = CNN()
 model = model.to(device)
 model.device = device
 optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
-snnl_criterion = SNNLoss(mode="custom")
+snnl_criterion = SNNLoss(mode="custom", factor=10.0)
 epochs = 10
 
 for epoch in range(epochs):
