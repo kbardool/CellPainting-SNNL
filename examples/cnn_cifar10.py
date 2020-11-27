@@ -3,6 +3,8 @@ from typing import Tuple
 from pt_datasets import create_dataloader, load_dataset
 import torch
 
+from snnl import SNNLoss
+
 
 class CNN(torch.nn.Module):
     def __init__(self):
@@ -60,3 +62,4 @@ model = CNN()
 model = model.to(device)
 model.device = device
 optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
+snnl_criterion = SNNLoss()
