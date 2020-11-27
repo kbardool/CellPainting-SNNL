@@ -23,5 +23,9 @@ class CNN(torch.nn.Module):
         self.activation5 = torch.nn.ReLU(inplace=True)
         self.output_layer = torch.nn.Linear(in_features=512, out_features=10)
 
+        for layer in list(self.children()[-1]):
+            if isinstance(layer, torch.nn.Linear):
+                torch.nn.init.kaiming_uniform_(layer.weight, nonlinearity="relu")
+
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         pass
