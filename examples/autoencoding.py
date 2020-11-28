@@ -21,8 +21,6 @@ import torch
 from snnl.models import Autoencoder
 from snnl.utils import get_hyperparameters, set_global_seed
 
-# from snnl.utils.data import load_dataset, create_dataloader
-
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
 

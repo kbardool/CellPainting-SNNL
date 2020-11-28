@@ -20,8 +20,6 @@ import torch
 
 from snnl.models import CNN
 from snnl.utils import get_hyperparameters, set_global_seed
-
-# from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
 __author__ = "Abien Fred Agarap"
