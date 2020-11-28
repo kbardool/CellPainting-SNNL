@@ -16,9 +16,11 @@
 """Sample module for using DNN classifier with SNNL"""
 import argparse
 
+from pt_datasets import create_dataloader, load_dataset
 from snnl.models import DNN
 from snnl.utils import export_results, get_hyperparameters, set_global_seed
-from snnl.utils.data import create_dataloader, load_dataset
+
+# from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
 __author__ = "Abien Fred Agarap"
