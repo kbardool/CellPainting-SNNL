@@ -15,11 +15,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample module for using CNN classifier with SNNL"""
 import argparse
+from pt_datasets import create_dataloader, load_dataset
 import torch
 
 from snnl.models import CNN
 from snnl.utils import get_hyperparameters, set_global_seed
-from snnl.utils.data import create_dataloader, load_dataset
+
+# from snnl.utils.data import create_dataloader, load_dataset
 from snnl.utils.metrics import accuracy
 
 __author__ = "Abien Fred Agarap"
