@@ -16,11 +16,13 @@
 """Implementation of models"""
 from typing import Dict, List, Tuple
 
+from pt_datasets import create_dataloader
 import torch
 import torchvision
 
 from snnl import SNNLoss
-from snnl.utils.data import create_dataloader
+
+# from snnl.utils.data import create_dataloader
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
