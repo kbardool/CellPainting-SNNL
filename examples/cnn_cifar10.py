@@ -119,15 +119,17 @@ for epoch in range(epochs):
 
 test_loader = create_dataloader(test_data, batch_size=10000)
 
-with torch.no_grad():
-    model.eval()
-    model.cpu()
-    for test_features, test_labels in test_loader:
-        outputs = model(test_features)
-        test_accuracy = (outputs.argmax(1) == test_labels).sum().item() / len(
-            test_labels
-        )
-print(f"acc: {test_accuracy:.4f}")
+
+def evaluate_model(model: torch.nn.Module, data_loader: torch.utils.data.DataLoader):
+    with torch.no_grad():
+        model.eval()
+        model.cpu()
+        for test_features, test_labels in test_loader:
+            outputs = model(test_features)
+            test_accuracy = (outputs.argmax(1) == test_labels).sum().item() / len(
+                test_labels
+            )
+    return test_accuracy
 
 
 def main():
