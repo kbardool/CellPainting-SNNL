@@ -74,22 +74,6 @@ class CNN(torch.nn.Module):
         return logits
 
 
-set_global_seed(42)
-train_data, test_data = load_dataset("cifar10")
-train_loader = create_dataloader(train_data, batch_size=256)
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = CNN()
-model = model.to(device)
-model.device = device
-optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
-snnl_criterion = SNNLoss(mode="custom", factor=10.0)
-epochs = 10
-
-
-test_loader = create_dataloader(test_data, batch_size=10000)
-
-
 def train_model(
     model: torch.nn.Module,
     optimizer: object,
@@ -144,7 +128,28 @@ def evaluate_model(model: torch.nn.Module, data_loader: torch.utils.data.DataLoa
 
 
 def main():
-    pass
+    set_global_seed(42)
+    train_data, test_data = load_dataset("cifar10")
+    train_loader = create_dataloader(train_data, batch_size=256)
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = CNN()
+    model = model.to(device)
+    model.device = device
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
+    snnl_criterion = SNNLoss(mode="custom", factor=10.0)
+    epochs = 10
+
+    model = train_model(
+        model=model,
+        optimizer=optimizer,
+        criterion=snnl_criterion,
+        data_loader=train_loader,
+        epochs=epochs,
+    )
+    test_loader = create_dataloader(test_data, batch_size=10000)
+    test_accuracy = evaluate_model(model=model, data_loader=test_loader)
+    print(f"Test accuracy: {test_accuracy:.4f}")
 
 
 if __name__ == "__main__":
