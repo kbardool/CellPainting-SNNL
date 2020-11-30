@@ -98,7 +98,7 @@ def train_model(
 ):
     for epoch in range(epochs):
         epoch_loss, epoch_xent, epoch_snnl, epoch_accuracy = 0, 0, 0, 0
-        for batch_features, batch_labels in train_loader:
+        for batch_features, batch_labels in data_loader:
             batch_features = batch_features.to(device)
             batch_labels = batch_labels.to(device)
             optimizer.zero_grad()
@@ -133,7 +133,7 @@ def evaluate_model(model: torch.nn.Module, data_loader: torch.utils.data.DataLoa
     with torch.no_grad():
         model.eval()
         model.cpu()
-        for test_features, test_labels in test_loader:
+        for test_features, test_labels in data_loader:
             outputs = model(test_features)
             test_accuracy = (outputs.argmax(1) == test_labels).sum().item() / len(
                 test_labels
