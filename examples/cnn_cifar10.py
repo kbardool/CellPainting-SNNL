@@ -128,3 +128,11 @@ with torch.no_grad():
             test_labels
         )
 print(f"acc: {test_accuracy:.4f}")
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()
