@@ -92,6 +92,8 @@ test_loader = create_dataloader(test_data, batch_size=10000)
 
 def train_model(
     model: torch.nn.Module,
+    optimizer: object,
+    criterion: object,
     data_loader: torch.utils.data.DataLoader,
     epochs: int = 10,
     show_every: int = 2,
@@ -103,7 +105,7 @@ def train_model(
             batch_labels = batch_labels.to(device)
             optimizer.zero_grad()
             outputs = model(batch_features)
-            train_loss, xent_loss, snn_loss = snnl_criterion(
+            train_loss, xent_loss, snn_loss = criterion(
                 outputs=outputs,
                 model=model,
                 features=batch_features,
