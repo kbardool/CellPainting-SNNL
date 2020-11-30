@@ -74,57 +74,83 @@ class CNN(torch.nn.Module):
         return logits
 
 
-set_global_seed(42)
-train_data, test_data = load_dataset("cifar10")
-train_loader = create_dataloader(train_data, batch_size=256)
+def train_model(
+    model: torch.nn.Module,
+    optimizer: object,
+    criterion: object,
+    data_loader: torch.utils.data.DataLoader,
+    epochs: int = 10,
+    show_every: int = 2,
+):
+    for epoch in range(epochs):
+        epoch_loss, epoch_xent, epoch_snnl, epoch_accuracy = 0, 0, 0, 0
+        for batch_features, batch_labels in data_loader:
+            batch_features = batch_features.to(model.device)
+            batch_labels = batch_labels.to(model.device)
+            optimizer.zero_grad()
+            outputs = model(batch_features)
+            train_loss, xent_loss, snn_loss = criterion(
+                outputs=outputs,
+                model=model,
+                features=batch_features,
+                labels=batch_labels,
+                epoch=epoch,
+            )
+            train_loss.backward()
+            optimizer.step()
+            epoch_loss += train_loss.item()
+            epoch_xent += xent_loss.item()
+            epoch_snnl += snn_loss.item()
+            train_accuracy = (outputs.argmax(1) == batch_labels).sum().item()
+            train_accuracy /= len(batch_labels)
+            epoch_accuracy += train_accuracy
+        epoch_loss /= len(data_loader)
+        epoch_xent /= len(data_loader)
+        epoch_snnl /= len(data_loader)
+        epoch_accuracy /= len(data_loader)
+        if (epoch + 1) % 2 == 0:
+            print(f"epoch {epoch + 1}/{epochs}")
+            print(f"\tmean loss = {epoch_loss:.4f}\t|\tmean acc = {epoch_accuracy:.4f}")
+            print(f"\tmean xent = {epoch_xent:.4f}\t|\tmean snnl = {epoch_snnl:.4f}")
+    return model
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = CNN()
-model = model.to(device)
-model.device = device
-optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
-snnl_criterion = SNNLoss(mode="custom", factor=10.0)
-epochs = 10
 
-for epoch in range(epochs):
-    epoch_loss, epoch_xent, epoch_snnl, epoch_accuracy = 0, 0, 0, 0
-    for batch_features, batch_labels in train_loader:
-        batch_features = batch_features.to(device)
-        batch_labels = batch_labels.to(device)
-        optimizer.zero_grad()
-        outputs = model(batch_features)
-        train_loss, xent_loss, snn_loss = snnl_criterion(
-            outputs=outputs,
-            model=model,
-            features=batch_features,
-            labels=batch_labels,
-            epoch=epoch,
-        )
-        train_loss.backward()
-        optimizer.step()
-        epoch_loss += train_loss.item()
-        epoch_xent += xent_loss.item()
-        epoch_snnl += snn_loss.item()
-        train_accuracy = (outputs.argmax(1) == batch_labels).sum().item()
-        train_accuracy /= len(batch_labels)
-        epoch_accuracy += train_accuracy
-    epoch_loss /= len(train_loader)
-    epoch_xent /= len(train_loader)
-    epoch_snnl /= len(train_loader)
-    epoch_accuracy /= len(train_loader)
-    if (epoch + 1) % 2 == 0:
-        print(f"epoch {epoch + 1}/{epochs}")
-        print(f"\tmean loss = {epoch_loss:.4f}\t|\tmean acc = {epoch_accuracy:.4f}")
-        print(f"\tmean xent = {epoch_xent:.4f}\t|\tmean snnl = {epoch_snnl:.4f}")
+def evaluate_model(model: torch.nn.Module, data_loader: torch.utils.data.DataLoader):
+    with torch.no_grad():
+        model.eval()
+        model.cpu()
+        for test_features, test_labels in data_loader:
+            outputs = model(test_features)
+            test_accuracy = (outputs.argmax(1) == test_labels).sum().item() / len(
+                test_labels
+            )
+    return test_accuracy
 
-test_loader = create_dataloader(test_data, batch_size=10000)
 
-with torch.no_grad():
-    model.eval()
-    model.cpu()
-    for test_features, test_labels in test_loader:
-        outputs = model(test_features)
-        test_accuracy = (outputs.argmax(1) == test_labels).sum().item() / len(
-            test_labels
-        )
-print(f"acc: {test_accuracy:.4f}")
+def main():
+    set_global_seed(42)
+    train_data, test_data = load_dataset("cifar10")
+    train_loader = create_dataloader(train_data, batch_size=256)
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = CNN()
+    model = model.to(device)
+    model.device = device
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
+    snnl_criterion = SNNLoss(mode="custom", factor=10.0)
+    epochs = 10
+
+    model = train_model(
+        model=model,
+        optimizer=optimizer,
+        criterion=snnl_criterion,
+        data_loader=train_loader,
+        epochs=epochs,
+    )
+    test_loader = create_dataloader(test_data, batch_size=10000)
+    test_accuracy = evaluate_model(model=model, data_loader=test_loader)
+    print(f"Test accuracy: {test_accuracy:.4f}")
+
+
+if __name__ == "__main__":
+    main()
