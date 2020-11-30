@@ -101,8 +101,8 @@ def train_model(
     for epoch in range(epochs):
         epoch_loss, epoch_xent, epoch_snnl, epoch_accuracy = 0, 0, 0, 0
         for batch_features, batch_labels in data_loader:
-            batch_features = batch_features.to(device)
-            batch_labels = batch_labels.to(device)
+            batch_features = batch_features.to(model.device)
+            batch_labels = batch_labels.to(model.device)
             optimizer.zero_grad()
             outputs = model(batch_features)
             train_loss, xent_loss, snn_loss = criterion(
@@ -120,10 +120,10 @@ def train_model(
             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item()
             train_accuracy /= len(batch_labels)
             epoch_accuracy += train_accuracy
-        epoch_loss /= len(train_loader)
-        epoch_xent /= len(train_loader)
-        epoch_snnl /= len(train_loader)
-        epoch_accuracy /= len(train_loader)
+        epoch_loss /= len(data_loader)
+        epoch_xent /= len(data_loader)
+        epoch_snnl /= len(data_loader)
+        epoch_accuracy /= len(data_loader)
         if (epoch + 1) % 2 == 0:
             print(f"epoch {epoch + 1}/{epochs}")
             print(f"\tmean loss = {epoch_loss:.4f}\t|\tmean acc = {epoch_accuracy:.4f}")
