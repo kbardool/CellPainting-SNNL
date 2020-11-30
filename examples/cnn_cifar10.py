@@ -86,38 +86,47 @@ optimizer = torch.optim.Adam(params=model.parameters(), lr=3e-4)
 snnl_criterion = SNNLoss(mode="custom", factor=10.0)
 epochs = 10
 
-for epoch in range(epochs):
-    epoch_loss, epoch_xent, epoch_snnl, epoch_accuracy = 0, 0, 0, 0
-    for batch_features, batch_labels in train_loader:
-        batch_features = batch_features.to(device)
-        batch_labels = batch_labels.to(device)
-        optimizer.zero_grad()
-        outputs = model(batch_features)
-        train_loss, xent_loss, snn_loss = snnl_criterion(
-            outputs=outputs,
-            model=model,
-            features=batch_features,
-            labels=batch_labels,
-            epoch=epoch,
-        )
-        train_loss.backward()
-        optimizer.step()
-        epoch_loss += train_loss.item()
-        epoch_xent += xent_loss.item()
-        epoch_snnl += snn_loss.item()
-        train_accuracy = (outputs.argmax(1) == batch_labels).sum().item()
-        train_accuracy /= len(batch_labels)
-        epoch_accuracy += train_accuracy
-    epoch_loss /= len(train_loader)
-    epoch_xent /= len(train_loader)
-    epoch_snnl /= len(train_loader)
-    epoch_accuracy /= len(train_loader)
-    if (epoch + 1) % 2 == 0:
-        print(f"epoch {epoch + 1}/{epochs}")
-        print(f"\tmean loss = {epoch_loss:.4f}\t|\tmean acc = {epoch_accuracy:.4f}")
-        print(f"\tmean xent = {epoch_xent:.4f}\t|\tmean snnl = {epoch_snnl:.4f}")
 
 test_loader = create_dataloader(test_data, batch_size=10000)
+
+
+def train_model(
+    model: torch.nn.Module,
+    data_loader: torch.utils.data.DataLoader,
+    epochs: int = 10,
+    show_every: int = 2,
+):
+    for epoch in range(epochs):
+        epoch_loss, epoch_xent, epoch_snnl, epoch_accuracy = 0, 0, 0, 0
+        for batch_features, batch_labels in train_loader:
+            batch_features = batch_features.to(device)
+            batch_labels = batch_labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(batch_features)
+            train_loss, xent_loss, snn_loss = snnl_criterion(
+                outputs=outputs,
+                model=model,
+                features=batch_features,
+                labels=batch_labels,
+                epoch=epoch,
+            )
+            train_loss.backward()
+            optimizer.step()
+            epoch_loss += train_loss.item()
+            epoch_xent += xent_loss.item()
+            epoch_snnl += snn_loss.item()
+            train_accuracy = (outputs.argmax(1) == batch_labels).sum().item()
+            train_accuracy /= len(batch_labels)
+            epoch_accuracy += train_accuracy
+        epoch_loss /= len(train_loader)
+        epoch_xent /= len(train_loader)
+        epoch_snnl /= len(train_loader)
+        epoch_accuracy /= len(train_loader)
+        if (epoch + 1) % 2 == 0:
+            print(f"epoch {epoch + 1}/{epochs}")
+            print(f"\tmean loss = {epoch_loss:.4f}\t|\tmean acc = {epoch_accuracy:.4f}")
+            print(f"\tmean xent = {epoch_xent:.4f}\t|\tmean snnl = {epoch_snnl:.4f}")
+    return model
 
 
 def evaluate_model(model: torch.nn.Module, data_loader: torch.utils.data.DataLoader):
