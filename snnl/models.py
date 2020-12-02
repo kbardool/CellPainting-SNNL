@@ -22,7 +22,6 @@ import torchvision
 
 from snnl import SNNLoss
 
-# from snnl.utils.data import create_dataloader
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
