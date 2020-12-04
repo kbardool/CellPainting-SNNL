@@ -155,7 +155,7 @@ class Model(torch.nn.Module):
             self.optimizer.zero_grad()
             outputs = self.forward(features=batch_features)
             if self.use_snnl:
-                train_loss, snn_loss, primary_loss = self.snnl_criterion(
+                train_loss, primary_loss, snn_loss = self.snnl_criterion(
                     model=self,
                     outputs=outputs,
                     features=batch_features,
