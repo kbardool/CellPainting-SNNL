@@ -637,7 +637,7 @@ class CNN(Model):
             if index < (len(self.layers) - 1) and (
                 isinstance(layer, torch.nn.Linear) or isinstance(layer, torch.nn.Conv2d)
             ):
-                torch.nn.init.kaiming_normal_(layer.weight, nonlinearity="weight")
+                torch.nn.init.kaiming_normal_(layer.weight, nonlinearity="relu")
             elif index == (len(self.layers) - 1) and isinstance(layer, torch.nn.Linear):
                 torch.nn.init.xavier_uninform_(layer.weight)
             else:
