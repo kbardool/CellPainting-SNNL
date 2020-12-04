@@ -639,7 +639,7 @@ class CNN(Model):
             ):
                 torch.nn.init.kaiming_normal_(layer.weight, nonlinearity="relu")
             elif index == (len(self.layers) - 1) and isinstance(layer, torch.nn.Linear):
-                torch.nn.init.xavier_uninform_(layer.weight)
+                torch.nn.init.xavier_uniform_(layer.weight)
             else:
                 pass
 
