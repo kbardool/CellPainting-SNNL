@@ -1,0 +1,19 @@
+{
+  "image_dim": 28,
+  "input_dim": 1,
+  "num_classes": 10,
+  "epochs": 10,
+  "batch_size": 128,
+  "learning_rate": 1e-3,
+  "dataset": "fashion_mnist",
+  "snnl_factor": 10.0,
+  "temperature": 0,
+  "__config__": [
+    {
+      "1": "T=100, alpha=10.0",
+      "2": "T=100, alpha=-10.0",
+      "3": "T=0, alpha=10.0",
+      "4": "T=0, alpha=-10.0"
+    }
+  ]
+}
