@@ -76,7 +76,11 @@ def main(args):
         model = DNN(units=units, learning_rate=learning_rate)
     elif args.model.lower() == "snnl":
         model = DNN(
-            units=units, learning_rate=learning_rate, use_snnl=True, factor=snnl_factor
+            units=units,
+            learning_rate=learning_rate,
+            use_snnl=True,
+            factor=snnl_factor,
+            temperature=temperature,
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
