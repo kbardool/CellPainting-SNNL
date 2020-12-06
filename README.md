@@ -6,6 +6,16 @@ In the context of this work, _entanglement_ is defined as to how close class-sim
 
 ## Usage
 
+## Results
+
+| Model               | MNIST (Average) | MNIST (Best) | Fashion-MNIST (Average) | Fashion-MNIST (Best) | SVHN (Average) | SVHN (Best) |
+| ------------------- | --------------- | ------------ | ----------------------- | -------------------- | -------------- | ----------- |
+| Baseline            | **99.68%**      | **99.81%**   | **97.764%**             | 97.99%               | 99.29%         | 99.41%      |
+| SNNL (T=100, a=10)  | 99.5%           | 99.67%       | 97.09%                  | 97.72                | **99.42%**     | **99.78%**  |
+| SNNL (T=100, a=-10) | 99.49%          | **99.69%**   | 97.63%                  | 98.22%               | 99.06%         | 99.44%      |
+| SNNL (T=0, a=10)    | 98.72%          | 98.96%       | 93.99%                  | 94.63%               | 97.63%         | 98.02%      |
+| SNNL (T=0, a=-10)   | 95.06%          | 96.92%       | 82.07%                  | 88.7%                | 18.88%         | 19.3%       |
+
 ## References
 
 - Frosst, Nicholas, Nicolas Papernot, and Geoffrey Hinton. "Analyzing and improving representations with the soft nearest neighbor loss." arXiv preprint arXiv:1902.01889 (2019).
