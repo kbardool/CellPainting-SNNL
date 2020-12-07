@@ -326,7 +326,15 @@ class Autoencoder(Model):
         return reconstruction
 
     def compute_latent_code(self, features: torch.Tensor) -> torch.Tensor:
-        pass
+        activations = {}
+        for index, layer in enumerate(self.layers[:8]):
+            if index == 0:
+                activations[index] = layer(features)
+            else:
+                activations[index] = layer(activations.get(index - 1))
+        latent_code = activations.get(len(activations) - 1)
+        latent_code = latent_code.detach().numpy()
+        return latent_code
 
     def fit(
         self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
