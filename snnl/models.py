@@ -325,6 +325,9 @@ class Autoencoder(Model):
         reconstruction = activations[len(activations) - 1]
         return reconstruction
 
+    def compute_latent_code(self, features: torch.Tensor) -> torch.Tensor:
+        pass
+
     def fit(
         self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 2
     ) -> None:
