@@ -326,6 +326,8 @@ class Autoencoder(Model):
         return reconstruction
 
     def compute_latent_code(self, features: torch.Tensor) -> torch.Tensor:
+        if not isinstance(features, torch.Tensor):
+            features = torch.from_numpy(features)
         activations = {}
         for index, layer in enumerate(self.layers[:8]):
             if index == 0:
