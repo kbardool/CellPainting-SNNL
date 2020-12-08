@@ -119,6 +119,15 @@ class SNNLoss(torch.nn.Module):
             The model outputs.
         epoch: int
             The current training epoch.
+
+        Returns
+        -------
+        train_loss: float
+            The composite training loss.
+        primary_loss: float
+            The primary loss function value.
+        snn_loss: float
+            The soft nearest neighbor loss value.
         """
         temperature = (
             (1.0 / ((1.0 + epoch) ** 0.55))
