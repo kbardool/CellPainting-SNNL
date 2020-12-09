@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of loss functions"""
-from typing import Tuple
+from typing import Dict, Tuple
 import torch
 
 __author__ = "Abien Fred Agarap"
@@ -182,7 +182,9 @@ class SNNLoss(torch.nn.Module):
         train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
         return train_loss, primary_loss, snn_loss
 
-    def compute_activations(self, model: torch.nn.Module, features: torch.Tensor):
+    def compute_activations(
+        self, model: torch.nn.Module, features: torch.Tensor
+    ) -> Dict:
         """
         Returns the hidden layer activations of a model.
 
