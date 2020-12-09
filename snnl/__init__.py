@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of loss functions"""
-from typing import Tuple
+from typing import Dict, Tuple
 import torch
 
 __author__ = "Abien Fred Agarap"
@@ -139,30 +139,7 @@ class SNNLoss(torch.nn.Module):
             outputs, features if self.unsupervised else labels
         )
 
-        activations = dict()
-        if self.mode in ["classifier", "autoencoding", "latent_code"]:
-            layers = model.layers[:-1] if self.mode == "classifier" else model.layers
-            for index, layer in enumerate(layers):
-                if index == 0:
-                    activations[index] = layer(features)
-                else:
-                    activations[index] = layer(activations[index - 1])
-        elif self.mode == "resnet":
-            for index, (name, layer) in enumerate(list(model.resnet.named_children())):
-                if index == 0:
-                    activations[index] = layer(features)
-                elif index == 9:
-                    value = activations[index - 1].view(
-                        activations[index - 1].shape[0], -1
-                    )
-                    activations[index] = layer(value)
-                else:
-                    activations[index] = layer(activations[index - 1])
-        elif self.mode == "custom":
-            for index, layer in enumerate(list(model.children())):
-                activations[index] = (
-                    layer(features) if index == 0 else layer(activations[index - 1])
-                )
+        activations = self.compute_activations(model=model, features=features)
 
         layers_snnl = []
         for key, value in activations.items():
@@ -204,3 +181,47 @@ class SNNLoss(torch.nn.Module):
         snn_loss = torch.stack(layers_snnl).sum()
         train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
         return train_loss, primary_loss, snn_loss
+
+    def compute_activations(
+        self, model: torch.nn.Module, features: torch.Tensor
+    ) -> Dict:
+        """
+        Returns the hidden layer activations of a model.
+
+        Parameters
+        ----------
+        model: torch.nn.Module
+            The model whose hidden layer representations shall be computed.
+        features: torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        activations: Dict
+            The hidden layer activations of the model.
+        """
+        activations = dict()
+        if self.mode in ["classifier", "autoencoding", "latent_code"]:
+            layers = model.layers[:-1] if self.mode == "classifier" else model.layers
+            for index, layer in enumerate(layers):
+                if index == 0:
+                    activations[index] = layer(features)
+                else:
+                    activations[index] = layer(activations[index - 1])
+        elif self.mode == "resnet":
+            for index, (name, layer) in enumerate(list(model.resnet.named_children())):
+                if index == 0:
+                    activations[index] = layer(features)
+                elif index == 9:
+                    value = activations[index - 1].view(
+                        activations[index - 1].shape[0], -1
+                    )
+                    activations[index] = layer(value)
+                else:
+                    activations[index] = layer(activations[index - 1])
+        elif self.mode == "custom":
+            for index, layer in enumerate(list(model.children())):
+                activations[index] = (
+                    layer(features) if index == 0 else layer(activations[index - 1])
+                )
+        return activations
