@@ -183,6 +183,21 @@ class SNNLoss(torch.nn.Module):
         return train_loss, primary_loss, snn_loss
 
     def compute_activations(self, model: torch.nn.Module, features: torch.Tensor):
+        """
+        Returns the hidden layer activations of a model.
+
+        Parameters
+        ----------
+        model: torch.nn.Module
+            The model whose hidden layer representations shall be computed.
+        features: torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        activations: Dict
+            The hidden layer activations of the model.
+        """
         activations = dict()
         if self.mode in ["classifier", "autoencoding", "latent_code"]:
             layers = model.layers[:-1] if self.mode == "classifier" else model.layers
