@@ -141,7 +141,6 @@ class Model(torch.nn.Module):
             The epoch accuracy.
         """
         if self.use_snnl:
-            assert epoch is not None, "[epoch] must not be None if use_snnl == True"
             epoch_primary_loss = 0
             epoch_snn_loss = 0
         if self.name == "DNN" or self.name == "CNN":
@@ -945,7 +944,6 @@ class ResNet(torch.nn.Module):
             The epoch accuracy.
         """
         if self.use_snnl:
-            assert epoch is not None, "[epoch] must not be None if use_snnl == True"
             epoch_xent_loss = 0
             epoch_snn_loss = 0
         epoch_loss = 0
