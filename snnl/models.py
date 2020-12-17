@@ -49,7 +49,9 @@ class Model(torch.nn.Module):
         self.use_snnl = use_snnl
         self.factor = factor
         self.code_units = code_units
-        self.temperature = temperature
+        self.temperature = torch.nn.Parameter(
+            data=torch.tensor([temperature]), requires_grad=True
+        )
         self.stability_epsilon = stability_epsilon
         if self.use_snnl:
             self.snnl_criterion = SNNLoss(
