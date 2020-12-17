@@ -587,7 +587,7 @@ class CNN(Model):
         learning_rate: float = 1e-4,
         use_snnl: bool = False,
         factor: float = 100.0,
-        temperature: int = None,
+        temperature: float = 100.0,
         stability_epsilon: float = 1e-5,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -612,7 +612,7 @@ class CNN(Model):
             The balance between SNNL and the primary loss.
             A positive factor implies SNNL minimization,
             while a negative factor implies SNNL maximization.
-        temperature: int
+        temperature: float
             The SNNL temperature.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
