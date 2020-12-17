@@ -37,7 +37,7 @@ class Model(torch.nn.Module):
         ),
         use_snnl: bool = False,
         factor: float = 100.0,
-        temperature: int = None,
+        temperature: float = None,
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
     ):
