@@ -52,6 +52,7 @@ class Model(torch.nn.Module):
         self.temperature = torch.nn.Parameter(
             data=torch.tensor([temperature]), requires_grad=True
         )
+        self.register_parameter(name="temperature", param=self.temperature)
         self.stability_epsilon = stability_epsilon
         if self.use_snnl:
             self.snnl_criterion = SNNLoss(
