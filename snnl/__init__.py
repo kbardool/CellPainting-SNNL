@@ -52,7 +52,7 @@ class SNNLoss(torch.nn.Module):
         mode: str = "classifier",
         criterion: object = torch.nn.CrossEntropyLoss(),
         factor: float = 100.0,
-        temperature: int = None,
+        temperature: float = None,
         code_units: int = 30,
         stability_epsilon: float = 1e-5,
     ):
@@ -70,7 +70,7 @@ class SNNLoss(torch.nn.Module):
             The balance factor between SNNL and the primary loss.
             A positive factor implies SNNL minimization, while a negative
             factor implies SNNL maximization.
-        temperature: int
+        temperature: float
             The SNNL temperature.
         code_units: int
             The number of units in which the SNNL will be applied.
