@@ -103,7 +103,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     ), "[snnl_factor] must be either [float] or [int]."
 
     temperature = config.get("temperature")
-    assert isinstance(temperature, int), "[temperature] must be [int]."
+    assert isinstance(temperature, float), "[temperature] must be [float]."
     if temperature == 0:
         temperature = None
 

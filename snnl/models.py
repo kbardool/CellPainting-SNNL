@@ -37,7 +37,7 @@ class Model(torch.nn.Module):
         ),
         use_snnl: bool = False,
         factor: float = 100.0,
-        temperature: int = None,
+        temperature: float = 100.0,
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
     ):
@@ -49,7 +49,10 @@ class Model(torch.nn.Module):
         self.use_snnl = use_snnl
         self.factor = factor
         self.code_units = code_units
-        self.temperature = temperature
+        self.temperature = torch.nn.Parameter(
+            data=torch.tensor([temperature]), requires_grad=True
+        )
+        self.register_parameter(name="temperature", param=self.temperature)
         self.stability_epsilon = stability_epsilon
         if self.use_snnl:
             self.snnl_criterion = SNNLoss(
@@ -584,7 +587,7 @@ class CNN(Model):
         learning_rate: float = 1e-4,
         use_snnl: bool = False,
         factor: float = 100.0,
-        temperature: int = None,
+        temperature: float = 100.0,
         stability_epsilon: float = 1e-5,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -609,7 +612,7 @@ class CNN(Model):
             The balance between SNNL and the primary loss.
             A positive factor implies SNNL minimization,
             while a negative factor implies SNNL maximization.
-        temperature: int
+        temperature: float
             The SNNL temperature.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
@@ -648,12 +651,10 @@ class CNN(Model):
                     in_features=int(
                         CNN._conv2_params.get("out_channels") * conv2_out * conv2_out
                     ),
-                    out_features=1024,
+                    out_features=50,
                 ),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(in_features=1024, out_features=1024),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(in_features=1024, out_features=512),
+                torch.nn.Linear(in_features=50, out_features=512),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.Linear(in_features=512, out_features=num_classes),
             ]
