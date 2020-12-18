@@ -651,12 +651,10 @@ class CNN(Model):
                     in_features=int(
                         CNN._conv2_params.get("out_channels") * conv2_out * conv2_out
                     ),
-                    out_features=1024,
+                    out_features=50,
                 ),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(in_features=1024, out_features=1024),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(in_features=1024, out_features=512),
+                torch.nn.Linear(in_features=50, out_features=512),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.Linear(in_features=512, out_features=num_classes),
             ]
