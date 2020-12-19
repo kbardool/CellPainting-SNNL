@@ -198,6 +198,11 @@ class Model(torch.nn.Module):
             else:
                 return epoch_loss
 
+    def optimize_temperature(self):
+        temperature_gradients = self.temperature.grad
+        updated_temperature = self.temperature - (1e-1 * temperature_gradients)
+        self.temperature.data = updated_temperature
+
 
 class Autoencoder(Model):
     """
