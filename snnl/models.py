@@ -199,6 +199,9 @@ class Model(torch.nn.Module):
                 return epoch_loss
 
     def optimize_temperature(self):
+        """
+        Learns an optimized temperature parameter.
+        """
         temperature_gradients = self.temperature.grad
         updated_temperature = self.temperature - (1e-1 * temperature_gradients)
         self.temperature.data = updated_temperature
