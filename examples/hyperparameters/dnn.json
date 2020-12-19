@@ -9,6 +9,6 @@
   "batch_size": 256,
   "learning_rate": 1e-4,
   "dataset": "fashion_mnist",
-  "snnl_factor": 100.0,
+  "snnl_factor": 10.0,
   "temperature": 100.0
 }
