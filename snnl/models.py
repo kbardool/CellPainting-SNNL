@@ -182,6 +182,7 @@ class Model(torch.nn.Module):
                 epoch_accuracy += train_accuracy
             train_loss.backward()
             self.optimizer.step()
+            self.optimize_temperature()
         epoch_loss /= len(data_loader)
         if self.name in ["DNN", "CNN"]:
             epoch_accuracy /= len(data_loader)
