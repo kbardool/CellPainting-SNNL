@@ -182,6 +182,7 @@ class Model(torch.nn.Module):
                 epoch_accuracy += train_accuracy
             train_loss.backward()
             self.optimizer.step()
+            self.optimize_temperature()
         epoch_loss /= len(data_loader)
         if self.name in ["DNN", "CNN"]:
             epoch_accuracy /= len(data_loader)
@@ -197,6 +198,14 @@ class Model(torch.nn.Module):
                 return epoch_loss, epoch_accuracy
             else:
                 return epoch_loss
+
+    def optimize_temperature(self):
+        """
+        Learns an optimized temperature parameter.
+        """
+        temperature_gradients = self.temperature.grad
+        updated_temperature = self.temperature - (1e-1 * temperature_gradients)
+        self.temperature.data = updated_temperature
 
 
 class Autoencoder(Model):
