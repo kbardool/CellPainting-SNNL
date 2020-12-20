@@ -45,6 +45,7 @@ class SNNLoss(torch.nn.Module):
         "autoencoding": True,
         "latent_code": True,
         "custom": False,
+        "moe": False,
     }
 
     def __init__(
@@ -219,5 +220,14 @@ class SNNLoss(torch.nn.Module):
             for index, layer in enumerate(list(model.children())):
                 activations[index] = (
                     layer(features) if index == 0 else layer(activations[index - 1])
+                )
+        elif self.mode == "moe":
+            layers = dict(model.named_children())
+            layers = layers.get("feature_extractor")
+            if isinstance(layers[0], torch.nn.Linear) and len(features.shape) > 2:
+                features = features.view(features.shape[0], -1)
+            for index, layer in enumerate(layers):
+                activations[index] = (
+                    layer(features) if index == 0 else layer(activations.get(index - 1))
                 )
         return activations
