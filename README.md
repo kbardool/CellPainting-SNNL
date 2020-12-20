@@ -8,8 +8,8 @@ In the context of this work, _entanglement_ is defined as to how close class-sim
 
 ## Results
 
-| Model | MNIST (Average) | MNIST (Best) | Fashion-MNIST (Average) | Fashion-MNIST (Best) | SVHN (Average) | SVHN (Best) |
-| ----- | --------------- | ------------ | ----------------------- | -------------------- | -------------- | ----------- |
+| Model | MNIST (Average) | MNIST (Best) | Fashion-MNIST (Average) | Fashion-MNIST (Best) | KMNIST (Average) | KMNIST (Best) |
+| ----- | --------------- | ------------ | ----------------------- | -------------------- | ---------------- | ------------- |
 
 
 ## References
