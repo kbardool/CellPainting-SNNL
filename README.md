@@ -6,6 +6,19 @@ In the context of this work, _entanglement_ is defined as how close class-simila
 
 ## Usage
 
+It is recommended to use a virtual environment in order to isolate the
+installation of this package to projects in which it will be used.
+
+```shell script
+$ virtualenv venv --python=python3
+```
+
+Then, the loss function along with template models can be installed via `pip`.
+
+```shell script
+$ pip install pt-snnl
+```
+
 ## Results
 
 | Model    | MNIST (Average) | MNIST (Best) | Fashion-MNIST (Average) | Fashion-MNIST (Best) | KMNIST (Average) | KMNIST (Best) |
