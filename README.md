@@ -19,6 +19,14 @@ Then, the loss function along with template models can be installed via `pip`.
 $ pip install pt-snnl
 ```
 
+This package consists of sample models that use the soft nearest neighbor loss
+as a regularizer, and they are as follows:
+
+- Feed-Forward Neural Network (customizable)
+- Convolutional Neural Network (2 convolutional layers followed by 1 fully connected layer)
+- Feed-Forward Autoencoder (x-500-500-2000-d-2000-500-500-x units)
+- ResNet18 and ResNet34
+
 ## Results
 
 | Model    | MNIST (Average) | MNIST (Best) | Fashion-MNIST (Average) | Fashion-MNIST (Best) | KMNIST (Average) | KMNIST (Best) |
