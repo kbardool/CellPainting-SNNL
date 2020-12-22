@@ -333,8 +333,8 @@ class Autoencoder(Model):
             if index == 0:
                 activations[index] = layer(features)
             else:
-                activations[index] = layer(activations[index - 1])
-        reconstruction = activations[len(activations) - 1]
+                activations[index] = layer(activations.get(index - 1))
+        reconstruction = activations.get(len(activations) - 1)
         return reconstruction
 
     def compute_latent_code(self, features: torch.Tensor) -> torch.Tensor:
@@ -500,10 +500,10 @@ class DNN(Model):
             if index == 0:
                 activations[index] = torch.relu(layer(features))
             elif index == len(self.layers) - 1:
-                activations[index] = layer(activations[index - 1])
+                activations[index] = layer(activations.get(index - 1))
             else:
-                activations[index] = torch.relu(layer(activations[index - 1]))
-        logits = activations[len(activations) - 1]
+                activations[index] = torch.relu(layer(activations.get(index - 1)))
+        logits = activations.get(len(activations) - 1)
         return logits
 
     def fit(
@@ -727,8 +727,8 @@ class CNN(Model):
             if index == 0:
                 activations[index] = layer(features)
             else:
-                activations[index] = layer(activations[index - 1])
-        logits = activations[len(activations) - 1]
+                activations[index] = layer(activations.get(index - 1))
+        logits = activations.get(len(activations) - 1)
         del activations
         return logits
 
