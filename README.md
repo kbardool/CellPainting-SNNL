@@ -27,6 +27,41 @@ as a regularizer, and they are as follows:
 - Feed-Forward Autoencoder (x-500-500-2000-d-2000-500-500-x units)
 - ResNet18 and ResNet34
 
+Aside from the mentioned models above, the loss function can also be used in a
+custom `torch.nn.Module` class in the following manner,
+
+```python
+from snnl import SNNLoss
+
+
+class Net(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc_layer_1 = torch.nn.Linear(784, 500)
+        self.fc_layer_2 = torch.nn.Linear(500, 500)
+        self.fc_layer_3 = torch.nn.Linear(500, 30)
+        self.output_layer = torch.nn.Linear(30, 10)
+
+    def forward(self, features):
+        activations = self.fc_layer_1(features)
+        activations = self.fc_layer_2(activations)
+        activations = self.fc_layer_3(activations)
+        logits = self.output_layer(activations)
+        return logits
+
+
+model = Net()
+criterion = SNNLoss(mode="custom", factor=10.0)
+
+...
+train_loss, xent_loss, snn_loss = criterion(
+    outputs=outputs,
+    model=model,
+    features=batch_features,
+    labels=batch_labels,
+)
+```
+
 ## Results
 
 | Model    | MNIST (Average) | MNIST (Best) | Fashion-MNIST (Average) | Fashion-MNIST (Best) | KMNIST (Average) | KMNIST (Best) |
