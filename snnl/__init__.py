@@ -54,6 +54,7 @@ class SNNLoss(torch.nn.Module):
         criterion: object = torch.nn.CrossEntropyLoss(),
         factor: float = 100.0,
         temperature: float = None,
+        use_annealing: bool = True,
         code_units: int = 30,
         stability_epsilon: float = 1e-5,
     ):
