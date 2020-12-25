@@ -6,5 +6,5 @@
   "learning_rate": 1e-3,
   "dataset": "mnist",
   "snnl_factor": 100.0,
-  "temperature": 0
+  "temperature": 0.0
 }
