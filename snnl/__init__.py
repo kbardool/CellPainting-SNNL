@@ -55,6 +55,7 @@ class SNNLoss(torch.nn.Module):
         factor: float = 100.0,
         temperature: float = None,
         use_annealing: bool = True,
+        use_sum: bool = False,
         code_units: int = 30,
         stability_epsilon: float = 1e-5,
     ):
@@ -76,6 +77,9 @@ class SNNLoss(torch.nn.Module):
             The SNNL temperature.
         use_annealing: bool
             Whether to use annealing temperature or not.
+        use_sum: bool
+            If true, the sum of SNNL across all hidden layers are used.
+            Otherwise, the minimum SNNL will be obtained.
         code_units: int
             The number of units in which the SNNL will be applied.
         stability_epsilon: float
