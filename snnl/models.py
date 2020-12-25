@@ -235,6 +235,7 @@ class Autoencoder(Model):
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: int = None,
+        use_annealing: bool = True,
         mode: str = "autoencoding",
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
@@ -262,6 +263,8 @@ class Autoencoder(Model):
             factor implies SNNL maximization.
         temperature: int
             The SNNL temperature.
+        use_annealing: bool
+            Whether to use annealing temperature or not.
         mode: str
             The mode in which the soft nearest neighbor loss
             will be used.
