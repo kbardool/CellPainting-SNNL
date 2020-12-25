@@ -130,6 +130,12 @@ class SNNLoss(torch.nn.Module):
         snn_loss: float
             The soft nearest neighbor loss value.
         """
+        self.temperature = (
+            (1.0 / ((1.0 + epoch) ** 0.55))
+            if self.temperature is None
+            else self.temperature
+        )
+
         primary_loss = self.primary_criterion(
             outputs, features if self.unsupervised else labels
         )
