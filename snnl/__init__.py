@@ -134,7 +134,7 @@ class SNNLoss(torch.nn.Module):
         snn_loss: float
             The soft nearest neighbor loss value.
         """
-        if self.temperature is None:
+        if self.use_annealing:
             self.temperature = 1.0 / ((1.0 + epoch) ** 0.55)
         elif isinstance(self.temperature, torch.nn.Parameter):
             self.temperature = self.temperature.to(model.device)
