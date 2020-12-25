@@ -74,6 +74,8 @@ class SNNLoss(torch.nn.Module):
             factor implies SNNL maximization.
         temperature: float
             The SNNL temperature.
+        use_annealing: bool
+            Whether to use annealing temperature or not.
         code_units: int
             The number of units in which the SNNL will be applied.
         stability_epsilon: float
