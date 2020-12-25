@@ -38,6 +38,7 @@ class Model(torch.nn.Module):
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: float = 100.0,
+        use_annealing: bool = False,
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
     ):
@@ -58,11 +59,13 @@ class Model(torch.nn.Module):
                 self.register_parameter(name="temperature", param=self.temperature)
             else:
                 self.temperature = temperature
+            self.use_annealing = use_annealing
             self.snnl_criterion = SNNLoss(
                 mode=self.mode,
                 criterion=criterion,
                 factor=self.factor,
                 temperature=self.temperature,
+                use_annealing=self.use_annealing,
                 code_units=self.code_units,
                 stability_epsilon=self.stability_epsilon,
             )
