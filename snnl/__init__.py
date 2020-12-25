@@ -54,6 +54,8 @@ class SNNLoss(torch.nn.Module):
         criterion: object = torch.nn.CrossEntropyLoss(),
         factor: float = 100.0,
         temperature: float = None,
+        use_annealing: bool = True,
+        use_sum: bool = False,
         code_units: int = 30,
         stability_epsilon: float = 1e-5,
     ):
@@ -67,12 +69,18 @@ class SNNLoss(torch.nn.Module):
             will be used. Default: [classifier]
         criterion: object
             The primary loss to use.
+            Default: [torch.nn.CrossEntropyLoss()]
         factor: float
             The balance factor between SNNL and the primary loss.
             A positive factor implies SNNL minimization, while a negative
             factor implies SNNL maximization.
         temperature: float
             The SNNL temperature.
+        use_annealing: bool
+            Whether to use annealing temperature or not.
+        use_sum: bool
+            If true, the sum of SNNL across all hidden layers are used.
+            Otherwise, the minimum SNNL will be obtained.
         code_units: int
             The number of units in which the SNNL will be applied.
         stability_epsilon: float
@@ -94,6 +102,8 @@ class SNNLoss(torch.nn.Module):
         self.unsupervised = SNNLoss._supported_modes.get(self.mode)
         self.factor = factor
         self.temperature = temperature
+        self.use_annealing = use_annealing
+        self.use_sum = use_sum
         self.code_units = code_units
         self.stability_epsilon = stability_epsilon
 
@@ -130,6 +140,11 @@ class SNNLoss(torch.nn.Module):
         snn_loss: float
             The soft nearest neighbor loss value.
         """
+        if self.use_annealing:
+            self.temperature = 1.0 / ((1.0 + epoch) ** 0.55)
+        elif isinstance(self.temperature, torch.nn.Parameter):
+            self.temperature = self.temperature.to(model.device)
+
         primary_loss = self.primary_criterion(
             outputs, features if self.unsupervised else labels
         )
@@ -150,7 +165,7 @@ class SNNLoss(torch.nn.Module):
             product = torch.matmul(normalized_a, normalized_b)
             distance_matrix = torch.sub(torch.tensor(1.0), product)
             pairwise_distance_matrix = torch.exp(
-                -(distance_matrix / self.temperature.to(model.device))
+                -(distance_matrix / self.temperature)
             ) - torch.eye(value.shape[0]).to(model.device)
             pick_probability = pairwise_distance_matrix / (
                 self.stability_epsilon
@@ -173,9 +188,11 @@ class SNNLoss(torch.nn.Module):
                     layers_snnl.append(snnl)
             else:
                 layers_snnl.append(snnl)
-        # snn_loss = torch.stack(layers_snnl).sum()
-        snn_loss = torch.stack(layers_snnl)
-        snn_loss = torch.min(snn_loss)
+        if self.use_sum:
+            snn_loss = torch.stack(layers_snnl).sum()
+        else:
+            snn_loss = torch.stack(layers_snnl)
+            snn_loss = torch.min(snn_loss)
         train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
         return train_loss, primary_loss, snn_loss
 

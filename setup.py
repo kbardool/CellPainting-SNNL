@@ -11,7 +11,7 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
 setup(
     name="pt-snnl",
     version="1.0.0",
-    packages=["snnl"],
+    packages=["snnl", "snnl.utils"],
     url="https://github.com/AFAgarap/pt-snnl",
     license="AGPL-3.0 License",
     author="Abien Fred Agarap",

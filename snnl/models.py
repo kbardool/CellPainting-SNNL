@@ -38,6 +38,8 @@ class Model(torch.nn.Module):
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: float = 100.0,
+        use_annealing: bool = False,
+        use_sum: bool = False,
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
     ):
@@ -51,15 +53,22 @@ class Model(torch.nn.Module):
         self.code_units = code_units
         self.stability_epsilon = stability_epsilon
         if self.use_snnl:
-            self.temperature = torch.nn.Parameter(
-                data=torch.tensor([temperature]), requires_grad=True
-            )
-            self.register_parameter(name="temperature", param=self.temperature)
+            if temperature is not None:
+                self.temperature = torch.nn.Parameter(
+                    data=torch.tensor([temperature]), requires_grad=True
+                )
+                self.register_parameter(name="temperature", param=self.temperature)
+            else:
+                self.temperature = temperature
+            self.use_annealing = use_annealing
+            self.use_sum = use_sum
             self.snnl_criterion = SNNLoss(
                 mode=self.mode,
                 criterion=criterion,
                 factor=self.factor,
                 temperature=self.temperature,
+                use_annealing=self.use_annealing,
+                use_sum=self.use_sum,
                 code_units=self.code_units,
                 stability_epsilon=self.stability_epsilon,
             )
@@ -182,7 +191,7 @@ class Model(torch.nn.Module):
                 epoch_accuracy += train_accuracy
             train_loss.backward()
             self.optimizer.step()
-            if self.use_snnl:
+            if self.use_snnl and self.temperature is not None:
                 self.optimize_temperature()
         epoch_loss /= len(data_loader)
         if self.name in ["DNN", "CNN"]:
@@ -229,6 +238,8 @@ class Autoencoder(Model):
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: int = None,
+        use_annealing: bool = True,
+        use_sum: bool = False,
         mode: str = "autoencoding",
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
@@ -256,6 +267,11 @@ class Autoencoder(Model):
             factor implies SNNL maximization.
         temperature: int
             The SNNL temperature.
+        use_annealing: bool
+            Whether to use annealing temperature or not.
+        use_sum: bool
+            Use summation of SNNL across hidden layers if True,
+            otherwise get the minimum SNNL.
         mode: str
             The mode in which the soft nearest neighbor loss
             will be used.
@@ -274,6 +290,8 @@ class Autoencoder(Model):
             factor=factor,
             code_units=code_units,
             temperature=temperature,
+            use_annealing=use_annealing,
+            use_sum=use_sum,
             stability_epsilon=stability_epsilon,
         )
         if mode not in Autoencoder._supported_modes:
@@ -422,6 +440,8 @@ class DNN(Model):
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: int = None,
+        use_annealing: bool = True,
+        use_sum: bool = False,
         stability_epsilon: float = 1e-5,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -444,6 +464,11 @@ class DNN(Model):
             while a negative factor implies SNNL maximization.
         temperature: int
             The SNNL temperature.
+        use_annealing: bool
+            Whether to use annealing temperature or not.
+        use_sum: bool
+            Use summation of SNNL across hidden layers if True,
+            otherwise get the minimum SNNL.
         stability_epsilon: float
             A constant for helping SNNL computation stability
         device: torch.device
@@ -456,6 +481,8 @@ class DNN(Model):
             use_snnl=use_snnl,
             factor=factor,
             temperature=temperature,
+            use_annealing=use_annealing,
+            use_sum=use_sum,
             stability_epsilon=stability_epsilon,
         )
         self.layers = torch.nn.ModuleList(
@@ -598,6 +625,8 @@ class CNN(Model):
         use_snnl: bool = False,
         factor: float = 100.0,
         temperature: float = 100.0,
+        use_annealing: bool = False,
+        use_sum: bool = False,
         stability_epsilon: float = 1e-5,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -624,6 +653,11 @@ class CNN(Model):
             while a negative factor implies SNNL maximization.
         temperature: float
             The SNNL temperature.
+        use_annealing: bool
+            Whether to use annealing temperature or not.
+        use_sum: bool
+            Use summation of SNNL across hidden layers if True,
+            otherwise get the minimum SNNL.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
         """
@@ -634,6 +668,8 @@ class CNN(Model):
             use_snnl=use_snnl,
             factor=factor,
             temperature=temperature,
+            use_annealing=use_annealing,
+            use_sum=use_sum,
             stability_epsilon=stability_epsilon,
         )
         conv1_out = self.compute_conv_out(dim, CNN._conv1_params)
