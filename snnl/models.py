@@ -283,6 +283,7 @@ class Autoencoder(Model):
             factor=factor,
             code_units=code_units,
             temperature=temperature,
+            use_annealing=use_annealing,
             stability_epsilon=stability_epsilon,
         )
         if mode not in Autoencoder._supported_modes:
