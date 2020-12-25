@@ -69,6 +69,7 @@ class SNNLoss(torch.nn.Module):
             will be used. Default: [classifier]
         criterion: object
             The primary loss to use.
+            Default: [torch.nn.CrossEntropyLoss()]
         factor: float
             The balance factor between SNNL and the primary loss.
             A positive factor implies SNNL minimization, while a negative
