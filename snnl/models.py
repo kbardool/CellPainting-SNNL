@@ -441,6 +441,7 @@ class DNN(Model):
         factor: float = 100.0,
         temperature: int = None,
         use_annealing: bool = True,
+        use_sum: bool = False,
         stability_epsilon: float = 1e-5,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -478,6 +479,7 @@ class DNN(Model):
             factor=factor,
             temperature=temperature,
             use_annealing=use_annealing,
+            use_sum=use_sum,
             stability_epsilon=stability_epsilon,
         )
         self.layers = torch.nn.ModuleList(
