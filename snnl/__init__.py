@@ -54,6 +54,7 @@ class SNNLoss(torch.nn.Module):
         criterion: object = torch.nn.CrossEntropyLoss(),
         factor: float = 100.0,
         temperature: float = None,
+        use_annealing: bool = True,
         code_units: int = 30,
         stability_epsilon: float = 1e-5,
     ):
@@ -73,6 +74,8 @@ class SNNLoss(torch.nn.Module):
             factor implies SNNL maximization.
         temperature: float
             The SNNL temperature.
+        use_annealing: bool
+            Whether to use annealing temperature or not.
         code_units: int
             The number of units in which the SNNL will be applied.
         stability_epsilon: float
@@ -94,6 +97,7 @@ class SNNLoss(torch.nn.Module):
         self.unsupervised = SNNLoss._supported_modes.get(self.mode)
         self.factor = factor
         self.temperature = temperature
+        self.use_annealing = use_annealing
         self.code_units = code_units
         self.stability_epsilon = stability_epsilon
 
@@ -130,7 +134,7 @@ class SNNLoss(torch.nn.Module):
         snn_loss: float
             The soft nearest neighbor loss value.
         """
-        if self.temperature is None:
+        if self.use_annealing:
             self.temperature = 1.0 / ((1.0 + epoch) ** 0.55)
         elif isinstance(self.temperature, torch.nn.Parameter):
             self.temperature = self.temperature.to(model.device)
