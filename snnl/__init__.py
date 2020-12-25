@@ -97,6 +97,7 @@ class SNNLoss(torch.nn.Module):
         self.unsupervised = SNNLoss._supported_modes.get(self.mode)
         self.factor = factor
         self.temperature = temperature
+        self.use_annealing = use_annealing
         self.code_units = code_units
         self.stability_epsilon = stability_epsilon
 
