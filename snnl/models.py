@@ -239,6 +239,7 @@ class Autoencoder(Model):
         factor: float = 100.0,
         temperature: int = None,
         use_annealing: bool = True,
+        use_sum: bool = False,
         mode: str = "autoencoding",
         code_units: int = 0,
         stability_epsilon: float = 1e-5,
@@ -268,6 +269,9 @@ class Autoencoder(Model):
             The SNNL temperature.
         use_annealing: bool
             Whether to use annealing temperature or not.
+        use_sum: bool
+            Use summation of SNNL across hidden layers if True,
+            otherwise get the minimum SNNL.
         mode: str
             The mode in which the soft nearest neighbor loss
             will be used.
@@ -287,6 +291,7 @@ class Autoencoder(Model):
             code_units=code_units,
             temperature=temperature,
             use_annealing=use_annealing,
+            use_sum=use_sum,
             stability_epsilon=stability_epsilon,
         )
         if mode not in Autoencoder._supported_modes:
