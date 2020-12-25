@@ -466,6 +466,9 @@ class DNN(Model):
             The SNNL temperature.
         use_annealing: bool
             Whether to use annealing temperature or not.
+        use_sum: bool
+            Use summation of SNNL across hidden layers if True,
+            otherwise get the minimum SNNL.
         stability_epsilon: float
             A constant for helping SNNL computation stability
         device: torch.device
@@ -652,6 +655,9 @@ class CNN(Model):
             The SNNL temperature.
         use_annealing: bool
             Whether to use annealing temperature or not.
+        use_sum: bool
+            Use summation of SNNL across hidden layers if True,
+            otherwise get the minimum SNNL.
         stability_epsilon: float
             A constant for helping SNNL computation stability.
         """
