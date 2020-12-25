@@ -102,6 +102,7 @@ class SNNLoss(torch.nn.Module):
         self.factor = factor
         self.temperature = temperature
         self.use_annealing = use_annealing
+        self.use_sum = use_sum
         self.code_units = code_units
         self.stability_epsilon = stability_epsilon
 
