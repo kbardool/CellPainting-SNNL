@@ -81,6 +81,7 @@ def main(args):
             use_snnl=True,
             factor=snnl_factor,
             temperature=temperature,
+            use_annealing=False,
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
