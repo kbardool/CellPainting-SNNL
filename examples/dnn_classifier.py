@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample module for using DNN classifier with SNNL"""
 import argparse
+import torch
 
 from pt_datasets import create_dataloader, load_dataset
 from snnl.models import DNN
@@ -70,6 +71,13 @@ def main(args):
     set_global_seed(args.seed)
 
     train_dataset, test_dataset = load_dataset(name=dataset)
+    if dataset == "emnist":
+        train_features = train_dataset.data.numpy().astype("float32") / 255.0
+        train_features = train_features[:60000]
+        train_features = torch.from_numpy(train_features)
+        train_labels = train_dataset.targets
+        train_labels = train_labels[:60000]
+    train_dataset = torch.utils.data.TensorDataset(train_features, train_labels)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
     if args.model.lower() == "baseline":
@@ -81,6 +89,7 @@ def main(args):
             use_snnl=True,
             factor=snnl_factor,
             temperature=temperature,
+            use_annealing=False,
         )
     else:
         raise ValueError("Choose between [baseline] and [snnl] only.")
