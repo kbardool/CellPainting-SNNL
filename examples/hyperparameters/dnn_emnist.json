@@ -1,0 +1,14 @@
+{
+  "units": [
+    [784, 500],
+    [500, 500],
+    [500, 2000],
+    [2000, 47]
+  ],
+  "epochs": 20,
+  "batch_size": 256,
+  "learning_rate": 1e-4,
+  "dataset": "emnist",
+  "snnl_factor": 10.0,
+  "temperature": 50.0
+}
