@@ -64,6 +64,8 @@ train_loss, xent_loss, snn_loss = criterion(
 
 ## Results
 
+![](assets/embedding.png)
+
 | Model    | MNIST (Average) | MNIST (Best) | Fashion-MNIST (Average) | Fashion-MNIST (Best) | KMNIST (Average) | KMNIST (Best) |
 | -------- | --------------- | ------------ | ----------------------- | -------------------- | ---------------- | ------------- |
 | Baseline | 95.32%          | 95.93%       | 89.10%                  | **89.76%**           | **90.58%**       | **90.67%**    |
