@@ -15,7 +15,28 @@ flock with the synthesized ones.
 In years of research and development, we have enjoyed the use of principal
 components analysis (PCA) for encoding features for downstream tasks. However,
 we do not have any class or label information from PCA-encoded representations,
-hence the performance on downstream tasks may be further improved.
+hence the performance on downstream tasks may be further improved. We can
+improve the encoded rerpesentations by integrating the class neighborhood
+structure of the dataset, i.e. which features are clustered together, and such
+clusters would imply that the features belong to the same class as per the
+clustering assumption in the semi-supervised learning literature (Chapelle et
+al., 2009). To integrate the class neighborhood structure in the
+representations, manifold learning techniques have been introduced such as
+locally linear ambeddings or LLE (Roweis & Saul, 2000), neighborhood components
+analysis or NCA (Roweis et al., 2004), and t-stochastic neighbor embedding or
+t-SNE (Maaten & Hinton, 2008).
+
+However, the aforementioned manifold learning techniques have their own
+drawbacks. For instance, both LLE and NCA encode linear embeddings instead of
+nonlinear embeddings. Meanwhile, t-SNE embeddings result to different
+structures, so one may argue that it is not encoding the actual neighborhood
+structure of the dataset.
+
+To avoid such drawbacks, we can use an improved NCA algorithm which is the
+_soft nearest neighbor loss_ or SNNL (Frosst et al., 2019). The SNNL improves
+over the NCA algorithm by introducing nonlinearity, and it is computed for each
+hidden layer of a neural network instead of solely on the last encoding layer.
+This loss function is used to optimize the entanglement of points in a dataset.
 
 In the context of this work, _entanglement_ is defined as how close class-similar data points to each other compared to class-different data points. A low entanglement means that class-similar data points are much closer to each other than class-different data points. Having such a set of data points will render downstream tasks much easier to accomplish with an even better performance. To measure the entanglement of data points, Frosst et al. (2019) expanded the non-linear neighborhood components analysis (NCA) (Salakhutdinov and Hinton, 2007) objective by introducing the temperature factor _T_, and called this modified objective the _soft nearest neighbor loss_. In addition, this loss function is computed for each of the hidden layers of a deep neural network as opposed to non-linear NCA which was only computed on the latent code of an autoencoder network.
 
