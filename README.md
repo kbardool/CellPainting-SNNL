@@ -6,6 +6,16 @@
 
 ## Overview
 
+<figure>
+<picture>
+<img src="assets/snnl.png">
+</picture>
+<center>
+<figcaption>Figure from SNNL (Frosst et al., 2019). Using the soft nearest
+neighbor loss, the our classes sampled from a Gaussian become more isolated. </figcaption>
+</center>
+</figure>
+
 Representation learning is the task of learning the most salient features in a
 given dataset by a deep neural network. It is usually an implicit task done in a supervised learning
 paradigm, and it is a crucial factor in the success of deep learning (Krizhevsky et al., 2012; He et al., 2016; Simonyan et al., 2014). In other words, representation learning automates the process of feature extraction. With this, one can use the learned representations for downstream tasks such as classification, regression, and synthesis.
