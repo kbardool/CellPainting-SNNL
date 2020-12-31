@@ -42,14 +42,20 @@ class Net(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.fc_layer_1 = torch.nn.Linear(784, 500)
+        self.a1 = torch.nn.ReLU(inplace=True)
         self.fc_layer_2 = torch.nn.Linear(500, 500)
+        self.a2 = torch.nn.ReLU(inplace=True)
         self.fc_layer_3 = torch.nn.Linear(500, 30)
+        self.a3 = torch.nn.ReLU(inplace=True)
         self.output_layer = torch.nn.Linear(30, 10)
 
     def forward(self, features):
         activations = self.fc_layer_1(features)
+        activations = self.a1(activations)
         activations = self.fc_layer_2(activations)
+        activations = self.a2(activations)
         activations = self.fc_layer_3(activations)
+        activations = self.a3(activations)
         logits = self.output_layer(activations)
         return logits
 
