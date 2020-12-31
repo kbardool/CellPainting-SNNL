@@ -7,6 +7,7 @@
 ## Overview
 
 ![](assets/snnl.png)
+
 Figure from SNNL (Frosst et al., 2019). Using the soft nearest
 neighbor loss, the our classes sampled from a Gaussian become more isolated.
 
