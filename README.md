@@ -64,7 +64,18 @@ render downstream tasks much easier to accomplish with an even better performanc
 To measure the entanglement of data points, Frosst et al. (2019) expanded the
 non-linear neighborhood components analysis (NCA) (Salakhutdinov and Hinton, 2007)
 objective by introducing the temperature factor _T_, and called this modified
-objective the _soft nearest neighbor loss_.
+objective the _soft nearest neighbor loss_. The SNNL objective is defined as
+follows,
+
+![](assets/snnl-eq.png)
+
+where _d_ is a distance metric on either raw input features or hidden layer
+representations of a neural network, and _T_ is the temperature factor that
+is directly proportional to the distances among data points in a hidden layer.
+For this implementation, we use the cosine distance as our distance metric
+for more stable computations.
+
+![](assets/cos-distance.png)
 
 ## Usage
 
