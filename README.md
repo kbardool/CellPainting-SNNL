@@ -84,6 +84,40 @@ as a regularizer, and they are as follows:
 - Feed-Forward Autoencoder (x-500-500-2000-d-2000-500-500-x units)
 - ResNet18 and ResNet34
 
+The sample models use the templates in `snnl.models`, and they are located at
+`examples`. Here is an example of instantiating a baseline DNN from `snnl.models`,
+
+```python
+from pt_datasets import load_dataset, create_dataloader
+from snnl.models import DNN
+
+
+train_dataset, test_dataset = load_dataset(name="mnist")
+train_loader = create_dataloader(
+    dataset=train_dataset, batch_size=256, shuffle=True
+)
+
+baseline = DNN(
+    units=((784, 500), (500, 500), (500, 10)),
+    learning_rate=1e-4,
+)
+baseline.fit(train_loader, epochs=10, show_every=1)
+```
+
+This is an example of a DNN with SNNL regularizer,
+
+```python
+snnl = DNN(
+    units=((784, 500), (500, 500), (500, 10)),
+    learning_rate=1e-4,
+    use_snnl=True,
+    factor=100,
+    temperature=50.0,
+    use_annealing=False,
+)
+snnl.fit(train_loader, epochs=10, show_every=1)
+```
+
 Aside from the mentioned models above, the loss function can also be used in a
 custom `torch.nn.Module` class in the following manner,
 
