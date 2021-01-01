@@ -59,9 +59,7 @@ render downstream tasks much easier to accomplish with an even better performanc
 To measure the entanglement of data points, Frosst et al. (2019) expanded the
 non-linear neighborhood components analysis (NCA) (Salakhutdinov and Hinton, 2007)
 objective by introducing the temperature factor _T_, and called this modified
-objective the _soft nearest neighbor loss_. In addition, this loss function is
-computed for each of the hidden layers of a deep neural network as opposed to
-non-linear NCA which was only computed on the latent code of an autoencoder network.
+objective the _soft nearest neighbor loss_.
 
 ## Usage
 
