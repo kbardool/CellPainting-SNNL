@@ -174,6 +174,20 @@ train_loss, xent_loss, snn_loss = criterion(
 | KMNIST (Average)        | **90.58%** | 90.14%     |
 | KMNIST (Best)           | **90.67%** | **90.67%** |
 
+## Citation
+
+Since this repository was a product of our publication, if you use it, you may
+cite the following paper,
+
+```
+@article{agarap2020improving,
+    title={Improving k-Means Clustering Performance with Disentangled Internal Representations},
+    author={Agarap, Abien Fred and Azcarraga, Arnulfo P},
+    journal={arXiv preprint arXiv:2006.04535},
+    year={2020}
+}
+```
+
 ## References
 
 - Agarap, Abien Fred, and Arnulfo P. Azcarraga. "Improving k-Means Clustering
