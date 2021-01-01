@@ -8,8 +8,8 @@
 
 ![](assets/snnl.png)
 
-Figure from SNNL (Frosst et al., 2019). Using the soft nearest
-neighbor loss, the our classes sampled from a Gaussian become more isolated.
+_Figure from SNNL (Frosst et al., 2019). Using the soft nearest
+neighbor loss, the our classes sampled from a Gaussian become more isolated._
 
 Representation learning is the task of learning the most salient features in a
 given dataset by a deep neural network. It is usually an implicit task done
