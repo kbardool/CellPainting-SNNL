@@ -174,7 +174,27 @@ for epoch in range(epochs):
 
 ## Results
 
+The following are results of training with no hyperparameter tuning or any
+other training tricks, but simply a demonstration of the use of SNNL.
+
+An autoencoder with (x-500-500-2000-d-2000-500-500-x) units trained to
+disentangle a small labelled subset of the MNIST, Fashion-MNIST, and
+EMNIST-Balanced datasets. For MNIST and Fashion-MNIST, only 10,000 labelled
+examples were used, while for EMNIST-Balanced, only 20,000 labelled examples
+were used for training. This is to simulate the scarcity of labelled examples
+since autoencoders are supposed to be unsupervised models.
+
 ![](assets/embedding.png)
+
+_Figure from Agarap & Azcarraga (2020). A 3D visualization comparing the
+original and disentangled latent representation of MNIST, Fashion-MNIST, and
+EMNIST-Balanced datasets._
+
+We only visualized an arbitrarily chosen 10 clusters for easier and cleaner
+visualization of the EMNIST-Balanced dataset. We can see in the figure above
+that the latent code representation became more clustering-friendly by having a
+set of well-defined clusters as indicated by cluster dispersion and correct
+cluster assignments as indicated by cluster colors.
 
 | Model                   | Baseline   | SNNL       |
 | ----------------------- | ---------- | ---------- |
