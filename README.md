@@ -142,4 +142,10 @@ train_loss, xent_loss, snn_loss = criterion(
 
 ## References
 
+- Agarap, Abien Fred, and Arnulfo P. Azcarraga. "Improving k-Means Clustering
+  Performance with Disentangled Internal Representations." arXiv preprint
+  arXiv:2006.04535 (2020).
 - Frosst, Nicholas, Nicolas Papernot, and Geoffrey Hinton. "Analyzing and improving representations with the soft nearest neighbor loss." arXiv preprint arXiv:1902.01889 (2019).
+- Salakhutdinov, Ruslan, and Geoff Hinton. "Learning a nonlinear embedding by
+  preserving class neighbourhood structure." Artificial Intelligence and
+  Statistics. 2007.
