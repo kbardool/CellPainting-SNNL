@@ -122,6 +122,7 @@ Aside from the mentioned models above, the loss function can also be used in a
 custom `torch.nn.Module` class in the following manner,
 
 ```python
+from pt_datasets import load_dataset, create_dataloader
 from snnl import SNNLoss
 
 
@@ -150,13 +151,25 @@ class Net(torch.nn.Module):
 model = Net()
 criterion = SNNLoss(mode="custom", factor=10.0)
 
-...
-train_loss, xent_loss, snn_loss = criterion(
-    outputs=outputs,
-    model=model,
-    features=batch_features,
-    labels=batch_labels,
+train_dataset, test_dataset = load_dataset(name="mnist")
+train_loader = create_dataloader(
+    dataset=train_dataset, batch_size=256, shuffle=True
 )
+
+...
+
+for epoch in range(epochs):
+    for batch_features, batch_labels in train_loader:
+        optimizer.zero_grad()
+        outputs = model(batch_features)
+        train_loss, xent_loss, snn_loss = criterion(
+            outputs=outputs,
+            model=model,
+            features=batch_features,
+            labels=batch_labels,
+        )
+        train_loss.backward()
+        optimizer.step()
 ```
 
 ## Results
