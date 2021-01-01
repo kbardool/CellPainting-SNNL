@@ -193,6 +193,8 @@ for epoch in range(epochs):
 The following are results of training with no hyperparameter tuning or any
 other training tricks, but simply a demonstration of the use of SNNL.
 
+### Autoencoding
+
 An autoencoder with (x-500-500-2000-d-2000-500-500-x) units trained to
 disentangle a small labelled subset of the MNIST, Fashion-MNIST, and
 EMNIST-Balanced datasets. For MNIST and Fashion-MNIST, only 10,000 labelled
@@ -211,6 +213,8 @@ visualization of the EMNIST-Balanced dataset. We can see in the figure above
 that the latent code representation became more clustering-friendly by having a
 set of well-defined clusters as indicated by cluster dispersion and correct
 cluster assignments as indicated by cluster colors.
+
+### Classification
 
 | Model                   | Baseline   | SNNL       |
 | ----------------------- | ---------- | ---------- |
