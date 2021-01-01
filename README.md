@@ -216,6 +216,12 @@ cluster assignments as indicated by cluster colors.
 
 ### Classification
 
+The following results on image classification used the hyperparameters defined
+in `examples/hyperparameters` subdirectory. The architecture used was a DNN
+with 3 hidden layers for both baseline and SNNL models. The results were
+averaged over 5 runs of each model using the following seeds: 1234, 42, 73,
+1024, and 86400. The [`examples/dnn_classifier.py`](examples/dnn_classifier.py) module was used.
+
 | Model                   | Baseline   | SNNL       |
 | ----------------------- | ---------- | ---------- |
 | MNIST (Average)         | 95.32%     | **95.77%** |
@@ -226,6 +232,12 @@ cluster assignments as indicated by cluster colors.
 | EMNIST (Best)           | 82.86%     | **82.96%** |
 | KMNIST (Average)        | **90.58%** | 90.14%     |
 | KMNIST (Best)           | **90.67%** | **90.67%** |
+
+We can see from these results that they resemble the findings of Frosst et al.
+(2019), i.e. the SNNL models have marginal improvement over the baseline
+models, albeit a bit lower margin and lower measures since these results were
+only from a DNN and not a CNN, and in addition, all models were trained for
+only 20 epochs as opposed to approximately 50 epochs in Frosst et al. (2019).
 
 ## Citation
 
