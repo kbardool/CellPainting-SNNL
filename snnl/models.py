@@ -1001,7 +1001,7 @@ class ResNet(torch.nn.Module):
             if self.use_snnl:
                 self.optimizer.zero_grad()
                 outputs = self.forward(batch_features)
-                train_loss, snn_loss, xent_loss = self.snnl_criterion(
+                train_loss, xent_loss, snn_loss = self.snnl_criterion(
                     model=self,
                     outputs=outputs,
                     features=batch_features,
