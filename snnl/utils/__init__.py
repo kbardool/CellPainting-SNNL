@@ -17,7 +17,7 @@
 import json
 import os
 import random
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -63,7 +63,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             The number of training epochs.
         learning_rate: float
             The learning rate to use for optimization.
-        units: list
+        units: List
             The list of units per hidden layer if using [dnn].
         image_dim: int
             The dimensionality of the image feature [W, H]
@@ -111,7 +111,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     hyperparameters_filename = hyperparameters_filename.lower()
     if "dnn" in hyperparameters_filename:
         units = config.get("units")
-        assert isinstance(units, list), "[units] must be [list]."
+        assert isinstance(units, List), "[units] must be [List]."
         assert len(units) >= 2, "len(units) must be >= 2."
         return (
             dataset,
@@ -182,7 +182,7 @@ def export_results(model: torch.nn.Module, filename: str):
         os.mkdir(results_dir)
     filename = os.path.join(results_dir, filename)
     for key, value in model_attributes.items():
-        if isinstance(value, list) or "test_accuracy" in key:
+        if isinstance(value, List) or "test_accuracy" in key:
             results[key] = value
     with open(filename, "w") as file:
         json.dump(results, file)
