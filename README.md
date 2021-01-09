@@ -30,7 +30,7 @@ have data points of the same class to flock together, while for generation
 (e.g. in GANs), the representations are primed to have points of real data
 flock with the synthesized ones.
 
-In years of research and development, we have enjoyed the use of principal
+Towards the said direction, we have enjoyed the use of principal
 components analysis (PCA) for encoding features for downstream tasks. However,
 we do not have any class or label information from PCA-encoded representations,
 hence the performance on downstream tasks may be further improved. We can
@@ -195,7 +195,7 @@ other training tricks, but simply a demonstration of the use of SNNL.
 
 ### Autoencoding
 
-An autoencoder with (x-500-500-2000-d-2000-500-500-x) units trained to
+An autoencoder with (x-500-500-2000-d-2000-500-500-x) units was trained to
 disentangle a small labelled subset of the MNIST, Fashion-MNIST, and
 EMNIST-Balanced datasets. For MNIST and Fashion-MNIST, only 10,000 labelled
 examples were used, while for EMNIST-Balanced, only 20,000 labelled examples
