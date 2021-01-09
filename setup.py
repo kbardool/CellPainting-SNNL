@@ -21,8 +21,8 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "numpy==1.19.4",
-        "torchvision==0.8.1",
-        "torch==1.7.0",
+        "torchvision==0.8.2",
+        "torch==1.7.1",
         "pt_datasets==0.7.0",
     ],
 )
