@@ -34,7 +34,8 @@ Towards the said direction, we have enjoyed the use of principal
 components analysis (PCA) for encoding features for downstream tasks. However,
 we do not have any class or label information from PCA-encoded representations,
 hence the performance on downstream tasks may be further improved. We can
-improve the encoded rerpesentations by integrating the class neighborhood
+improve the encoded rerpesentations by integrating the class or label
+information in it through learning the class neighborhood
 structure of the dataset, i.e. which features are clustered together, and such
 clusters would imply that the features belong to the same class as per the
 clustering assumption in the semi-supervised learning literature (Chapelle et
@@ -47,14 +48,15 @@ t-SNE (Maaten & Hinton, 2008).
 However, the aforementioned manifold learning techniques have their own
 drawbacks. For instance, both LLE and NCA encode linear embeddings instead of
 nonlinear embeddings. Meanwhile, t-SNE embeddings result to different
-structures, so one may argue that it is not encoding the actual neighborhood
+structures, so one may argue that it does not encode the actual neighborhood
 structure of the dataset.
 
 To avoid such drawbacks, we can use an improved NCA algorithm which is the
-_soft nearest neighbor loss_ or SNNL (Frosst et al., 2019). The SNNL improves
-over the NCA algorithm by introducing nonlinearity, and it is computed for each
-hidden layer of a neural network instead of solely on the last encoding layer.
-This loss function is used to optimize the entanglement of points in a dataset.
+_soft nearest neighbor loss_ or SNNL (Salakhutdinov and Hinton, 2007; Frosst et al., 2019).
+The SNNL improves over the NCA algorithm by introducing nonlinearity,
+and it is computed for each hidden layer of a neural network instead
+of solely on the last encoding layer. This loss function is used to
+optimize the entanglement of points in a dataset.
 
 In the context of this work, _entanglement_ is defined as how close
 class-similar data points to each other compared to class-different data points.
