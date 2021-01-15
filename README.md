@@ -41,7 +41,7 @@ clusters would imply that the features belong to the same class as per the
 clustering assumption in the semi-supervised learning literature (Chapelle et
 al., 2009). To integrate the class neighborhood structure in the
 representations, manifold learning techniques have been introduced such as
-locally linear ambeddings or LLE (Roweis & Saul, 2000), neighborhood components
+locally linear embeddings or LLE (Roweis & Saul, 2000), neighborhood components
 analysis or NCA (Roweis et al., 2004), and t-stochastic neighbor embedding or
 t-SNE (Maaten & Hinton, 2008).
 
