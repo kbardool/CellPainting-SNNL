@@ -142,8 +142,6 @@ class SNNLoss(torch.nn.Module):
         """
         if self.use_annealing:
             self.temperature = 1.0 / ((1.0 + epoch) ** 0.55)
-        elif isinstance(self.temperature, torch.nn.Parameter):
-            self.temperature = self.temperature.to(model.device)
 
         primary_loss = self.primary_criterion(
             outputs, features if self.unsupervised else labels
