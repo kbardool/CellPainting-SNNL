@@ -114,7 +114,7 @@ class SNNLoss(torch.nn.Module):
         labels: torch.Tensor,
         outputs: torch.Tensor,
         epoch: int,
-    ):
+    ) -> Tuple:
         """
         Defines the forward pass for the Soft Nearest Neighbor Loss.
 
