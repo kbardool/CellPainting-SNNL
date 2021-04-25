@@ -7,5 +7,5 @@
   "learning_rate": 1e-3,
   "dataset": "svhn",
   "snnl_factor": -10.0,
-  "temperature": 0
+  "temperature": 0.0
 }
