@@ -6,5 +6,5 @@
   "learning_rate": 1e-4,
   "dataset": "cifar10",
   "snnl_factor": 10.0,
-  "temperature": 0
+  "temperature": 0.0
 }
