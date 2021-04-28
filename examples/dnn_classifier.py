@@ -77,7 +77,7 @@ def main(args):
         train_features = torch.from_numpy(train_features)
         train_labels = train_dataset.targets
         train_labels = train_labels[:60000]
-    train_dataset = torch.utils.data.TensorDataset(train_features, train_labels)
+        train_dataset = torch.utils.data.TensorDataset(train_features, train_labels)
     train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
 
     if args.model.lower() == "baseline":
