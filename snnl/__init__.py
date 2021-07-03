@@ -249,3 +249,7 @@ class SNNLoss(torch.nn.Module):
                     layer(features) if index == 0 else layer(activations.get(index - 1))
                 )
         return activations
+
+    @staticmethod
+    def pairwise_cosine_distance(features: torch.Tensor) -> torch.Tensor:
+        pass
