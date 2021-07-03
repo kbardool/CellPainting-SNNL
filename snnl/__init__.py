@@ -333,3 +333,8 @@ class SNNLoss(torch.nn.Module):
             -(distance_matrix / self.temperature)
         ) - torch.eye(features.shape[0]).to(device)
         return pairwise_distance_matrix
+
+    def compute_sampling_probability(
+        self, distance_matrix: torch.Tensor
+    ) -> torch.Tensor:
+        pass
