@@ -271,12 +271,11 @@ class SNNLoss(torch.nn.Module):
         >>> import torch
         >>> _ = torch.manual_seed(42)
         >>> a = torch.rand((4, 2))
-        >>> b = torch.rand((4, 2))
-        >>> SNNLoss.pairwise_cosine_distance(a, b)
-        tensor([[0.2118, 0.0281, 0.0252, 0.0385],
-                [0.5028, 0.1892, 0.1818, 0.2136],
-                [0.3430, 0.0905, 0.0853, 0.1082],
-                [0.5621, 0.2302, 0.2222, 0.2568]])
+        >>> SNNLoss.pairwise_cosine_distance(a)
+        tensor([[1.1921e-07, 7.4125e-02, 1.8179e-02, 1.0152e-01],
+                [7.4125e-02, 1.1921e-07, 1.9241e-02, 2.2473e-03],
+                [1.8179e-02, 1.9241e-02, 1.1921e-07, 3.4526e-02],
+                [1.0152e-01, 2.2473e-03, 3.4526e-02, 0.0000e+00]])
         """
         a, b = features.clone(), features.clone()
         normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
