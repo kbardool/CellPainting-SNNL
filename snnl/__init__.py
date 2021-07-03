@@ -286,9 +286,14 @@ class SNNLoss(torch.nn.Module):
         return distance_matrix
 
     def normalize_distance_matrix(
-        self, features: torch.Tensor, distance_matrix: torch.Tensor
+        self,
+        features: torch.Tensor,
+        distance_matrix: torch.Tensor,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
     ) -> torch.Tensor:
         pairwise_distance_matrix = torch.exp(
             -(distance_matrix / self.temperature)
-        ) - torch.eye(features.shape[0]).to(self.device)
+        ) - torch.eye(features.shape[0]).to(device)
         return pairwise_distance_matrix
