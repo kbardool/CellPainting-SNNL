@@ -227,13 +227,13 @@ averaged over 5 runs of each model using the following seeds: 1234, 42, 73,
 | Model                   | Baseline   | SNNL       |
 | ----------------------- | ---------- | ---------- |
 | MNIST (Average)         | 95.32%     | **95.77%** |
-| MNIST (Best)            | 95.93%     | **96.2%**  |
-| Fashion-MNIST (Average) | 89.1%      | **89.12%** |
-| Fashion-MNIST (Best)    | **89.76%** | **89.48%** |
+| MNIST (Best)            | 95.93%     | 96.20%     |
+| Fashion-MNIST (Average) | 89.10%     | **89.12%** |
+| Fashion-MNIST (Best)    | 89.76%     | 89.48%     |
 | EMNIST (Average)        | 82.66%     | **82.74%** |
-| EMNIST (Best)           | 82.86%     | **82.96%** |
+| EMNIST (Best)           | 82.86%     | 82.96%     |
 | KMNIST (Average)        | **90.58%** | 90.14%     |
-| KMNIST (Best)           | **90.67%** | **90.67%** |
+| KMNIST (Best)           | 90.67%     | 90.67%     |
 
 We can see from these results that they resemble the findings of Frosst et al.
 (2019), i.e. the SNNL models have marginal improvement over the baseline
