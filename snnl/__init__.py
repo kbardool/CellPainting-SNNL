@@ -253,6 +253,32 @@ class SNNLoss(torch.nn.Module):
 
     @staticmethod
     def pairwise_cosine_distance(features: torch.Tensor) -> torch.Tensor:
+        """
+        Returns the pairwise cosine distance between two copies
+        of the features matrix.
+
+        Parameter
+        ---------
+        features: torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        distance_matrix: torch.Tensor
+            The pairwise cosine distance matrix.
+
+        Example
+        -------
+        >>> import torch
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> b = torch.rand((4, 2))
+        >>> SNNLoss.pairwise_cosine_distance(a, b)
+        tensor([[0.2118, 0.0281, 0.0252, 0.0385],
+                [0.5028, 0.1892, 0.1818, 0.2136],
+                [0.3430, 0.0905, 0.0853, 0.1082],
+                [0.5621, 0.2302, 0.2222, 0.2568]])
+        """
         a, b = features.clone(), features.clone()
         normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
         normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
