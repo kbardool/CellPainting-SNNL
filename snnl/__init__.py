@@ -340,6 +340,35 @@ class SNNLoss(torch.nn.Module):
     def compute_sampling_probability(
         self, pairwise_distance_matrix: torch.Tensor
     ) -> torch.Tensor:
+        """
+        Computes the probability of sampling `j` based
+        on distance between points `i` and `j`.
+
+        Parameter
+        ---------
+        pairwise_distance_matrix: torch.Tensor
+            The normalized pairwise distance matrix.
+
+        Returns
+        -------
+        pick_probability: torch.Tensor
+            The probability matrix for selecting neighbors.
+
+        Example
+        -------
+        >>> import torch
+        >>> from snnl import SNNLoss
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> distance_matrix = snnl.pairwise_cosine_distance(a)
+        >>> distance_matrix = snnl.normalize_distance_matrix(a, distance_matrix)
+        >>> snnl.compute_sampling_probability(distance_matrix)
+        tensor([[-4.2363e-08,  3.2998e-01,  3.4896e-01,  3.2106e-01],
+                [ 3.1939e-01, -4.1004e-08,  3.3741e-01,  3.4319e-01 ],
+                [ 3.3526e-01,  3.3491e-01, -4.0700e-08,  3.2983e-01 ],
+                [ 3.1509e-01,  3.4798e-01,  3.3693e-01,  0.0000e+00 ]])
+        """
         pick_probability = pairwise_distance_matrix / (
             self.stability_epsilon + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
         )
