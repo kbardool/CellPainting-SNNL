@@ -251,8 +251,7 @@ class SNNLoss(torch.nn.Module):
                 )
         return activations
 
-    @staticmethod
-    def pairwise_cosine_distance(features: torch.Tensor) -> torch.Tensor:
+    def pairwise_cosine_distance(self, features: torch.Tensor) -> torch.Tensor:
         """
         Returns the pairwise cosine distance between two copies
         of the features matrix.
