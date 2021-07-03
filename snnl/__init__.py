@@ -287,6 +287,10 @@ class SNNLoss(torch.nn.Module):
         distance_matrix = torch.sub(torch.tensor(1.0), product)
         return distance_matrix
 
-    @staticmethod
-    def normalize_distance_matrix(distance_matrix: torch.Tensor) -> torch.Tensor:
-        pass
+    def normalize_distance_matrix(
+        self, features: torch.Tensor, distance_matrix: torch.Tensor
+    ) -> torch.Tensor:
+        pairwise_distance_matrix = torch.exp(
+            -(distance_matrix / self.temperature)
+        ) - torch.eye(features.shape[0]).to(self.device)
+        return pairwise_distance_matrix
