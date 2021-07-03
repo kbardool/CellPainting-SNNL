@@ -269,9 +269,11 @@ class SNNLoss(torch.nn.Module):
         Example
         -------
         >>> import torch
+        >>> from snnl import SNNLoss
         >>> _ = torch.manual_seed(42)
         >>> a = torch.rand((4, 2))
-        >>> SNNLoss.pairwise_cosine_distance(a)
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> snnl.pairwise_cosine_distance(a)
         tensor([[1.1921e-07, 7.4125e-02, 1.8179e-02, 1.0152e-01],
                 [7.4125e-02, 1.1921e-07, 1.9241e-02, 2.2473e-03],
                 [1.8179e-02, 1.9241e-02, 1.1921e-07, 3.4526e-02],
