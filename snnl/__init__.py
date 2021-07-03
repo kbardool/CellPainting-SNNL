@@ -162,10 +162,13 @@ class SNNLoss(torch.nn.Module):
             # normalized_b = torch.conj(normalized_b).T
             # product = torch.matmul(normalized_a, normalized_b)
             # distance_matrix = torch.sub(torch.tensor(1.0), product)
-            distance_matrix = SNNLoss.pairwise_cosine_distance(features=value)
-            pairwise_distance_matrix = torch.exp(
-                -(distance_matrix / self.temperature)
-            ) - torch.eye(value.shape[0]).to(model.device)
+            distance_matrix = self.pairwise_cosine_distance(features=value)
+            # pairwise_distance_matrix = torch.exp(
+            #     -(distance_matrix / self.temperature)
+            # ) - torch.eye(value.shape[0]).to(model.device)
+            pairwise_distance_matrix = self.normalize_distance_matrix(
+                features=value, distance_matrix=distance_matrix, device=model.device
+            )
             pick_probability = pairwise_distance_matrix / (
                 self.stability_epsilon
                 + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
