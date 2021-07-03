@@ -155,13 +155,14 @@ class SNNLoss(torch.nn.Module):
                 value = value.view(value.shape[0], -1)
             if key == 7 and self.mode == "latent_code":
                 value = value[:, : self.code_units]
-            a = value.clone()
-            b = value.clone()
-            normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
-            normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
-            normalized_b = torch.conj(normalized_b).T
-            product = torch.matmul(normalized_a, normalized_b)
-            distance_matrix = torch.sub(torch.tensor(1.0), product)
+            # a = value.clone()
+            # b = value.clone()
+            # normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+            # normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+            # normalized_b = torch.conj(normalized_b).T
+            # product = torch.matmul(normalized_a, normalized_b)
+            # distance_matrix = torch.sub(torch.tensor(1.0), product)
+            distance_matrix = SNNLoss.pairwise_cosine_distance(features=value)
             pairwise_distance_matrix = torch.exp(
                 -(distance_matrix / self.temperature)
             ) - torch.eye(value.shape[0]).to(model.device)
@@ -252,4 +253,10 @@ class SNNLoss(torch.nn.Module):
 
     @staticmethod
     def pairwise_cosine_distance(features: torch.Tensor) -> torch.Tensor:
-        pass
+        a, b = features.clone(), features.clone()
+        normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+        normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+        normalized_b = torch.conj(normalized_b).T
+        product = torch.matmul(normalized_a, normalized_b)
+        distance_matrix = torch.sub(torch.tensor(1.0), product)
+        return distance_matrix
