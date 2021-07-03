@@ -169,9 +169,12 @@ class SNNLoss(torch.nn.Module):
             pairwise_distance_matrix = self.normalize_distance_matrix(
                 features=value, distance_matrix=distance_matrix, device=model.device
             )
-            pick_probability = pairwise_distance_matrix / (
-                self.stability_epsilon
-                + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
+            # pick_probability = pairwise_distance_matrix / (
+            #     self.stability_epsilon
+            #     + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
+            # )
+            pick_probability = self.compute_sampling_probability(
+                pairwise_distance_matrix
             )
             masking_matrix = torch.squeeze(
                 torch.eq(labels, labels.unsqueeze(1)).float()
