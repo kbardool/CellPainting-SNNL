@@ -309,6 +309,20 @@ class SNNLoss(torch.nn.Module):
         -------
         pairwise_distance_matrix: torch.Tensor
             The normalized pairwise distance matrix.
+
+        Example
+        -------
+        >>> import torch
+        >>> from snnl import SNNLoss
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> distance_matrix = snnl.pairwise_cosine_distance(a)
+        >>> snnl.normalize_distance_matrix(a, distance_matrix)
+        tensor([[-1.1921e-07,  9.2856e-01,  9.8199e-01,  9.0346e-01],
+                [ 9.2856e-01, -1.1921e-07,  9.8094e-01,  9.9776e-01 ],
+                [ 9.8199e-01,  9.8094e-01, -1.1921e-07,  9.6606e-01 ],
+                [ 9.0346e-01,  9.9776e-01,  9.6606e-01,  0.0000e+00 ]])
         """
         pairwise_distance_matrix = torch.exp(
             -(distance_matrix / self.temperature)
