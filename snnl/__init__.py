@@ -335,6 +335,9 @@ class SNNLoss(torch.nn.Module):
         return pairwise_distance_matrix
 
     def compute_sampling_probability(
-        self, distance_matrix: torch.Tensor
+        self, pairwise_distance_matrix: torch.Tensor
     ) -> torch.Tensor:
-        pass
+        pick_probability = pairwise_distance_matrix / (
+            self.stability_epsilon + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
+        )
+        return pick_probability
