@@ -373,3 +373,6 @@ class SNNLoss(torch.nn.Module):
             self.stability_epsilon + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
         )
         return pick_probability
+
+    def mask_sampling_probability(self):
+        pass
