@@ -176,11 +176,14 @@ class SNNLoss(torch.nn.Module):
             pick_probability = self.compute_sampling_probability(
                 pairwise_distance_matrix
             )
-            masking_matrix = torch.squeeze(
-                torch.eq(labels, labels.unsqueeze(1)).float()
+            # masking_matrix = torch.squeeze(
+            #     torch.eq(labels, labels.unsqueeze(1)).float()
+            # )
+            # masked_pick_probability = pick_probability * masking_matrix
+            # summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
+            summed_masked_pick_probability = self.mask_sampling_probability(
+                labels, pick_probability
             )
-            masked_pick_probability = pick_probability * masking_matrix
-            summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
             snnl = torch.mean(
                 -torch.log(self.stability_epsilon + summed_masked_pick_probability)
             )
@@ -374,5 +377,10 @@ class SNNLoss(torch.nn.Module):
         )
         return pick_probability
 
-    def mask_sampling_probability(self):
-        pass
+    def mask_sampling_probability(
+        self, labels: torch.Tensor, sampling_probability: torch.Tensor
+    ) -> torch.Tensor:
+        masking_matrix = torch.squeeze(torch.eq(labels, labels.unsqueeze(1)).float())
+        masked_pick_probability = sampling_probability * masking_matrix
+        summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
+        return summed_masked_pick_probability
