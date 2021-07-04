@@ -380,6 +380,36 @@ class SNNLoss(torch.nn.Module):
     def mask_sampling_probability(
         self, labels: torch.Tensor, sampling_probability: torch.Tensor
     ) -> torch.Tensor:
+        """
+        Masks the sampling probability, to zero out diagonal
+        of sampling probability, and returns the sum per row.
+
+        Parameters
+        ----------
+        labels: torch.Tensor
+            The labels of the input features.
+        sampling_probability: torch.Tensor
+            The probability matrix of picking neighboring points.
+
+        Returns
+        -------
+        summed_masked_pick_probability: torch.Tensor
+            The probability matrix of selecting a
+            class-similar data points.
+
+        Example
+        -------
+        >>> import torch
+        >>> from snnl import SNNLoss
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> distance_matrix = snnl.pairwise_cosine_distance(a)
+        >>> distance_matrix = snnl.normalize_distance_matrix(a, distance_matrix)
+        >>> pick_probability = snnl.compute_sampling_probability(distance_matrix)
+        >>> snnl.mask_sampling_probability(labels, pick_probability)
+        tensor([0.3490, 0.3432, 0.3353, 0.3480])
+        """
         masking_matrix = torch.squeeze(torch.eq(labels, labels.unsqueeze(1)).float())
         masked_pick_probability = sampling_probability * masking_matrix
         summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
