@@ -326,7 +326,7 @@ class SNNLoss(torch.nn.Module):
         >>> a = torch.rand((4, 2))
         >>> snnl = SNNLoss(temperature=1.0)
         >>> distance_matrix = snnl.pairwise_cosine_distance(a)
-        >>> snnl.normalize_distance_matrix(a, distance_matrix)
+        >>> snnl.normalize_distance_matrix(a, distance_matrix, device=torch.device("cpu"))
         tensor([[-1.1921e-07,  9.2856e-01,  9.8199e-01,  9.0346e-01],
                 [ 9.2856e-01, -1.1921e-07,  9.8094e-01,  9.9776e-01 ],
                 [ 9.8199e-01,  9.8094e-01, -1.1921e-07,  9.6606e-01 ],
