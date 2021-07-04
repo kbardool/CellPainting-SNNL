@@ -155,25 +155,16 @@ class SNNLoss(torch.nn.Module):
                 value = value.view(value.shape[0], -1)
             if key == 7 and self.mode == "latent_code":
                 value = value[:, : self.code_units]
-            a = value.clone()
-            b = value.clone()
-            normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
-            normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
-            normalized_b = torch.conj(normalized_b).T
-            product = torch.matmul(normalized_a, normalized_b)
-            distance_matrix = torch.sub(torch.tensor(1.0), product)
-            pairwise_distance_matrix = torch.exp(
-                -(distance_matrix / self.temperature)
-            ) - torch.eye(value.shape[0]).to(model.device)
-            pick_probability = pairwise_distance_matrix / (
-                self.stability_epsilon
-                + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
+            distance_matrix = self.pairwise_cosine_distance(features=value)
+            pairwise_distance_matrix = self.normalize_distance_matrix(
+                features=value, distance_matrix=distance_matrix, device=model.device
             )
-            masking_matrix = torch.squeeze(
-                torch.eq(labels, labels.unsqueeze(1)).float()
+            pick_probability = self.compute_sampling_probability(
+                pairwise_distance_matrix
             )
-            masked_pick_probability = pick_probability * masking_matrix
-            summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
+            summed_masked_pick_probability = self.mask_sampling_probability(
+                labels, pick_probability
+            )
             snnl = torch.mean(
                 -torch.log(self.stability_epsilon + summed_masked_pick_probability)
             )
@@ -249,3 +240,158 @@ class SNNLoss(torch.nn.Module):
                     layer(features) if index == 0 else layer(activations.get(index - 1))
                 )
         return activations
+
+    def pairwise_cosine_distance(self, features: torch.Tensor) -> torch.Tensor:
+        """
+        Returns the pairwise cosine distance between two copies
+        of the features matrix.
+
+        Parameter
+        ---------
+        features: torch.Tensor
+            The input features.
+
+        Returns
+        -------
+        distance_matrix: torch.Tensor
+            The pairwise cosine distance matrix.
+
+        Example
+        -------
+        >>> import torch
+        >>> from snnl import SNNLoss
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> snnl.pairwise_cosine_distance(a)
+        tensor([[1.1921e-07, 7.4125e-02, 1.8179e-02, 1.0152e-01],
+                [7.4125e-02, 1.1921e-07, 1.9241e-02, 2.2473e-03],
+                [1.8179e-02, 1.9241e-02, 1.1921e-07, 3.4526e-02],
+                [1.0152e-01, 2.2473e-03, 3.4526e-02, 0.0000e+00]])
+        """
+        a, b = features.clone(), features.clone()
+        normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+        normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+        normalized_b = torch.conj(normalized_b).T
+        product = torch.matmul(normalized_a, normalized_b)
+        distance_matrix = torch.sub(torch.tensor(1.0), product)
+        return distance_matrix
+
+    def normalize_distance_matrix(
+        self,
+        features: torch.Tensor,
+        distance_matrix: torch.Tensor,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+    ) -> torch.Tensor:
+        """
+        Normalizes the pairwise distance matrix.
+
+        Parameters
+        ----------
+        features: torch.Tensor
+            The input features.
+        distance_matrix: torch.Tensor
+            The pairwise distance matrix to normalize.
+        device: torch.device
+            The device to use for computation.
+
+        Returns
+        -------
+        pairwise_distance_matrix: torch.Tensor
+            The normalized pairwise distance matrix.
+
+        Example
+        -------
+        >>> import torch
+        >>> from snnl import SNNLoss
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> distance_matrix = snnl.pairwise_cosine_distance(a)
+        >>> snnl.normalize_distance_matrix(a, distance_matrix, device=torch.device("cpu"))
+        tensor([[-1.1921e-07,  9.2856e-01,  9.8199e-01,  9.0346e-01],
+                [ 9.2856e-01, -1.1921e-07,  9.8094e-01,  9.9776e-01 ],
+                [ 9.8199e-01,  9.8094e-01, -1.1921e-07,  9.6606e-01 ],
+                [ 9.0346e-01,  9.9776e-01,  9.6606e-01,  0.0000e+00 ]])
+        """
+        pairwise_distance_matrix = torch.exp(
+            -(distance_matrix / self.temperature)
+        ) - torch.eye(features.shape[0]).to(device)
+        return pairwise_distance_matrix
+
+    def compute_sampling_probability(
+        self, pairwise_distance_matrix: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Computes the probability of sampling `j` based
+        on distance between points `i` and `j`.
+
+        Parameter
+        ---------
+        pairwise_distance_matrix: torch.Tensor
+            The normalized pairwise distance matrix.
+
+        Returns
+        -------
+        pick_probability: torch.Tensor
+            The probability matrix for selecting neighbors.
+
+        Example
+        -------
+        >>> import torch
+        >>> from snnl import SNNLoss
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> distance_matrix = snnl.pairwise_cosine_distance(a)
+        >>> distance_matrix = snnl.normalize_distance_matrix(a, distance_matrix)
+        >>> snnl.compute_sampling_probability(distance_matrix)
+        tensor([[-4.2363e-08,  3.2998e-01,  3.4896e-01,  3.2106e-01],
+                [ 3.1939e-01, -4.1004e-08,  3.3741e-01,  3.4319e-01 ],
+                [ 3.3526e-01,  3.3491e-01, -4.0700e-08,  3.2983e-01 ],
+                [ 3.1509e-01,  3.4798e-01,  3.3693e-01,  0.0000e+00 ]])
+        """
+        pick_probability = pairwise_distance_matrix / (
+            self.stability_epsilon + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
+        )
+        return pick_probability
+
+    def mask_sampling_probability(
+        self, labels: torch.Tensor, sampling_probability: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Masks the sampling probability, to zero out diagonal
+        of sampling probability, and returns the sum per row.
+
+        Parameters
+        ----------
+        labels: torch.Tensor
+            The labels of the input features.
+        sampling_probability: torch.Tensor
+            The probability matrix of picking neighboring points.
+
+        Returns
+        -------
+        summed_masked_pick_probability: torch.Tensor
+            The probability matrix of selecting a
+            class-similar data points.
+
+        Example
+        -------
+        >>> import torch
+        >>> from snnl import SNNLoss
+        >>> _ = torch.manual_seed(42)
+        >>> a = torch.rand((4, 2))
+        >>> snnl = SNNLoss(temperature=1.0)
+        >>> distance_matrix = snnl.pairwise_cosine_distance(a)
+        >>> distance_matrix = snnl.normalize_distance_matrix(a, distance_matrix)
+        >>> pick_probability = snnl.compute_sampling_probability(distance_matrix)
+        >>> snnl.mask_sampling_probability(labels, pick_probability)
+        tensor([0.3490, 0.3432, 0.3353, 0.3480])
+        """
+        masking_matrix = torch.squeeze(torch.eq(labels, labels.unsqueeze(1)).float())
+        masked_pick_probability = sampling_probability * masking_matrix
+        summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
+        return summed_masked_pick_probability
