@@ -155,32 +155,13 @@ class SNNLoss(torch.nn.Module):
                 value = value.view(value.shape[0], -1)
             if key == 7 and self.mode == "latent_code":
                 value = value[:, : self.code_units]
-            # a = value.clone()
-            # b = value.clone()
-            # normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
-            # normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
-            # normalized_b = torch.conj(normalized_b).T
-            # product = torch.matmul(normalized_a, normalized_b)
-            # distance_matrix = torch.sub(torch.tensor(1.0), product)
             distance_matrix = self.pairwise_cosine_distance(features=value)
-            # pairwise_distance_matrix = torch.exp(
-            #     -(distance_matrix / self.temperature)
-            # ) - torch.eye(value.shape[0]).to(model.device)
             pairwise_distance_matrix = self.normalize_distance_matrix(
                 features=value, distance_matrix=distance_matrix, device=model.device
             )
-            # pick_probability = pairwise_distance_matrix / (
-            #     self.stability_epsilon
-            #     + torch.sum(pairwise_distance_matrix, 1).view(-1, 1)
-            # )
             pick_probability = self.compute_sampling_probability(
                 pairwise_distance_matrix
             )
-            # masking_matrix = torch.squeeze(
-            #     torch.eq(labels, labels.unsqueeze(1)).float()
-            # )
-            # masked_pick_probability = pick_probability * masking_matrix
-            # summed_masked_pick_probability = torch.sum(masked_pick_probability, dim=1)
             summed_masked_pick_probability = self.mask_sampling_probability(
                 labels, pick_probability
             )
