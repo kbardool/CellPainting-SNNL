@@ -23,6 +23,6 @@ setup(
         "numpy==1.20.0",
         "torchvision==0.9.1",
         "torch==1.8.1",
-        "pt_datasets==0.11.19",
+        "pt_datasets==0.15.0",
     ],
 )
