@@ -1,5 +1,5 @@
 # Soft Nearest Neighbor Loss
-# Copyright (C) 2020--present  Abien Fred Agarap
+# Copyright (C) 2020-2021  Abien Fred Agarap
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
