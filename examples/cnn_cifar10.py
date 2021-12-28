@@ -16,8 +16,8 @@
 """Sample module for using custom CNN classifier with SNNL"""
 from typing import Tuple
 
-from pt_datasets import create_dataloader, load_dataset
 import torch
+from pt_datasets import create_dataloader, load_dataset
 
 from snnl import SNNLoss
 from snnl.utils import set_global_seed

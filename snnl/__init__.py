@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Implementation of loss functions"""
 from typing import Dict, Tuple
+
 import torch
 
 __author__ = "Abien Fred Agarap"

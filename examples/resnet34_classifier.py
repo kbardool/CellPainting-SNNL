@@ -16,8 +16,9 @@
 """Sample module for using ResNet34 classifier with SNNL"""
 import argparse
 import multiprocessing
-from pt_datasets import create_dataloader, load_dataset
+
 import torch
+from pt_datasets import create_dataloader, load_dataset
 
 from snnl.models import ResNet34
 from snnl.utils import get_hyperparameters, set_global_seed

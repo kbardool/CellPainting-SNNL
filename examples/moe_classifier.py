@@ -15,11 +15,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample MoE classifier module"""
 import argparse
-from pt_datasets import load_dataset, create_dataloader
-import torch
 
+import torch
 from disentangling_moe.models import DNN, MoE
 from disentangling_moe.utils import set_global_seed
+from pt_datasets import create_dataloader, load_dataset
 
 __author__ = "Abien Fred Agarap"
 

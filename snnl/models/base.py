@@ -15,8 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Tuple
 
-from pt_datasets import create_dataloader
 import torch
+from pt_datasets import create_dataloader
 
 from snnl import SNNLoss
 
