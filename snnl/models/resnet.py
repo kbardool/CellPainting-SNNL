@@ -34,6 +34,7 @@ class ResNet(torch.nn.Module):
     def __init__(
         self,
         use_snnl: bool = False,
+        temperature: float = 100.0,
         factor: float = 100.0,
         mode: str = "resnet",
         stability_epsilon: float = 1e-5,
@@ -48,6 +49,8 @@ class ResNet(torch.nn.Module):
         ----------
         use_snnl: bool
             Whether to use soft nearest neighbor loss or not.
+        temperature: float
+            The SNNL temperature.
         factor: float
             The balance factor between SNNL and the primary loss.
             A positive factor implies SNNL minimization,
@@ -296,6 +299,7 @@ class ResNet34(ResNet):
         num_classes: int,
         learning_rate: float = 1e-3,
         use_snnl: bool = False,
+        temperature: float = 100.0,
         factor: float = 100.0,
         mode: str = "resnet",
         stability_epsilon: float = 1e-5,
@@ -314,6 +318,8 @@ class ResNet34(ResNet):
             The learning rate to use for optimization.
         use_snnl: bool
             Whether to use soft nearest neighbor loss or not.
+        temperature: float
+            The SNNL temperature.
         factor: float
             The balance between SNNL and the primary loss.
             A positive factor implies SNNL minimization,
@@ -328,6 +334,7 @@ class ResNet34(ResNet):
         """
         super().__init__(
             use_snnl=use_snnl,
+            temperature=temperature,
             factor=factor,
             mode=mode,
             stability_epsilon=stability_epsilon,
