@@ -20,7 +20,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     install_requires=[
-        "numpy==1.20.0",
+        "numpy",
         "torchvision==0.9.1",
         "torch==1.8.1",
         "pt_datasets==0.15.0",
