@@ -1,4 +1,4 @@
-pt_datasets==0.15.0
+pt_datasets
 numpy
 torch==1.8.1
 torchvision==0.9.1

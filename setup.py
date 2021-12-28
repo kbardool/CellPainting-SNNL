@@ -19,10 +19,5 @@ setup(
     description="PyTorch package for soft nearest neighbor loss function.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=[
-        "numpy",
-        "torchvision==0.9.1",
-        "torch==1.8.1",
-        "pt_datasets==0.15.0",
-    ],
+    install_requires=["numpy", "torchvision==0.9.1", "torch==1.8.1", "pt_datasets"],
 )
