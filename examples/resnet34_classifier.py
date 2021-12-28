@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Sample module for using ResNet34 classifier with SNNL"""
 import argparse
+import multiprocessing
 from pt_datasets import create_dataloader, load_dataset
 import torch
 
@@ -83,7 +84,11 @@ def main(args):
         device = torch.device("cpu")
 
     train_dataset, test_dataset = load_dataset(name=dataset)
-    train_loader = create_dataloader(dataset=train_dataset, batch_size=batch_size)
+    train_loader = create_dataloader(
+        dataset=train_dataset,
+        batch_size=batch_size,
+        num_workers=multiprocessing.cpu_count(),
+    )
     num_classes = len(train_dataset.classes)
 
     model = ResNet34(
