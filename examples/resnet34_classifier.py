@@ -89,18 +89,15 @@ def main(args):
     model = ResNet34(
         num_classes=num_classes, learning_rate=learning_rate, device=device
     )
-    if args.model.lower() == "baseline":
-        model.fit(data_loader=train_loader, epochs=epochs)
-    elif args.model.lower() == "snnl":
-        model.fit(
-            data_loader=train_loader,
-            epochs=epochs,
-            use_snnl=True,
-            factor=snnl_factor,
-            temperature=temperature,
-        )
-    else:
-        raise ValueError("Choose between [baseline] and [snnl] only.")
+    model = ResNet34(
+        num_classes=num_classes,
+        learning_rate=learning_rate,
+        use_snnl=(True if args.model.lower() == "snnl" else False),
+        factor=snnl_factor,
+        temperature=temperature,
+        device=device,
+    )
+    model.fit(train_loader, epochs)
     test_loader = create_dataloader(
         dataset=test_dataset, batch_size=len(test_dataset.data)
     )
