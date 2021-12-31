@@ -209,7 +209,8 @@ class SNNLoss(torch.nn.Module):
         """
         activations = dict()
         if self.mode in ["classifier", "autoencoding", "latent_code"]:
-            layers = model.layers[:-1] if self.mode == "classifier" else model.layers
+            # layers = model.layers[:-1] if self.mode == "classifier" else model.layers
+            layers = model.layers
             for index, layer in enumerate(layers):
                 if index == 0:
                     activations[index] = layer(features)
