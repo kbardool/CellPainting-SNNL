@@ -202,6 +202,9 @@ class SNNLoss(torch.nn.Module):
         if self.mode != "moe":
             train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
             return train_loss, primary_loss, snn_loss
+        elif self.mode == "sae":
+            train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
+            return train_loss, reconstruction_loss, classification_loss, snn_loss
         else:
             return primary_loss, snn_loss
 
