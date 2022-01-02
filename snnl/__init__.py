@@ -45,7 +45,7 @@ class SNNLoss(torch.nn.Module):
         "resnet": False,
         "autoencoding": True,
         "latent_code": True,
-        "sae": False,
+        "sae": True,
         "custom": False,
         "moe": False,
     }
@@ -218,9 +218,7 @@ class SNNLoss(torch.nn.Module):
                 else:
                     activations[index] = layer(activations[index - 1])
         elif self.mode == "sae":
-            for index, layer in enumerate(
-                torch.nn.Sequential(*model.encoder, model.classifier)
-            ):
+            for index, layer in enumerate(model.encoder):
                 activations[index] = layer(
                     features if index == 0 else activations[index - 1]
                 )
