@@ -145,6 +145,15 @@ class SNNLoss(torch.nn.Module):
         if self.use_annealing:
             self.temperature = 1.0 / ((1.0 + epoch) ** 0.55)
 
+        if self.mode == "sae":
+            (
+                reconstruction_criterion,
+                classification_criterion,
+            ) = self.primary_criterion
+            reconstruction_loss = reconstruction_criterion(outputs, features)
+            classification_loss = classification_criterion(outputs, features)
+            primary_loss = reconstruction_loss + classification_loss
+
         primary_loss = self.primary_criterion(
             outputs, features if self.unsupervised else labels
         )
