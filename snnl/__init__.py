@@ -45,7 +45,7 @@ class SNNLoss(torch.nn.Module):
         "resnet": False,
         "autoencoding": True,
         "latent_code": True,
-        "sae": True,
+        "sae": False,
         "custom": False,
         "moe": False,
     }
