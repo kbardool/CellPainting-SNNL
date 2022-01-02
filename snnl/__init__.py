@@ -218,7 +218,9 @@ class SNNLoss(torch.nn.Module):
                 else:
                     activations[index] = layer(activations[index - 1])
         elif self.mode == "sae":
-            for index, layer in enumerate(model.encoder):
+            for index, layer in enumerate(
+                torch.nn.Sequential(*model.encoder, model.classifier)
+            ):
                 activations[index] = layer(
                     features if index == 0 else activations[index - 1]
                 )
