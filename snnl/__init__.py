@@ -145,18 +145,9 @@ class SNNLoss(torch.nn.Module):
         if self.use_annealing:
             self.temperature = 1.0 / ((1.0 + epoch) ** 0.55)
 
-        if self.mode == "sae":
-            (
-                reconstruction_criterion,
-                classification_criterion,
-            ) = self.primary_criterion
-            reconstruction_loss = reconstruction_criterion(outputs, features)
-            classification_loss = classification_criterion(outputs, labels)
-            primary_loss = reconstruction_loss + classification_loss
-        else:
-            primary_loss = self.primary_criterion(
-                outputs, features if self.unsupervised else labels
-            )
+        primary_loss = self.primary_criterion(
+            outputs, features if self.unsupervised else labels
+        )
 
         activations = self.compute_activations(model=model, features=features)
 
@@ -199,12 +190,9 @@ class SNNLoss(torch.nn.Module):
         else:
             snn_loss = torch.stack(layers_snnl)
             snn_loss = torch.min(snn_loss)
-        if self.mode != "moe" and self.mode != "sae":
+        if self.mode != "moe":
             train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
             return train_loss, primary_loss, snn_loss
-        elif self.mode == "sae":
-            train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
-            return train_loss, reconstruction_loss, classification_loss, snn_loss
         else:
             return primary_loss, snn_loss
 
