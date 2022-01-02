@@ -199,7 +199,7 @@ class SNNLoss(torch.nn.Module):
         else:
             snn_loss = torch.stack(layers_snnl)
             snn_loss = torch.min(snn_loss)
-        if self.mode != "moe":
+        if self.mode != "moe" and self.mode != "sae":
             train_loss = torch.add(primary_loss, torch.mul(self.factor, snn_loss))
             return train_loss, primary_loss, snn_loss
         elif self.mode == "sae":
