@@ -151,7 +151,7 @@ class SNNLoss(torch.nn.Module):
                 classification_criterion,
             ) = self.primary_criterion
             reconstruction_loss = reconstruction_criterion(outputs, features)
-            classification_loss = classification_criterion(outputs, features)
+            classification_loss = classification_criterion(outputs, labels)
             primary_loss = reconstruction_loss + classification_loss
 
         primary_loss = self.primary_criterion(
