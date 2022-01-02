@@ -155,9 +155,7 @@ class SNNLoss(torch.nn.Module):
         for key, value in activations.items():
             if len(value.shape) > 2:
                 value = value.view(value.shape[0], -1)
-            if (key == 7 and self.mode == "latent_code") or (
-                key == 9 and self.mode == "sae"
-            ):
+            if key == 7 and self.mode == "latent_code":
                 value = value[:, : self.code_units]
             distance_matrix = self.pairwise_cosine_distance(features=value)
             pairwise_distance_matrix = self.normalize_distance_matrix(
@@ -174,10 +172,6 @@ class SNNLoss(torch.nn.Module):
             )
             if self.mode == "latent_code":
                 if key == 7:
-                    layers_snnl.append(snnl)
-                    break
-            if self.mode == "sae":
-                if key == 9:
                     layers_snnl.append(snnl)
                     break
             elif self.mode == "resnet":
