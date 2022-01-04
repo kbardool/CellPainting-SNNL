@@ -45,7 +45,7 @@ class SNNLoss(torch.nn.Module):
         "resnet": False,
         "autoencoding": True,
         "latent_code": True,
-        "sae": False,
+        "sae": True,
         "custom": False,
         "moe": False,
     }
@@ -157,6 +157,8 @@ class SNNLoss(torch.nn.Module):
                 value = value.view(value.shape[0], -1)
             if key == 7 and self.mode == "latent_code":
                 value = value[:, : self.code_units]
+            elif key == 9 and self.mode == "sae":
+                value = value[:, : self.code_units]
             distance_matrix = self.pairwise_cosine_distance(features=value)
             pairwise_distance_matrix = self.normalize_distance_matrix(
                 features=value, distance_matrix=distance_matrix, device=model.device
@@ -219,7 +221,7 @@ class SNNLoss(torch.nn.Module):
                     activations[index] = layer(activations[index - 1])
         elif self.mode == "sae":
             for index, layer in enumerate(
-                torch.nn.Sequential(*model.encoder, model.classifier)
+                torch.nn.Sequential(*model.encoder, *model.decoder)
             ):
                 activations[index] = layer(
                     features if index == 0 else activations[index - 1]
