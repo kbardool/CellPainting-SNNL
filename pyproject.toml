@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "pt-snnl"
+version = "0.1.0"
+description = "A PyTorch implementation of soft nearest neighbor loss"
+authors = ["Abien Fred Agarap <abien_agarap@dlsu.edu.ph>"]
+license = "GNU AGPL v3"
+readme = "README.md"
+packages = [{include = "snnl"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pt-datasets = "^0.20.4"
+numpy = "<2.0"
+torch = "^2.1.1"
+torchvision = "^0.16.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+ipython = "^8.8.0"
+black = "^22.12.0"
+pre-commit = "^2.21.0"
+flake8 = "^6.0.0"
+isort = "^5.11.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
