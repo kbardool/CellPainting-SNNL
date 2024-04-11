@@ -1,0 +1,25 @@
+{
+  "units": [
+    [1471, 1024],
+    [1024, 1024], 
+    [1024, 512], 
+    [512,128],
+    [128,128]
+    [128,2]
+  ],
+  "epochs": 10,
+  "batch_size": 10,
+  "learning_rate": 1e-4,
+  "dataset": "cellpainting",
+  "snnl_factor": 10.0,
+  "temperature": 50.0,
+  "cellpainting_args": {"sample_size" : 3,
+                    "train_start" : 0,
+                    "train_end" : 66666,
+                    "test_start" : 300000,
+                    "test_end" : 310000,
+                    "chunksize" : null ,
+                    "conversions" : null ,
+                    "iterator" : true,
+                    "batch_size" : 10}
+}

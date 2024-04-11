@@ -38,6 +38,7 @@ class Model(torch.nn.Module):
         stability_epsilon: float = 1e-5,
     ):
         super().__init__()
+        print(f" Building Base Model from models/base.py")
         mode = mode.lower()
         self.mode = mode
         self.device = device
@@ -123,7 +124,7 @@ class Model(torch.nn.Module):
                 print(f"mean loss = {epoch_loss:4f}")
 
     def epoch_train(
-        self, data_loader: torch.utils.data.DataLoader, epoch: int = None
+        self, data_loader: torch.utils.data.DataLoader, epoch: int = None, verbose: bool = False,
     ) -> Tuple:
         """
         Trains a model for one epoch.
@@ -152,7 +153,9 @@ class Model(torch.nn.Module):
         if self.name == "DNN" or self.name == "CNN":
             epoch_accuracy = 0
         epoch_loss = 0
+        batch_count = 0
         for batch_features, batch_labels in data_loader:
+            batch_count +=1
             if self.name in ["Autoencoder", "DNN"]:
                 batch_features = batch_features.view(batch_features.shape[0], -1)
             batch_features = batch_features.to(self.device)
@@ -185,6 +188,10 @@ class Model(torch.nn.Module):
                 epoch_accuracy += train_accuracy
             train_loss.backward()
             self.optimizer.step()
+            
+            # print(f" batch:{batch_count:3d} - ttl loss:  {train_loss:10.6f}  XEntropy: {primary_loss:10.6f}    SNN: {snn_loss*self.snnl_criterion.factor:10.6f}" 
+            #       f" (loss: {snn_loss:10.6f} * {self.snnl_criterion.factor})   temp: {self.temperature.item():16.12f}   temp.grad: {self.temperature.grad.item():16.12f}")    
+            
             if self.use_snnl and self.temperature is not None:
                 self.optimize_temperature()
         epoch_loss /= len(data_loader)

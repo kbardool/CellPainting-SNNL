@@ -84,6 +84,7 @@ class DNN(Model):
             use_sum=use_sum,
             stability_epsilon=stability_epsilon,
         )
+        print(f" Building DNN from models/dnn.py")
         self.layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(in_features=in_features, out_features=out_features)
@@ -159,13 +160,14 @@ class DNN(Model):
                 self.train_xent_loss.append(epoch_loss[2])
                 self.train_accuracy.append(epoch_accuracy)
                 if (epoch + 1) % show_every == 0:
-                    print(f"epoch {epoch + 1}/{epochs}")
-                    print(
-                        f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
+                    print(f"epoch {epoch + 1}/{epochs}  |"
+                        f"  mean loss = {self.train_loss[-1]:.6f}  |  mean acc = {self.train_accuracy[-1]:.6f}  |" 
+                        f"  xent loss = {self.train_xent_loss[-1]:.6f}  |  snn loss = {self.train_snn_loss[-1]:.6f}  |"
+                        f"  temp = {self.temperature.item():.6f}  |  temp grad = {self.temperature.grad.item():.6f} "
                     )
-                    print(
-                        f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
-                    )
+                    # print(
+                        # f"\txent loss = {self.train_xent_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
+                    # )
             else:
                 epoch_loss, epoch_accuracy = self.epoch_train(data_loader)
                 self.train_loss.append(epoch_loss)

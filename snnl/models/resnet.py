@@ -18,7 +18,7 @@ from typing import Tuple
 
 import torch
 import torchvision
-
+from snnl.models import Model
 from snnl import SNNLoss
 
 

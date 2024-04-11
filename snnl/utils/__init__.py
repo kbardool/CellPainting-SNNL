@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Utility functions"""
+import sys
 import json
 import os
 import random
@@ -96,7 +97,7 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 
     learning_rate = config.get("learning_rate")
     assert isinstance(learning_rate, float), "[learning_rate] must be [float]."
-
+    
     snnl_factor = config.get("snnl_factor")
     assert isinstance(snnl_factor, float) or isinstance(
         snnl_factor, int
@@ -109,19 +110,44 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 
     hyperparameters_filename = os.path.basename(hyperparameters_path)
     hyperparameters_filename = hyperparameters_filename.lower()
+
+    
+    if "cellpainting" in hyperparameters_filename:
+        print("hello common cellpainting hyperparameters")
+        cellpainting_args = config.get("cellpainting_args")
+        assert isinstance(cellpainting_args, dict), "[cellpainting_args] must be [dict]."
+    
     if "dnn" in hyperparameters_filename:
+        print("loading dnn hyperparameters")
         units = config.get("units")
         assert isinstance(units, List), "[units] must be [List]."
         assert len(units) >= 2, "len(units) must be >= 2."
-        return (
-            dataset,
-            batch_size,
-            epochs,
-            learning_rate,
-            units,
-            snnl_factor,
-            temperature,
-        )
+        
+        if "dnn_cellpainting" in hyperparameters_filename:
+            print("loading dnn cellpainting hyperparameters")
+            # cellpainting_args = config.get("cellpainting_args")
+            # assert isinstance(cellpainting_args, dict), "[cellpainting_args] must be [dict]." 
+            return (
+                dataset,
+                batch_size,
+                epochs,
+                learning_rate,
+                units,
+                snnl_factor,
+                temperature,
+                cellpainting_args
+            )
+        else:
+            print("hello C")
+            return (
+                dataset,
+                batch_size,
+                epochs,
+                learning_rate,
+                units,
+                snnl_factor,
+                temperature,
+            )
     elif "cnn" in hyperparameters_filename:
         image_dim = config.get("image_dim")
         assert isinstance(image_dim, int), "[image_dim] must be [int]."
@@ -144,22 +170,38 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
             temperature,
         )
     elif "autoencoder" in hyperparameters_filename:
+        print("hello autoencoder")
         input_shape = config.get("input_shape")
         assert isinstance(input_shape, int), "[input_shape] must be [int]."
 
         code_dim = config.get("code_dim")
         assert isinstance(code_dim, int), "[code_dim] must be [int]."
 
-        return (
-            dataset,
-            batch_size,
-            epochs,
-            learning_rate,
-            input_shape,
-            code_dim,
-            snnl_factor,
-            temperature,
-        )
+        if "cellpainting" in hyperparameters_filename:
+            print("hello autoencoder_cellpainting ")
+            return (
+                dataset,
+                batch_size,
+                epochs,
+                learning_rate,
+                input_shape,
+                code_dim,
+                snnl_factor,
+                temperature,
+                cellpainting_args
+            )
+        else:
+            print("hello C")
+            return (
+                dataset,
+                batch_size,
+                epochs,
+                learning_rate,
+                input_shape,
+                code_dim,
+                snnl_factor,
+                temperature,
+            )        
     elif "resnet" in hyperparameters_filename:
         return (dataset, batch_size, epochs, learning_rate, snnl_factor, temperature)
 
@@ -180,12 +222,37 @@ def export_results(model: torch.nn.Module, filename: str):
     results_dir = "results"
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
-    filename = os.path.join(results_dir, filename)
+    filename = os.path.join(results_dir, f"{filename}.json")
     for key, value in model_attributes.items():
         if isinstance(value, List) or "test_accuracy" in key:
             results[key] = value
     with open(filename, "w") as file:
         json.dump(results, file)
+    print(f"[INFO] Model Results exported to {filename}.")
+    
+def import_results(filename: str):
+    """
+    Exports the training results stored in model class to a JSON file.
+
+    Parameters
+    ----------
+    model: torch.nn.Module
+        The trained model object.
+    filename: str
+        The filename of the JSON file to write.
+    """
+    # model_attributes = model.__dict__
+    # results = dict()
+    results_dir = "results"
+    # if not os.path.exists(results_dir):
+        # os.mkdir(results_dir)
+    filename = os.path.join(results_dir, f"{filename}")
+    # for key, value in model_attributes.items():
+        # if isinstance(value, List) or "test_accuracy" in key:
+            # results[key] = value
+    with open(filename, "r") as file:
+        results = json.load(file)
+    return results
 
 
 def save_model(model: torch.nn.Module, filename: str):
@@ -202,6 +269,64 @@ def save_model(model: torch.nn.Module, filename: str):
     path = os.path.join("examples", "export")
     if not os.path.exists(path):
         os.mkdir(path)
-    path = os.path.join(path, filename)
-    torch.save(model.state_dict(), path)
+    path = os.path.join(path, f"{filename}.pt")
+    torch.save(model, path)
     print(f"[INFO] Model exported to {path}.")
+
+def load_model(filename: str) -> torch.nn.Module:
+    """
+    Exports the input model to the examples/export directory.
+
+    Parameters
+    ----------
+    model: torch.nn.Module
+        The (presumably) trained model object.
+    filename: str
+        The filename for the trained model to export.
+    """
+    path = os.path.join("examples", "export")
+    if not os.path.exists(path):
+        print(f"path {path} doesn't exist")
+    path = os.path.join(path, filename)
+    print(f"[INFO] Model imported from {path}.")
+    return torch.load(path)
+
+def _load_previous_state(model, filename ):
+    epoch = 9999
+    try:
+        checkpoints_folder = os.path.join("ckpts")
+        checkpoint = torch.load(os.path.join(checkpoints_folder, filename))
+        print(checkpoint.keys())
+        model.load_state_dict(checkpoint['state_dict'])
+        model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+        if "scheduler" in checkpoint and (hasattr(model, 'scheduler')):
+            model.scheduler = checkpoint['scheduler']
+        epoch = checkpoint.get('epoch',0)
+        print(f"Loaded from checkpoint {checkpoint} successfully.")
+         
+    # except FileNotFoundError:
+    #     Exception("Previous state checkpoint not found.")
+    except :
+        print(sys.exc_info())
+
+    return model, epoch + 1
+
+def _save_checkpoint(epoch, model, filename, update_latest=False, update_best=False):
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+    checkpoint = {
+        'epoch': epoch,
+        'state_dict': model.state_dict(),
+        'optimizer_state_dict': model.optimizer.state_dict()}
+    if hasattr(model, 'scheduler'):
+        checkpoint['scheduler']: model.scheduler
+    if update_latest:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
+    elif update_best:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_best.pt")
+    else:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+    torch.save(checkpoint, filename) 
+    print(f"[INFO] Model exported to {filename}.")
