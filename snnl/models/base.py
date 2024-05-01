@@ -154,14 +154,17 @@ class Model(torch.nn.Module):
             epoch_accuracy = 0
         epoch_loss = 0
         batch_count = 0
+        
         for batch_features, batch_labels in data_loader:
             batch_count +=1
             if self.name in ["Autoencoder", "DNN"]:
                 batch_features = batch_features.view(batch_features.shape[0], -1)
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
+        
             self.optimizer.zero_grad()
             outputs = self.forward(features=batch_features)
+            
             if self.use_snnl:
                 train_loss, primary_loss, snn_loss = self.snnl_criterion(
                     model=self,
@@ -181,11 +184,11 @@ class Model(torch.nn.Module):
                     else batch_features,
                 )
                 epoch_loss += train_loss.item()
+            
             if self.name == "DNN" or self.name == "CNN":
-                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(
-                    batch_labels
-                )
+                train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(batch_labels)
                 epoch_accuracy += train_accuracy
+            
             train_loss.backward()
             self.optimizer.step()
             
@@ -194,9 +197,12 @@ class Model(torch.nn.Module):
             
             if self.use_snnl and self.temperature is not None:
                 self.optimize_temperature()
+        
         epoch_loss /= len(data_loader)
+        
         if self.name in ["DNN", "CNN"]:
             epoch_accuracy /= len(data_loader)
+        
         if self.use_snnl:
             epoch_snn_loss /= len(data_loader)
             epoch_primary_loss /= len(data_loader)
