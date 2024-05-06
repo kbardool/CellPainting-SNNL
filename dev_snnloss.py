@@ -50,14 +50,11 @@ class SNNLoss(torch.nn.Module):
     def __init__(
         self,
         mode: str = "classifier",
-        # criterion: object = torch.nn.CrossEntropyLoss(),
-        factor: float = 100.0,
         temperature: float = None,
         unsupervised: bool = None,
         use_annealing: bool = False,
         use_sum: bool = False,
         code_units: int = 30,
-        embedding_layer: int = None, 
         stability_epsilon: float = 1e-5,
         sample_size: int = None, 
         verbose = False
@@ -73,10 +70,7 @@ class SNNLoss(torch.nn.Module):
         # criterion: object
         #     The primary loss to use.
         #     Default: [torch.nn.CrossEntropyLoss()]
-        factor: float
-            The balance factor between SNNL and the primary loss.
-            A positive factor implies SNNL minimization, while a negative
-            factor implies SNNL maximization.
+ 
         temperature: float
             The SNNL temperature.
         use_annealing: bool
@@ -96,12 +90,7 @@ class SNNLoss(torch.nn.Module):
             raise ValueError("[code_units] must be greater than 0 when mode == 'latent_code'." )
         assert isinstance(code_units, int), f"Expected dtype for [code_units] is int, but {code_units} is {type(code_units)}"
         
-        if (self.mode == "latent_code"):
-            if (embedding_layer is None):
-                raise ValueError("[Embedding_layer]  must be specified when self.mode = 'latent_code'." )
-            elif  (type(embedding_layer) == int) and (embedding_layer <=0):
-                raise ValueError("[Embedding_layer]  must be specified when self.mode = 'latent_code'." )
-        
+
         if self.mode not in SNNLoss._supported_modes:
             raise ValueError(f"Mode {mode} is not supported.")
         
@@ -110,13 +99,10 @@ class SNNLoss(torch.nn.Module):
         else:
             self.unsupervised = unsupervised
             
-        # self.primary_criterion = criterion
-        self.factor = factor
         self.temperature = temperature
         self.use_annealing = use_annealing
         self.use_sum = use_sum
         self.code_units = code_units
-        self.embedding_layer = embedding_layer
         self.stability_epsilon = stability_epsilon
 
         self.sample_size = sample_size
@@ -129,7 +115,6 @@ class SNNLoss(torch.nn.Module):
         print(f"    SNNLoss _init()_    -- unsupervised :     {self.unsupervised}")
         print(f"    SNNLoss _init()_    -- use_annealing :    {self.use_annealing}")
         print(f"    SNNLoss _init()_    -- sample_size :      {self.sample_size}")
-        print(f"    SNNLoss _init()_    -- embedding_layer :  {self.embedding_layer}")
         print(f"    SNNLoss _init()_    -- temperature :      {self.temperature.item()}")
 
     def forward(
@@ -138,7 +123,7 @@ class SNNLoss(torch.nn.Module):
         outputs: torch.Tensor,
         features: torch.Tensor,
         labels: torch.Tensor,
-        epoch: int,
+        # epoch: int,
     ) -> Tuple:
         """
         Defines the forward pass for the Soft Nearest Neighbor Loss.
@@ -185,7 +170,7 @@ class SNNLoss(torch.nn.Module):
                 value = value.view(value.shape[0], -1)
                 
             if (self.mode == "latent_code"): 
-                if (key == self.embedding_layer):
+                if (key == model.embedding_layer):
                     value = value[:, : self.code_units]
                 else:
                     continue
@@ -206,7 +191,7 @@ class SNNLoss(torch.nn.Module):
                 self.display_debug_info_1()
  
             if self.mode == "latent_code":
-                if key == self.embedding_layer:
+                if key == model.embedding_layer:
                     self.layers_snnl.append(snnl)
                     break
             elif self.mode == "resnet":
@@ -282,6 +267,7 @@ class SNNLoss(torch.nn.Module):
                     activations[index] = layer(features)
                 else:
                     activations[index] = layer(activations[index - 1])
+                    
         elif self.mode in [ "autoencoding", "latent_code"]:
             layers = model.layers
             for index, layer in enumerate(layers):

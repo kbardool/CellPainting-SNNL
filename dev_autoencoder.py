@@ -46,18 +46,21 @@ class Autoencoder(Model):
         use_snnl: bool = False,
         loss_factor: float = 1.0,
         snnl_factor: float = 100.0,
-        temperature: int = None,
-        temperatureLR: int = None,
+        temperature: int = 0.0,
+        temperatureLR: int = 0.0,
         adam_weight_decay: float = 0.0,
         SGD_weight_decay: float = 0.0,        
         use_annealing: bool = True,
         monitor_grads_layer: int = None,
         use_sum: bool = False,
         stability_epsilon: float = 1e-5,
+        dropout_p: float = 0.5,            
         input_shape: int = 0 ,
         sample_size: int = None,  
         device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         verbose: bool = False,
+        use_scheduler: bool = False, 
+        use_temp_scheduler: bool = False, 
     ):
         """
         Constructs the autoencoder model with the following units,
@@ -73,7 +76,7 @@ class Autoencoder(Model):
             The learning rate to use for optimization.
         use_snnl: bool
             Whether to use soft nearest neighbor loss or not.
-        factor: float
+        snnl_factor: float
             The balance factor between SNNL and the primary loss.
             A positive factor implies SNNL minimization, while a negative
             factor implies SNNL maximization.
@@ -96,8 +99,18 @@ class Autoencoder(Model):
         """
         if mode not in Autoencoder._supported_modes:
             raise ValueError(f"Mode {mode} is not supported.")
+            
         assert sample_size is not None, f"sample_size must be specified in Autoencoder initialization"
-        
+        if use_temp_scheduler:
+            assert use_snnl, f" temp_scheduler = True but use_snnl is false - will be ignored"
+
+        self.name = "AE"
+        self.layer_types = []
+        self.layer_activations = activations                
+        self.use_scheduler = use_scheduler
+        self.use_temp_scheduler = use_temp_scheduler
+        self.monitor_grads_layer = monitor_grads_layer
+
         super().__init__(
             mode=mode,
             criterion=criterion,
@@ -115,64 +128,31 @@ class Autoencoder(Model):
             stability_epsilon=stability_epsilon,
             verbose=verbose,
         )
-        
-        self.monitor_grads_layer = monitor_grads_layer
-        self.layer_activations = activations
-        
         print('\n'+'-'*60)
         print(f" Building Autoencoder from NOTEBOOK")
         print('-'*60)
            
-        self.layers = torch.nn.ModuleList()
-        self.layer_types = []
-        for idx, ((layer, in_features, out_features), non_linearity) in enumerate(zip( units,activations)):
+        self.layers = torch.nn.ModuleList() 
+        for idx, ((layer, in_features, out_features) ) in enumerate( units ):
             type = layer.lower()
-            non_linearity = non_linearity.lower()
-            print(f"    layer/non_linearity pair:  {idx:3d}  type:{layer:15s}  input: {in_features:6d}  output: {out_features:6d}  non_linearity: {non_linearity:15s}" )
+            print(f"    layer pair:  {idx:3d}  type:{layer:15s}  input: {in_features:6d}  output: {out_features:6d}  " )
         
             if layer =='linear':
                 self.layers.append( torch.nn.Linear(in_features=in_features, out_features=out_features))
                 self.layer_types.append('linear')
             elif layer == 'dropout':
-                self.layers.append( torch.nn.dropout(p=dropout_p))
+                self.layers.append( torch.nn.Dropout(p=dropout_p))
                 self.layer_types.append('dropout')
-            else :
-                raise Exception(f"Unrecognized Layer found in layer definitions {type}")
-                
-            if non_linearity == 'relu':
+            elif layer == 'relu':
                 self.layers.append(torch.nn.ReLU())
                 self.layer_types.append('relu')
-            elif non_linearity == 'sigmoid':
+            elif layer == 'sigmoid':
                 self.layers.append(torch.nn.Sigmoid())
                 self.layer_types.append('sigmoid')
-            elif non_linearity == 'none':
+            elif layer == 'none':
                 pass
             else :
-                raise Exception(f"Unrecognized type found in activations {non_linearity}")
-        print(f"    layer_types      : {self.layer_types}")
-        print(f"    layer_activations: {self.layer_activations}")             
-        
-        # self.layers = torch.nn.ModuleList(
-        #     [
-        #         torch.nn.Linear(in_features=input_shape, out_features=500),
-        #         torch.nn.ReLU(inplace=True),
-        #         torch.nn.Linear(in_features=500, out_features=500),
-        #         torch.nn.ReLU(inplace=True),
-        #         torch.nn.Linear(in_features=500, out_features=2000),
-        #         torch.nn.ReLU(inplace=True),
-        #         torch.nn.Linear(in_features=2000, out_features=code_dim),
-        #         torch.nn.Sigmoid(),
-        #         torch.nn.Linear(in_features=code_dim, out_features=2000),
-        #         torch.nn.ReLU(inplace=True),
-        #         torch.nn.Linear(in_features=2000, out_features=500),
-        #         torch.nn.ReLU(inplace=True),
-        #         torch.nn.Linear(in_features=500, out_features=500),
-        #         torch.nn.ReLU(inplace=True),
-        #         torch.nn.Linear(in_features=500, out_features=input_shape),
-        #         torch.nn.ReLU(inplace=True),
-        #         # torch.nn.Sigmoid(),
-        #     ]
-        # )
+                raise Exception(f"Unrecognized Layer found in layer definitions {type}")        
  
         for index, layer in enumerate(self.layers):
             if (index == 6 or index == 14) and isinstance(layer, torch.nn.Linear):
@@ -182,8 +162,6 @@ class Autoencoder(Model):
             else:
                 pass
 
-        self.name = "Autoencoder"
-
         parameter_dict = defaultdict(list)
         for name, parm in self.named_parameters():
             print(f"    parameter: {name}  {parm.shape}")
@@ -191,22 +169,37 @@ class Autoencoder(Model):
                 parameter_dict['SGD'].append(parm)
             else:
                 parameter_dict['Adam'].append(parm)
+                
         self.optimizer = torch.optim.Adam(params=parameter_dict['Adam'], lr=learning_rate, weight_decay = adam_weight_decay)
-        self.temp_optimizer = torch.optim.SGD(params=parameter_dict['SGD'], lr=self.temperatureLR, momentum=0.9, weight_decay = SGD_weight_decay)        
         # self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
-        
-        # if not use_snnl:
-        #     self.criterion = Autoencoder._criterion.to(device)
-        
+        if self.use_scheduler:
+            self.scheduler = self._ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=15, 
+                                                     threshold=0.00001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08, verbose =True)  
+        else: 
+            self.scheduler = None 
+            
+        if self.use_snnl:
+            self.temp_optimizer = torch.optim.SGD(params=parameter_dict['SGD'], lr=self.temperatureLR, momentum=0.9, weight_decay = SGD_weight_decay)            
+            if self.use_temp_scheduler:
+                self.temp_scheduler = self._ReduceLROnPlateau(self.temp_optimizer, mode='min', factor=0.5, patience=15, 
+                                                         threshold=0.00001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08, verbose =True)        
+            else: 
+                self.temp_scheduler = None 
+                
         self.to(self.device) 
+ 
         print(f"    AE init() -- mode               : {self.mode}")
         print(f"    AE init() -- unsupervised       : {self.unsupervised}")
-        print(f"    AE init() -- use_snnl           : {self.use_snnl}")
+        print(f"    AE init() -- layer_types        : {self.layer_types}")
+        print(f"    AE init() -- layer_activations  : {self.layer_activations}")               
         print(f"    AE init() -- Primary Crtierion  : {self.primary_criterion}")
+        print(f"    AE init() -- monitor_grads_layer: {self.monitor_grads_layer}")
+        print(f"    AE init() -- scheduler          : {self.scheduler}")
+        print(f"    AE init() -- use_snnl           : {self.use_snnl}")
         print(f"    AE init() -- SNNL Crtierion     : {self.snnl_criterion}")
         print(f"    AE init() -- temperature        : {self.temperature}")
         print(f"    AE init() -- temperature LR     : {self.temperatureLR}")
-        print(f"    AE init() -- monitor_grads_layer: {self.monitor_grads_layer}")
+        print(f"    AE init() -- temp_scheduler     : {self.temp_scheduler}")
 
     
     def forward(self, features: torch.Tensor) -> torch.Tensor:
@@ -252,7 +245,7 @@ class Autoencoder(Model):
         if not isinstance(features, torch.Tensor):
             features = torch.from_numpy(features)
         activations = {}
-        for index, layer in enumerate(self.layers[:8]):
+        for index, layer in enumerate(self.layers[:self.embedding_layer]):
             if index == 0:
                 activations[index] = layer(features)
             else:
@@ -289,45 +282,5 @@ class Autoencoder(Model):
             header = False    
          
 
-    def fit_orig(
-        self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 1
-    ) -> None:
-        """
-        Trains the autoencoder model.
-
-        Parameters
-        ----------
-        data_loader: torch.utils.dataloader.DataLoader
-            The data loader object that consists of the data pipeline.
-        epochs: int
-            The number of epochs to train the model.
-        show_every: int
-            The interval in terms of epoch on displaying training progress.
-        """
-        if self.use_snnl:
-            self.train_snn_loss = []
-            self.train_recon_loss = []
-
-        for epoch in range(epochs):
-            epoch_loss = self.epoch_train(data_loader, epoch)
-            if type(epoch_loss) is tuple:
-                self.model_history('train', epoch_loss)
-                # self.train_loss.append(epoch_loss[0])
-                # self.train_snn_loss.append(epoch_loss[1])
-                # self.train_recon_loss.append(epoch_loss[2])
-                # if (epoch + 1) % show_every == 0:
-                    # print(
-                        # f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
-                    # )
-                    # print(
-                        # f"\trecon loss = {self.train_recon_loss[-1]:.6f}\t|\tsnn loss = {self.train_snn_loss[-1]:.6f}"
-                    # )
-            else:
-                self.train_loss.append(epoch_loss)
-                if (epoch + 1) % show_every == 0:
-                    print(
-                        f"epoch {epoch + 1}/{epochs} : mean loss = {self.train_loss[-1]:.6f}"
-                    )
- 
 
 

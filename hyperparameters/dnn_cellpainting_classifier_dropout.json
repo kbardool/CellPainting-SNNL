@@ -1,17 +1,20 @@
 {
   "units": [
-    ["Linear",1471, 512],
-    ["Linear", 512, 128],
-    ["Linear", 128,   1]
+    ["Linear" ,1471, 512],
+    ["Linear" , 512, 128],
+    ["dropout", 128, 128],
+    ["Linear" , 128,   1]
   ],
-  "activations": ["relu", "relu", "sigmoid"],
+  "activations": ["relu", "relu", "none","sigmoid"],
   "epochs": 10,
-  "batch_size": 10,
+  "batch_size": 1,
   "learning_rate": 1e-4,
   "dataset": "cellpainting",
   "snnl_factor": 10.0,
   "temperature": 50.0,
   "cellpainting_args": {"sample_size"     : 3,
+                        "batch_size"      : 1,
+                        "compounds_per_batch" : 100,
                         "training_path"   : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder.csv",
                         "validation_path" : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder_test.csv",
                         "train_start"     : 0,
@@ -22,7 +25,6 @@
                         "test_end"        : 33600,
                         "chunksize"       : null ,
                         "conversions"     : null ,
-                        "iterator"        : true,
-                        "batch_size"      : 1,
-                    "compounds_per_batch" : 100}
+                        "iterator"        : true
+                      }
 }

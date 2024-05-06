@@ -50,13 +50,18 @@ class DNN(Model):
         adam_weight_decay: float = 0.0,
         SGD_weight_decay: float = 0.0,
         use_annealing: bool = True,
-        unsupervised: bool = None,
+        monitor_grads_layer: int = None,        
+        unsupervised: bool = False,
         use_sum: bool = False,
-        stability_epsilon: float = 1e-3,
-
+        stability_epsilon: float = 1e-5,
+        dropout_p: float = 0.5,
         sample_size: int = 1,        
         device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         verbose: bool = False,
+        use_scheduler: bool = False, 
+        scheduler_mode: str = 'min', 
+        use_temp_scheduler: bool = False, 
+        temp_scheduler_mode: str = 'min'
     ):
         """
         Constructs a feed-forward neural network classifier.
@@ -85,6 +90,15 @@ class DNN(Model):
         device: torch.device
             The device to use for model computations.
         """
+        self.name = "DNN"
+        self.layer_types = []
+        self.monitor_grads_layer = monitor_grads_layer
+        self.layer_activations = activations
+        self.use_scheduler = use_scheduler
+        self.scheduler_mode = scheduler_mode
+        self.use_temp_scheduler = use_temp_scheduler
+        self.temp_scheduler_mode = temp_scheduler_mode
+        
         super().__init__(
             mode=mode,
             criterion=criterion.to(device),
@@ -102,30 +116,39 @@ class DNN(Model):
             stability_epsilon=stability_epsilon,
             verbose=verbose,
         )
+        print('\n'+'-'*60)        
         print(f" Building DNN from NOTEBOOK")
-        self.primary_weight = torch.tensor([2])
+        print('-'*60)
+        # self.primary _ weight = torch.tensor([2])
 
         self.layers = torch.nn.ModuleList()
-        self.layer_type = []
-        for idx, (type,in_features, out_features) in enumerate(units):
-            type = type.lower()
-            if type =='linear':
-                self.layers.append( torch.nn.Linear(in_features=in_features, out_features=out_features))
-                self.layer_type.append('linear')
-            elif type == 'dropout':
-                self.layers.append( torch.nn.dropout(p=dropout_p))
-                self.layer_type.append('dropout')
-        self.layer_activations = activations
-        self.monitor_grads_layer = -1
+        for idx in range(len( units )):
+            (layer, in_features, out_features) = units[idx]
+            layer = layer.lower()
         
-        print(f" layer_types      : {self.layer_type}")
-        print(f" layer_activations: {self.layer_activations}")
-        # self.layers = torch.nn.ModuleList(
-        #     [
-        #         torch.nn.Linear(in_features=in_features, out_features=out_features)
-        #         for in_features, out_features in units
-        #     ]
-        # )
+            if layer =='linear':
+                self.layers.append( torch.nn.Linear(in_features=in_features, out_features=out_features))
+                self.layer_types.append('linear')
+            elif layer == 'dropout':
+                self.layers.append( torch.nn.Dropout(p=dropout_p))
+                self.layer_types.append('dropout')
+            elif layer == 'relu':
+                self.layers.append(torch.nn.ReLU())
+                in_features = units[idx -1][2]
+                out_features = units[idx -1][2]
+                self.layer_types.append('relu')
+            elif layer == 'sigmoid':
+                in_features = units[idx -1][2]
+                out_features = units[idx -1][2]
+                self.layers.append(torch.nn.Sigmoid())
+                self.layer_types.append('sigmoid')
+            elif layer == 'none':
+                in_features = units[idx -1][2]
+                out_features = units[idx -1][2]
+                pass
+            else :
+                raise Exception(f"Unrecognized Layer found in layer definitions {layer}")            
+            print(f"    layer:  {idx:3d}  type:{layer:15s}  input: {in_features:6d}  output: {out_features:6d}  " )
         
         for index, layer in enumerate(self.layers):
             if index < (len(self.layers) - 1) and isinstance(layer, torch.nn.Linear):
@@ -135,35 +158,47 @@ class DNN(Model):
             else:
                 pass
 
-        self.name = "DNN"
- 
         parameter_dict = defaultdict(list)
         for name, parm in self.named_parameters():
             if name in ['temperature']:
                 parameter_dict['SGD'].append(parm)
             else:
                 parameter_dict['Adam'].append(parm)
-        self.optimizer = torch.optim.Adam(params=parameter_dict['Adam'], lr=learning_rate, weight_decay = adam_weight_decay)
-        self.temp_optimizer = torch.optim.SGD(params=parameter_dict['SGD'], lr=self.temperatureLR, momentum=0.9, weight_decay = SGD_weight_decay)
-        
         # self.optimizer = torch.optim.Adam(params=self.parameters(), lr=learning_rate)
-        
-        if not use_snnl:
-            # self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
-            self.criterion = criterion
-
-        self.to(self.device)
-        
-        print(f"    DNN _init()_    -- mode:              {self.mode}")
-        print(f"    DNN _init()_    -- unsupervised :     {self.unsupervised}")
-        print(f"    DNN _init()_    -- use_snnl :         {self.use_snnl}")
-        if not use_snnl:
-            print(f"    DNN _init()_    -- Crtierion  :       {self.criterion}")
+        self.optimizer = torch.optim.Adam(params=parameter_dict['Adam'], lr=learning_rate, weight_decay = adam_weight_decay)
+        if self.use_scheduler:
+            self.scheduler = self._ReduceLROnPlateau(self.optimizer, mode=self.scheduler_mode, factor=0.5, patience=25, 
+                                                     threshold=0.00001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08, verbose =True)
         else:
-            print(f"    DNN _init()_    -- Crtierion  :       {self.snnl_criterion}")
-        print(f"    DNN _init()_    -- temperature :      {temperature}")
-        print(f"    DNN _init()_    -- temperature LR:    {temperatureLR}")
- 
+            self.scheduler = None
+            
+        if self.use_snnl:
+            self.temp_optimizer = torch.optim.SGD(params=parameter_dict['SGD'], lr=self.temperatureLR, momentum=0.9, weight_decay = SGD_weight_decay)
+            if self.use_temp_scheduler:
+                self.temp_scheduler = self._ReduceLROnPlateau(self.temp_optimizer, mode=self.temp_scheduler_mode, factor=0.5, patience=25, 
+                                                         threshold=0.00001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08, verbose =True)
+            else:
+                self.temp_scheduler = None
+            
+        # if not use_snnl:
+        #     # self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
+        self.to(self.device)
+
+        print()
+        print(f"    DNN init() -- layer_types        : {self.layer_types}")
+        print(f"    DNN init() -- layer_activations  : {self.layer_activations}")     
+        print(f"    DNN init() -- mode               : {self.mode}")
+        print(f"    DNN init() -- unsupervised       : {self.unsupervised}")
+        print(f"    DNN init() -- Primary Crtierion  : {self.primary_criterion}")
+        print(f"    DNN init() -- monitor_grads_layer: {self.monitor_grads_layer}")
+        print(f"    DNN init() -- use_snnl           : {self.use_snnl}")
+        # if self.use_snnl:
+        print(f"    DNN init() -- SNNL Crtierion     : {self.snnl_criterion}")
+        print(f"    DNN init() -- temperature        : {self.temperature}")
+        print(f"    DNN init() -- temperature LR     : {self.temperatureLR}")
+        if self.use_scheduler:
+            print(f"    DNN init() -- Scheduler          : {self.scheduler}")
+            print(f"    DNN init() -- Scheduler mode     : {self.scheduler_mode}")
 
     def forward_old(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -212,27 +247,26 @@ class DNN(Model):
         """
         # features = features.view(features.shape[0], -1)
         activations = {}
-        num_layers = len(self.layers)
+        # num_layers = len(self.layers)
         for index, layer in enumerate(self.layers):
             if index == 0:
                 activations[index] = layer(features)
             else:                              ## middle & last layer
-                activations[index] = layer(activations[index - 1])
-                
-        assert (len(self.layers) == len(activations)) , f" lengths of self.layers {len(self.layers)} and activations {len(activations)} do not match"
-        
-        for index, non_linearity in enumerate(self.layer_activations):
-            non_linearity = non_linearity.lower()
-            if non_linearity == 'relu':
-                activations[index] = torch.relu(activations[index])
-            elif non_linearity == 'sigmoid':
-                activations[index] = torch.sigmoid(activations[index])
-            elif non_linearity == 'none':
-                pass
-            else :
-                raise Exception(f"Unrecognized type found in activations {non_linearity}")
-                
+                activations[index] = layer(activations[index - 1])              
+ 
         logits = activations [len(activations) - 1]
+        
+        # for index, non_linearity in enumerate(self.layer_activations):
+        #     non_linearity = non_linearity.lower()
+        #     if non_linearity == 'relu':
+        #         activations[index] = torch.relu(activations[index])
+        #     elif non_linearity == 'sigmoid':
+        #         activations[index] = torch.sigmoid(activations[index])
+        #     elif non_linearity == 'none':
+        #         pass
+        #     else :
+        #         raise Exception(f"Unrecognized type found in activations {non_linearity}")
+ 
         return activations, logits 
     
     def fit(
@@ -252,25 +286,15 @@ class DNN(Model):
         """
         header = True
         for epoch in range(epochs):
-            if self.use_snnl:
-                train_loss = self.epoch_train( train_loader, epoch, factor = snnl_factor, verbose = False)
-                self.model_history('train', train_loss)
+            train_loss = self.epoch_train( train_loader, epoch, factor = snnl_factor, verbose = False)
+            self.model_history('train', train_loss)
 
-                val_loss  = self.epoch_validate( val_loader, epoch, factor = snnl_factor, verbose = False)
-                self.model_history('val', val_loss)
+            val_loss  = self.epoch_validate( val_loader, epoch, factor = snnl_factor, verbose = False)
+            self.model_history('val', val_loss)
 
-                display_epoch_metrics(self, epoch, epochs, header)
-                header = False            
+            display_epoch_metrics(self, epoch, epochs, header)
+            header = False            
                 
-            else:
-                epoch_loss, epoch_accuracy = self.epoch_train(data_loader)
-                self.train_loss.append(epoch_loss)
-                self.train_accuracy.append(epoch_accuracy)
-                if (epoch + 1) % show_every == 0:
-                    print(f"epoch {epoch + 1}/{epochs}")
-                    print(
-                        f"\tmean loss = {self.train_loss[-1]:.6f}\t|\tmean acc = {self.train_accuracy[-1]:.6f}"
-                    )
 
     def predict(
         self, features: torch.Tensor, return_likelihoods: bool = False

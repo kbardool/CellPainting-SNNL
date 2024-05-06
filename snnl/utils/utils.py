@@ -20,6 +20,7 @@ import os
 import random
 import argparse
 from typing import List, Tuple
+from collections import defaultdict
 from torchinfo import summary
 import numpy as np
 import pandas as pd
@@ -297,17 +298,25 @@ def export_results(model: torch.nn.Module, filename: str):
     filename: str
         The filename of the JSON file to write.
     """
-    model_attributes = model.__dict__
-    results = dict()
+    output = defaultdict(dict)
     results_dir = "results"
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
     filename = os.path.join(results_dir, f"{filename}.json")
+   
+    model_attributes = model.__dict__
     for key, value in model_attributes.items():
-        if isinstance(value, List) or "test_accuracy" in key:
-            results[key] = value
+        # print(f"{key:40s}, {type(value)}")
+        if key == 'training_history':
+            output[key] = value
+        elif key[0] == "_"  or key == "layer_activations":
+            continue
+        elif type(value) in [torch.device, torch.optim.Adam , torch.optim.SGD, torch.optim.lr_scheduler.ReduceLROnPlateau]:
+            continue
+        else:
+            output['params'][key] = value
     with open(filename, "w") as file:
-        json.dump(results, file)
+        json.dump(output, file)
     print(f"[INFO] Model Results exported to {filename}.")
 
 
@@ -322,15 +331,9 @@ def import_results(filename: str):
     filename: str
         The filename of the JSON file to write.
     """
-    # model_attributes = model.__dict__
-    # results = dict()
+ 
     results_dir = "results"
-    # if not os.path.exists(results_dir):
-        # os.mkdir(results_dir)
-    filename = os.path.join(results_dir, f"{filename}")
-    # for key, value in model_attributes.items():
-        # if isinstance(value, List) or "test_accuracy" in key:
-            # results[key] = value
+    filename = os.path.join(results_dir, f"{filename}.json")
     with open(filename, "r") as file:
         results = json.load(file)
     return results
@@ -355,27 +358,6 @@ def save_model(model: torch.nn.Module, filename: str):
     print(f"[INFO] Model exported to {path}.")
 
 
-def save_checkpoint(epoch, model, filename, update_latest=False, update_best=False):
-    model_checkpoints_folder = os.path.join("ckpts")
-    if not os.path.exists(model_checkpoints_folder):
-        print(f"path {model_checkpoints_folder} doesn't exist")
-    checkpoint = {'epoch': epoch,
-                  'state_dict': model.state_dict(),
-                  'optimizer_state_dict': model.optimizer.state_dict()}
-    
-    if hasattr(model, 'scheduler'):
-        checkpoint['scheduler']: model.scheduler
-        
-    if update_latest:
-        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
-    elif update_best:
-        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_best.pt")
-    else:
-        filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
-    torch.save(checkpoint, filename) 
-    print(f"[INFO] Model exported to {filename}.")
-
-
 def load_model(filename: str) -> torch.nn.Module:
     """
     Exports the input model to the examples/export directory.
@@ -393,6 +375,26 @@ def load_model(filename: str) -> torch.nn.Module:
     path = os.path.join(path, filename)
     print(f"[INFO] Model imported from {path}.")
     return torch.load(path)
+    
+def save_checkpoint(epoch, model, filename, update_latest=False, update_best=False):
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+    checkpoint = {'epoch': epoch,
+                  'state_dict': model.state_dict(),
+                  'optimizer_state_dict': model.optimizer.state_dict()}
+    
+    # if hasattr(model, 'scheduler'):
+    #     checkpoint['scheduler']: model.scheduler
+        
+    if update_latest:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
+    elif update_best:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_best.pt")
+    else:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+    torch.save(checkpoint, filename) 
+    print(f"[INFO] Model exported to {filename}.")
 
 
 def load_checkpoint(model, filename ):
@@ -421,82 +423,86 @@ def load_checkpoint(model, filename ):
 #-------------------------------------------------------------------------------------------------------------------     
 
 def plot_train_history(model, epochs= None, n_bins = 25):
- 
+    key1, key2 = model.training_history.keys()
+    key1 = 'trn' if key1 == 'train' else key1
+
     if epochs is None:
-        epochs = len(model.training_history['train']['loss'])
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])
      
     fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
     labelsize = 6
     # We can set the number of bins with the *bins* keyword argument.
     i = 0
-    _ = axs[i].plot(model.training_history['train']['xent_loss'][:epochs],label='Training');
-    _ = axs[i].plot(model.training_history['val']['xent_loss'][:epochs],label='Validation');
-    _ = axs[i].set_title(f'Cross Entropy loss - {epochs} epochs', fontsize= 10);
+    _ = axs[i].plot(model.training_history[key1]['trn_ttl_loss'][:epochs],label='Training');
+    _ = axs[i].plot(model.training_history['val']['val_ttl_loss'][:epochs],label='Validation');
+    _ = axs[i].set_title(f'Total loss - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
     axs[i].legend()
-    i +=1
-    _ = axs[i].plot(model.training_history['train']['snn_loss'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['snn_loss'][:epochs]);
-    _ = axs[i].set_title(f'SNN Loss - {epochs} epochs', fontsize= 10);
+    i +=1    
+    _ = axs[i].plot(model.training_history[key1]['trn_prim_loss'][:epochs],label='Training');
+    _ = axs[i].plot(model.training_history['val']['val_prim_loss'][:epochs],label='Validation');
+    _ = axs[i].set_title(f'Primary loss - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
     i +=1
-    _ = axs[i].plot(model.training_history['train']['temp_hist'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['temp_hist'][:epochs]);
-    _ = axs[i].set_title(f'train_temp_hist - {epochs} epochs', fontsize= 10);
+    _ = axs[i].plot(model.training_history[key1]['trn_snn_loss'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_snn_loss'][:epochs]);
+    _ = axs[i].set_title(f'Soft Nearest Neighbor Loss - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
     i +=1
-    batches = (len(model.training_history['train']['temp_grads']) // len(model.training_history['train']['loss'])) *epochs
-    _ = axs[i].plot(model.training_history['train']['temp_grads'][:batches])
-    _ = axs[i].set_title(f'Temperature Gradients - {epochs} epochs', fontsize= 10)
+    _ = axs[i].plot(model.training_history[key1]['trn_lr'][:epochs]);
+
+    _ = axs[i].set_title(f'Learning Rate - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    if model.use_snnl:
+        i +=1
+        _ = axs[i].plot(model.training_history[key1]['temp_hist'][:epochs]);
+        _ = axs[i].set_title(f'train_temp_hist - {epochs} epochs', fontsize= 10);
+        _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    # i +=1
+    # batches = (len(model.training_history[key1]['temp_grads']) // len(model.training_history[key1]['trn_ttl_loss'])) *epochs
+    # _ = axs[i].plot(model.training_history[key1]['temp_grads'][:batches])
+    # _ = axs[i].set_title(f'Temperature Gradients - {epochs} epochs', fontsize= 10)
+    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
     # i +=1
-    # _ = axs[i].plot(model.training_history['train']['temp_grad_hist'][:epochs]);
+    # _ = axs[i].plot(model.training_history[key1]['temp_grad_hist'][:epochs]);
     # _ = axs[i].set_title(f"Temperature Grad at end of epochs - {epochs} epochs", fontsize= 10);
     # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history['train']['layer_grads'][:epochs]);
-    _ = axs[i].set_title(f"Monitored layer gradient - {epochs} epochs", fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    
     # i +=1
-    # _ = axs[i].plot(model.training_history['train']['accuracy'][:epochs]);
-    # _ = axs[i].plot(model.training_history['val']['accuracy'][:epochs]);
-    # _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
-    # _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    # _ = axs[i].plot(model.training_history[key1]['layer_grads'][:epochs]);
+    # _ = axs[i].set_title(f"Monitored layer gradient - {epochs} epochs", fontsize= 10);
+    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    
     # i +=1
-    # _ = axs[i].plot(model.training_history['train']['f1'][:epochs]);
-    # _ = axs[i].plot(model.training_history['val']['f1'][:epochs]);
-    # _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
-    # _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
     plt.show()
 
 def plot_train_metrics(model, epochs= None, n_bins = 25):
+    key1, key2 = model.training_history.keys()
+    key1 = 'trn' if key1 == 'train' else key1
  
     if epochs is None:
-        epochs = len(model.training_history['train']['loss'])    
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
     fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
     i = 0
-    _ = axs[i].plot(model.training_history['train']['accuracy'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['accuracy'][:epochs]);
+    _ = axs[i].plot(model.training_history[key1]['trn_accuracy'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_accuracy'][:epochs]);
     _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
     i +=1
-    _ = axs[i].plot(model.training_history['train']['f1'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['f1'][:epochs]);
+    _ = axs[i].plot(model.training_history[key1]['trn_f1'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_f1'][:epochs]);
     _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
     i += 1
-    _ = axs[i].plot(model.training_history['train']['precision'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['precision'][:epochs]);
+    _ = axs[i].plot(model.training_history[key1]['trn_precision'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_precision'][:epochs]);
     _ = axs[i].set_title(f' Precision - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
     i +=1
-    _ = axs[i].plot(model.training_history['train']['roc_auc'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['roc_auc'][:epochs]);
+    _ = axs[i].plot(model.training_history[key1]['trn_roc_auc'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_roc_auc'][:epochs]);
     _ = axs[i].set_title(f' ROC AUC Score - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
     i +=1
-    _ = axs[i].plot(model.training_history['train']['recall'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['recall'][:epochs]);
+    _ = axs[i].plot(model.training_history[key1]['trn_recall'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_recall'][:epochs]);
     _ = axs[i].set_title(f'Recall - {epochs} epochs', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
     i +=1
@@ -519,15 +525,16 @@ def plot_model_parms(model, epochs= None, n_bins = 25):
     num_layers = i
  
     
-    print(f" +------+----------------------------------------------------+-------------------------------------------+------------------------------------+")
-    print(f" |      | Weights:                                           |  Biases:                                  |   Gradients:                       |")
-    print(f" | layr |                      min         max        stdev  |             min         max        stdev  |      min        max         stdev  |")
-    print(f" +------+----------------------------------------------------+-------------------------------------------+------------------------------------+")
+    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
+    print(f" |      | Weights:                                              |  Biases:                                     |   Gradients:                          |")
+    print(f" | layr |                      min           max         stdev  |             min          max          stdev  |      min          max          stdev  |")
+    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
+          # f" |    0 | (1024, 1471)     -11.536192     5.169790     0.151953 |   1024   -8.655299     2.601529     2.123748 |   -0.010149     0.010479     0.000481 |""
     for k in layer_id.keys():
-        print(f" | {k:4d} | {str(weights[k].shape):15s}  {weights[k].min():9.6f}   {weights[k].max():9.6f}   {weights[k].std():9.6f}"
-              f" |  {biases[k].shape[0]:5d}  {biases[k].min():9.6f}   {biases[k].max():9.6f}   {biases[k].std():9.6f}"
-              f" |  {grads[k].min():9.6f}   {grads[k].max():9.6f}   {grads[k].std():9.6f} |")
-    print(f" +------+----------------------------------------------------+-------------------------------------------+------------------------------------+")
+        print(f" | {k:4d} | {str(weights[k].shape):15s}  {weights[k].min():-10.6f}   {weights[k].max():-10.6f}   {weights[k].std():-10.6f}"
+              f" |  {biases[k].shape[0]:5d}  {biases[k].min():-10.6f}   {biases[k].max():-10.6f}   {biases[k].std():-10.6f}"
+              f" |  {grads[k].min():-10.6f}   {grads[k].max():-10.6f}   {grads[k].std():-10.6f} |")
+    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
     print('\n\n')
     
     fig, axs = plt.subplots(3, num_layers, sharey=False, tight_layout=True, figsize=(num_layers*4,13) )
@@ -584,30 +591,6 @@ def display_model_summary(model, dataset = 'cellpainting', batch_size = 300 ):
     else:
         summary_input_size = (batch_size, 28, 28)
     print(summary(model, input_size=summary_input_size, col_names = col_names))
-    
-    # print()
-    # for index, layer in enumerate(model.layers,1): 
-    #     if isinstance(layer, torch.nn.Linear):
-    #         if index == 1:
-    #             print(f"a- layer {index} activations[{index}] :   Input: {layer.in_features}   out: {layer.out_features}")   
-    #         elif index == len(model.layers):
-    #             print(f"c- layer {index} activations[{index}] :   Input: {layer.in_features}   out: {layer.out_features}")   
-    #         else:
-    #             print(f"b- layer {index} activations[{index}] :   Input: {layer.in_features}   out: {layer.out_features}")   
-    
-    # print()
-    # for param in model.parameters():
-    #     print(type(param), param.size())
-    
-    print()
-    for index, layer in enumerate(model.layers,1):
-        print(f" {index:3d}:  {str(type(layer)):55s} -- {layer}", end ='')
-        if isinstance(layer, torch.nn.Linear):
-            print(f"\t\t { layer.weight.shape}")
-        else:
-            print()
-    # print(f"\nModel Optimizer :\n{model.optimizer}") 
-
 
 
 def display_cellpainting_batch(batch_id, batch):
@@ -622,50 +605,57 @@ def display_cellpainting_batch(batch_id, batch):
         print(f" {i:3d} | {plates[i,0]:9s} | {compounds[i]:12s} | {cmphash[i,0]} | {cmphash[i,1]:2d} | {labels[i]:1d} | {data[i,:3]}")
 
 
-def display_model_history(model, key, epoch, epochs):
-    ttl = 'train' if key =='train' else "valid"
-    print(f"{datetime.now().strftime('%Y%m%d_%H%M%S')} epoch {epoch + 1:3d} of {epochs:4d} - {ttl} |"
-          f" mean loss = {model.training_history[key]['loss'][-1]:.6f} | xent loss = {model.training_history[key]['xent_loss'][-1]:.6f} |"
-          f" snn loss = {model.training_history[key]['snn_loss'][-1]:.6f} | temp = {model.training_history[key]['temp_hist'][-1]:.6f} |"
-          f" temp grad = {model.training_history[key]['temp_grad_hist'][-1]:.6e} | mean acc = {model.training_history[key]['accuracy'][-1]:.6f} |"
-          f" mean f1 = {model.training_history[key]['f1'][-1]:.6f} |")
-
-
-def display_epoch_metrics(model, epoch = -1, epochs = None, header = False):
-    epochs = len(model.training_history[key1]['loss']) if epochs is None else epochs
-    epoch =  len(model.training_history[key1]['loss'])  - 1 if epoch == -1 else epoch
-    idx = epoch
-    key1, key2 = 'train', 'val'
+def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
+    key1, key2 = model.training_history.keys()
+    key1_p = 'trn' if key1 == 'trn' else ''
+    key2_p = 'val' if key1_p == 'trn' else ''
+    
+    history_len = len(model.training_history[key1][f'{key1_p}_ttl_loss'])
+    epochs = history_len if epochs is None else epochs
+    epoch  = 0 if epoch is None else epoch
     header = True if epoch == 0 else header
-
+    
+    idx = epoch
+    if idx>=epochs:
+        return
+    if model.use_snnl:
+        temp_hist = model.training_history[key1]['temp_hist'][idx]
+        temp_grad_hist = model.training_history[key1]['temp_grad_hist'][idx]
+        temp_LR = model.training_history[key1]["temp_lr"][idx] if model.use_temp_scheduler else 0.0
+    else:
+        temp_hist = 0
+        temp_grad_hist = 0
+        temp_LR = 0
+        
+    trn_LR = model.training_history[key1]["trn_lr"][idx] if model.use_scheduler else 0.0
+ 
     if model.unsupervised:
         if header:
-            print(f"                     |   Trn_loss    PrimLoss      SNNL   |    temp*        grad     |                          |   Vld_loss    PrimLoss      SNNL   |                          |")
-            print(f"---------------------+------------------------------------+--------------------------+--------------------------+------------------------------------+--------------------------|")
+            print(f"                     |   Trn_loss    PrimLoss      SNNL   |    temp*        grad     |                          |   Vld_loss    PrimLoss      SNNL   |                          |    LR       temp LR  |")
+            print(f"---------------------+------------------------------------+--------------------------+--------------------------+------------------------------------+--------------------------|----------------------|")
                  # "00:45:46 ep   1 / 10 |   9.909963    4.904229    5.005733 |  14.996347   -2.6287e-10 |                          |   9.833426    4.827625    5.005800 |                          |"
-        print(f"{model.training_history[key2]['time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
-              f"  {model.training_history[key1]['loss'][idx]:9.6f}   {model.training_history[key1]['xent_loss'][idx]:9.6f}   {model.training_history[key1]['snn_loss'][idx]:9.6f} |"
-              f"  {model.training_history[key1]['temp_hist'][idx]:9.6f}   {model.training_history[key1]['temp_grad_hist'][idx]:11.4e} |"
-              f"                          |"
-              f"  {model.training_history[key2]['loss'][idx]:9.6f}   {model.training_history[key2]['xent_loss'][idx]:9.6f}   {model.training_history[key2]['snn_loss'][idx]:9.6f} |"
-              f"                          |")
+        print(f"{model.training_history[key2][f'{key2_p}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
+              f"  {model.training_history[key1][f'{key1_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_snn_loss'][idx]:9.6f} |"
+              f"  {temp_hist:9.6f}   {temp_grad_hist:11.4e} |                          |"
+              f"  {model.training_history[key2][f'{key2_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_snn_loss'][idx]:9.6f} |"
+              f"                          | {trn_LR :9f}  {temp_LR :9f} |")
         
     else:
         if header:
-            print(f"                     |  Trn_loss     CEntropy      SNNL   |    temp        grad     |   ACC       F1     ROCAuc |   Vld_loss    CEntropy      SNNL   |    ACC      F1     ROCAuc |")
-            print(f"---------------------+------------------------------------+-------------------------+---------------------------+------------------------------------+---------------------------|")
+            print(f"                     |  Trn_loss     PrimLoss      SNNL   |    temp         grad     |   ACC       F1     ROCAuc |   Vld_loss    PrimLoss      SNNL   |    ACC      F1     ROCAuc |")
+            print(f"---------------------+------------------------------------+--------------+-----------+---------------------------+------------------------------------+---------------------------|")
                  # "                     |  Trn_loss     CEntropy      SNNL   |    temp        grad     |   ACC       F1     ROCAuc |   Vld_loss    CEntropy      SNNL   |    ACC      F1     ROCAuc |"
                  # "---------------------+------------------------------------+-------------------------+---------------------------+------------------------------------+---------------------------|"
                  # "00:44:43 ep   1 / 10 |  10.054366    3.660260    6.394106 |  14.999862   1.5653e-04 |  0.7885   0.0796   0.5129 |   8.464406    2.070062    6.394344 |  0.8754   0.0223   0.5203 |"
-        print(f"{model.training_history[key2]['time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
-              f"  {model.training_history[key1]['loss'][idx]:9.6f}   {model.training_history[key1]['xent_loss'][idx]:9.6f}   {model.training_history[key1]['snn_loss'][idx]:9.6f} |"
-              f"  {model.training_history[key1]['temp_hist'][idx]:9.6f}   {model.training_history[key1]['temp_grad_hist'][idx]:11.4e} |"
-              f"  {model.training_history[key1]['accuracy'][idx]:.4f}   {model.training_history[key1]['f1'][idx]:.4f}   {model.training_history[key1]['roc_auc'][idx]:.4f} |"
-              f"  {model.training_history[key2]['loss'][idx]:9.6f}   {model.training_history[key2]['xent_loss'][idx]:9.6f}   {model.training_history[key2]['snn_loss'][idx]:9.6f} |"
-              f"  {model.training_history[key2]['accuracy'][idx]:.4f}   {model.training_history[key2]['f1'][idx]:.4f}   {model.training_history[key2]['roc_auc'][idx]:.4f} |")
+        print(f"{model.training_history[key2][f'{key2_p}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
+              f"  {model.training_history[key1][f'{key1_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_snn_loss'][idx]:9.6f} |"
+              f"  {temp_hist:9.6f}   {temp_grad_hist:11.4e} |"
+              f"  {model.training_history[key1][f'{key1_p}_accuracy'][idx]:.4f}   {model.training_history[key1][f'{key1_p}_f1'][idx]:.4f}   {model.training_history[key1][f'{key1_p}_roc_auc'][idx]:.4f} |"
+              f"  {model.training_history[key2][f'{key2_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_snn_loss'][idx]:9.6f} |"
+              f"  {model.training_history[key2][f'{key2_p}_accuracy'][idx]:.4f}   {model.training_history[key2][f'{key2_p}_f1'][idx]:.4f}   {model.training_history[key2][f'{key2_p}_roc_auc'][idx]:.4f} |" 
+              f"  {trn_LR :9f}    {temp_LR :9f}")
 
-
-
+ 
 #-------------------------------------------------------------------------------------------------------------------
 #  Metric routines
 #-------------------------------------------------------------------------------------------------------------------     

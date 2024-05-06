@@ -1,0 +1,54 @@
+## General / W&B params
+##------------------------------------------------------
+project_name         : AdaSparseChem-cb29-10Task
+## Leave empty to have date_time used 
+exp_id               :
+exp_name_pfx         :
+exp_name             : 
+exp_folder           : 
+exp_description      : brief description
+folder_sfx           :
+random_seed          : 1234
+seed_list            : 
+config               :
+cpu :
+gpu_ids :
+
+## Model parameters
+##------------------------------------------------------  
+activations : ["relu", "relu", "none","sigmoid"]
+units : [["Linear" ,1471, 512], ["relu", 0, 0], ["Linear" , 512, 128],  ["relu", 0, 0], ["dropout", 128, 128], ["Linear", 128, 1], ["sigmoid", 0, 0]  ]
+
+## Training parameters
+##------------------------------------------------------
+learning_rate : 1.0e-04
+loss_factor   : 2.0E+00
+snnl_factor   : 1.0e+00
+temperature   : 50.0  
+temperatureLR : 1.0e-02
+
+## Dataset parameters
+##------------------------------------------------------
+dataset : "cellpainting"
+cellpainting_args : 
+    sample_size     : 3
+    batch_size      : 1
+    compounds_per_batch : 100
+    training_path   : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder.csv"
+    validation_path : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder_test.csv"
+    train_start     : 0
+    train_end       : 240000
+    val_start       : 0
+    val_end         : 24000     
+    test_start      : 30000
+    test_end        : 33600
+    chunksize       : null 
+    conversions     : null 
+    iterator        : true
+
+## Data & Folder parameters
+##------------------------------------------------------
+paths:
+  log_dir        :     ./logs
+  result_dir     :     ./results
+  checkpoint_dir :     ./ckpt
