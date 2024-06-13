@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from snnl.models.base import Model
-from snnl.models.cnn import CNN
 from snnl.models.dnn import DNN
-from snnl.models.resnet import ResNet18, ResNet34
 from snnl.models.autoencoder import Autoencoder
+from snnl.models.cnn import CNN
+from snnl.models.resnet import ResNet18, ResNet34

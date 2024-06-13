@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from .utils import *
-from .utils import plot_train_metrics
+# from .utils import plot_classification_metrics, plot_classification_metrics_2, plot_regression_metrics
 from .dataloader import CellpaintingDataset, InfiniteDataLoader, custom_collate_fn
 # from .utils import plot_model_parms, plot_train_history
  

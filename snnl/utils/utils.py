@@ -17,9 +17,11 @@
 import sys
 import json
 import os
+import logging
 import random
 import argparse
 from typing import List, Tuple
+from types import SimpleNamespace
 from collections import defaultdict
 from torchinfo import summary
 import numpy as np
@@ -28,32 +30,38 @@ import seaborn as sb
 import torch
 from matplotlib import pyplot as plt
 from datetime import datetime
-from sklearn.metrics import f1_score
+import scipy.stats as sps 
+import sklearn.metrics as skm 
+from scipy.spatial.distance import pdist, squareform, euclidean
+from snnl.models  import Autoencoder
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
+logger = logging.getLogger(__name__) 
 
 
-
-def get_device():
-    devices = torch.cuda.device_count()
+def get_device(verbose = False):
     gb = 2**30
+    devices = torch.cuda.device_count()
     for i in range(devices):
         free, total = torch.cuda.mem_get_info(i)
-        print(f" device: {i}   {torch.cuda.get_device_name(i):30s} :  free: {free:,d} B   ({free/gb:,.2f} GB)    total: {total:,d} B   ({total/gb:,.2f} GB)")
+        if verbose:
+            print(f" device: {i}   {torch.cuda.get_device_name(i):30s} :  free: {free:,d} B   ({free/gb:,.2f} GB)    total: {total:,d} B   ({total/gb:,.2f} GB)")
     # device = 
+    torch.cuda.empty_cache()
+    del free, total
     device = f"{'cuda' if torch.cuda.is_available() else 'cpu'}:{torch.cuda.current_device()}"
-    print(" Current CUDA Device is:", device, torch.cuda.get_device_name(), torch.cuda.current_device())
+    logger.info(f" Current CUDA Device is:  {device} - {torch.cuda.get_device_name()}" )
     return device
 
 def set_device(device_id):
-    print(" Running on:",  torch.cuda.get_device_name(), torch.cuda.current_device())
+    # print(" Running on:",  torch.cuda.get_device_name(), torch.cuda.current_device())
     devices = torch.cuda.device_count()
     assert device_id < devices, f"Invalid device id, must be less than {devices}"
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     device = f"{device}:{device_id}"
-    print(f" Switch to {device} ")
+    # print(f" Switch to {device} ")
     torch.cuda.set_device(device_id)
-    print(" Running on:",  torch.cuda.get_device_name(), torch.cuda.current_device())
+    logger.info(f" Switched to: {torch.cuda.get_device_name()} - {torch.cuda.current_device()}")
     return device
     
 def parse_args(input = None):
@@ -69,20 +77,25 @@ def parse_args(input = None):
     )
     group.add_argument(
         "-m",
-        "--model",
+        "--runmode",
         required=False,
         default="baseline",
         type=str,
-        help="the model to use, options: [baseline (default) | snnl]",
+        help="the model running mode - options: [baseline (default) | snnl]",
     )
     group.add_argument(
         "-c",
         "--configuration",
-        required=False,
-        default="examples/hyperparameters/dnn.json",
+        required=True,
+        # default="examples/hyperparameters/dnn.json",
         type=str,
         help="the path to the JSON file containing the hyperparameters to use",
     )
+    group.add_argument('--wandb' , default=False, action=argparse.BooleanOptionalAction)
+    group.add_argument('--run_id' , type=str, required=False, default=None, help="WandB run id (for run continuations)")
+    group.add_argument('--ckpt'  , type=str, required=False, default=None, help="Checkpoint fle to resume training from")
+    group.add_argument('--epochs', type=int, required=True, default=0, help="epochs to run")
+    group.add_argument('--gpu_id', type=int, required=False, default=0, help="Cuda device id to use" )    
     arguments = parser.parse_args(input)
     return arguments
 
@@ -284,6 +297,66 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 
 
 #-------------------------------------------------------------------------------------------------------------------
+#  Define Model
+#-------------------------------------------------------------------------------------------------------------------     
+def define_autoencoder_model(args, embedding_layer = 0, use_scheduler = True, use_temp_scheduler = False, device = None):
+    assert  embedding_layer != 0, "embedding_layer cannot be zero"
+    if device is None: 
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        
+    if args.runmode.lower() == "baseline":
+        print(f"Defining model in baseline mode")
+        model = Autoencoder(
+            mode = "autoencoding",
+            units=args.units,
+            activations = args.activations,
+            embedding_layer = embedding_layer,
+            code_units  = args.code_units, 
+            input_shape = args.input_shape, 
+            sample_size = args.cellpainting_args['sample_size'],
+            criterion   = torch.nn.MSELoss(reduction='mean'),
+            loss_factor = args.loss_factor,
+            learning_rate=args.learning_rate,
+            adam_weight_decay = args.adam_weight_decay,
+            use_scheduler = use_scheduler,
+            
+            use_snnl = False,
+            snnl_factor= 0.0,
+            use_temp_scheduler = use_temp_scheduler,
+            device = device
+            )
+    elif args.runmode.lower() == "snnl":
+        print(f"Defining model in SNNL mode ")
+        model = Autoencoder(
+            mode="latent_code",
+            units=args.units,
+            activations = args.activations,
+            embedding_layer = embedding_layer,
+            code_units    = args.code_units,
+            input_shape   = args.input_shape,
+            sample_size   = args.cellpainting_args['sample_size'],
+            criterion     = torch.nn.MSELoss(reduction='mean'),
+            loss_factor   = args.loss_factor,
+            learning_rate = args.learning_rate,
+            adam_weight_decay = args.adam_weight_decay,
+            use_scheduler = use_scheduler,
+            
+            use_snnl=True,
+            snnl_factor = args.snnl_factor,
+            temperature = args.temperature,
+            temperatureLR = args.temperatureLR,
+            use_annealing = False,        
+            use_sum = False,
+            SGD_weight_decay = args.SGD_weight_decay,
+            use_temp_scheduler = use_temp_scheduler,
+            device = device
+            )
+    else:
+        raise ValueError("Choose runmode between [baseline] and [snnl] only.")
+        
+    return model
+    
+#-------------------------------------------------------------------------------------------------------------------
 #  Import and Export routines
 #-------------------------------------------------------------------------------------------------------------------     
 
@@ -317,7 +390,7 @@ def export_results(model: torch.nn.Module, filename: str):
             output['params'][key] = value
     with open(filename, "w") as file:
         json.dump(output, file)
-    print(f"[INFO] Model Results exported to {filename}.")
+    logger.info(f" Model Results exported to {filename}.")
 
 
 def import_results(filename: str):
@@ -355,7 +428,7 @@ def save_model(model: torch.nn.Module, filename: str):
         os.mkdir(path)
     path = os.path.join(path, f"{filename}.pt")
     torch.save(model, path)
-    print(f"[INFO] Model exported to {path}.")
+    logger.info(f" Model exported to {path}.")
 
 
 def load_model(filename: str) -> torch.nn.Module:
@@ -373,19 +446,24 @@ def load_model(filename: str) -> torch.nn.Module:
     if not os.path.exists(path):
         print(f"path {path} doesn't exist")
     path = os.path.join(path, filename)
-    print(f"[INFO] Model imported from {path}.")
+    logger.info(f" Model imported from {path}.")
     return torch.load(path)
-    
+
+
 def save_checkpoint(epoch, model, filename, update_latest=False, update_best=False):
     model_checkpoints_folder = os.path.join("ckpts")
     if not os.path.exists(model_checkpoints_folder):
         print(f"path {model_checkpoints_folder} doesn't exist")
     checkpoint = {'epoch': epoch,
-                  'state_dict': model.state_dict(),
-                  'optimizer_state_dict': model.optimizer.state_dict()}
+                  'use_snnl': model.use_snnl,
+                  'state_dict': model.state_dict,
+                  'optimizer_state_dict': model.optimizer.state_dict(),
+                  'temp_optimizer_state_dict': model.temp_optimizer.state_dict(),
+                 }
     
-    # if hasattr(model, 'scheduler'):
-    #     checkpoint['scheduler']: model.scheduler
+    # checkpoint['scheduler'] =  model.scheduler.state_dict() if model.use_scheduler else None
+    # checkpoint['temp_scheduler'] =  model.temp_scheduler.state_dict() if model.use_temp_scheduler else None 
+    
         
     if update_latest:
         filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
@@ -394,22 +472,72 @@ def save_checkpoint(epoch, model, filename, update_latest=False, update_best=Fal
     else:
         filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
     torch.save(checkpoint, filename) 
-    print(f"[INFO] Model exported to {filename}.")
+    logger.info(f" Model exported to {filename}.")
 
 
-def load_checkpoint(model, filename ):
+def save_checkpoint_v2(epoch, model, filename, update_latest=False, update_best=False, verbose = False):
+    from types import NoneType
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+        
+    checkpoint = {'epoch'                     : epoch,
+                  'state_dict'                : model.state_dict(),
+                  'optimizer'                 : model.optimizer,
+                  'temp_optimizer'            : model.temp_optimizer,
+                  'optimizer_state_dict'      : model.optimizer.state_dict() if model.optimizer is not None else None,
+                  'temp_optimizer_state_dict' : model.temp_optimizer.state_dict() if model.temp_optimizer is not None else None,
+                  'scheduler'                 : model.scheduler,
+                  'temp_scheduler'            : model.temp_scheduler,
+                  'scheduler_state_dict'      : model.scheduler.state_dict() if model.use_scheduler else None,
+                  'temp_scheduler_state_dict' : model.temp_scheduler.state_dict() if model.use_temp_scheduler else None ,
+                  'params': dict()
+                 }
+    
+    
+    model_attributes = model.__dict__
+    for key, value in model_attributes.items():
+        if key not in checkpoint:
+            if key[0] == '_' :
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- {key} in ignore_attributes - will not be added")
+            else:
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- add to checkpoint dict")
+                checkpoint['params'][key] = value
+        else:
+            if verbose:
+                print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
+    if verbose:
+        print(checkpoint.keys())    
+    if update_latest:
+        s_filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
+    elif update_best:
+        s_filename = os.path.join(model_checkpoints_folder, f"{filename}_model_best.pt")
+    else:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+ 
+    torch.save(checkpoint, filename) 
+    logger.info(f" Model exported to {filename}.")
+
+
+def load_checkpoint(model, filename, verbose = False ):
     epoch = 9999
     try:
         checkpoints_folder = os.path.join("ckpts")
         checkpoint = torch.load(os.path.join(checkpoints_folder, filename))
-        print(checkpoint.keys())
+        if verbose:
+            print(checkpoint.keys())
+            print(" --> load model state_dict")
         model.load_state_dict(checkpoint['state_dict'])
+        if verbose:
+            print(" --> load optimizer state_dict")
         model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
         if "scheduler" in checkpoint and (hasattr(model, 'scheduler')):
             model.scheduler = checkpoint['scheduler']
         epoch = checkpoint.get('epoch',0)
-        print(f"\n ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}\n")
+        logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}\n")
          
     # except FileNotFoundError:
     #     Exception("Previous state checkpoint not found.")
@@ -418,11 +546,126 @@ def load_checkpoint(model, filename ):
 
     return model, epoch
 
+
+def load_checkpoint_v2(model, filename, dryrun = False):
+    epoch = -1
+    if filename[-3:] != '.pt':
+        filename+='.pt'
+    logging.info(f" Load model checkpoint from  {filename}")    
+    ckpt_file = os.path.join("ckpts", filename)
+    
+    try:
+        checkpoint = torch.load(ckpt_file)
+    except FileNotFoundError:
+        Exception("Previous state checkpoint not found.")
+        print("FileNotFound Exception")
+    except :
+        print("Other Exception")
+        print(sys.exc_info())
+
+    for key, value in checkpoint.items():
+        logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+    print()
+    
+    
+    if not dryrun:
+        model.load_state_dict(checkpoint['state_dict'])
+
+        for key, value in checkpoint['params'].items():
+            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+            model.__dict__[key] = value
+            
+        if model.optimizer is not None:
+            model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        if model.temp_optimizer is not None:
+            model.temp_optimizer.load_state_dict(checkpoint['temp_optimizer_state_dict'])
+        
+        if model.scheduler is not None:
+            model.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            
+        if model.temp_scheduler is not None:
+            model.temp_scheduler.load_state_dict(checkpoint['temp_scheduler_state_dict'])
+    else:
+        for key, value in checkpoint['params'].items():
+            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+        
+    epoch = checkpoint.get('epoch',-1)
+    logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}\n")
+
+    return model, epoch
+
+
+def load_model_from_ckpt(model, runmode = None, date = None, title = None, epochs = None, 
+                         filename =None, cpb = None, factor = None , dryrun = False, v1 = True, verbose = False):
+    # filename = f"AE_{args.model.lower()}_{date}_{title}_{epochs:03d}_cpb_{args.compounds_per_batch}_factor_{factor}.pt"    
+    if filename is None:
+        if factor is None:
+            filename = f"{model.name}_{runmode}_{date}_{title}_ep_{epochs:03d}.pt"
+        else:
+            filename = f"{model.name}_{runmode}_{date}_{title}_{epochs:03d}_cpb_{cpb}_factor_{factor:d}.pt"
+        print(filename)
+        
+    if os.path.exists(os.path.join('ckpts', filename)):
+        # print(f"\n {filename}   *** Checkpoint EXISTS *** \n")
+        if v1:
+            model, last_epoch = load_checkpoint(model, filename)
+        else:
+            model, last_epoch = load_checkpoint_v2(model, filename, dryrun)
+        _ = model.eval()
+        # model = model.to(current_device)
+        # model.to('cpu')
+        if verbose:
+            print(f" model device: {model.device}")
+            print(f" model temperature: {model.temperature}")
+    else:
+        logger.error(f" {filename} *** Checkpoint DOES NOT EXIST *** \n")
+        raise ValueError(f"\n {filename} *** Checkpoint DOES NOT EXIST *** \n")
+        
+    return model
+    
+
+def fix_checkpoint_v2 (filename):
+
+    checkpoints_folder = os.path.join("ckpts")
+    orig_ckpt_file = os.path.join(checkpoints_folder, filename+'.pt')
+    fixed_ckpt_file = os.path.join(checkpoints_folder, filename+'_fixed.pt')
+    
+    print(f" ==> Original checkpoint: {orig_ckpt_file}")
+    print(f" ==> Fixed    checkpoint: {fixed_ckpt_file}")
+    
+    try:
+        checkpoint = torch.load(orig_ckpt_file)
+        print(f"\n ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {checkpoint['epoch']}\n")
+    except FileNotFoundError:
+        Exception("Original checkpoint not found.")
+    except :
+        print("Other Exception")
+        print(sys.exc_info())
+
+    fixed_checkpoint = dict()
+    fixed_checkpoint['params'] = dict()
+    for key, value in checkpoint.items():
+        if key in ['epoch', 'state_dict', 'optimizer_state_dict', 'temp_optimizer_state_dict', 'scheduler_state_dict', 'temp_scheduler_state_dict' ]:
+            fixed_checkpoint[key] = value
+            print(f"{key:40s}, {str(type(value)):60s}  -- major key set  ")
+        else:
+            fixed_checkpoint['params'][key] = value
+            print(f"{key:40s}, {str(type(value)):60s}  -- params key set  ")
+            
+    try:
+        torch.save(fixed_checkpoint, fixed_ckpt_file) 
+        print(f"[INFO] Model exported to { fixed_ckpt_file}.")
+    except :
+        print("Other Exception 2")
+        print(sys.exc_info())
+
+    return  fixed_checkpoint
 #-------------------------------------------------------------------------------------------------------------------
 #  Plotting routines
 #-------------------------------------------------------------------------------------------------------------------     
 
-def plot_train_history(model, epochs= None, n_bins = 25):
+def plot_train_history(model, epochs= None, start= 0, n_bins = 25):
     key1, key2 = model.training_history.keys()
     key1 = 'trn' if key1 == 'train' else key1
 
@@ -430,34 +673,37 @@ def plot_train_history(model, epochs= None, n_bins = 25):
         epochs = len(model.training_history[key1]['trn_ttl_loss'])
      
     fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
+    x_data = np.arange(start,epochs)
     labelsize = 6
     # We can set the number of bins with the *bins* keyword argument.
     i = 0
-    _ = axs[i].plot(model.training_history[key1]['trn_ttl_loss'][:epochs],label='Training');
-    _ = axs[i].plot(model.training_history['val']['val_ttl_loss'][:epochs],label='Validation');
-    _ = axs[i].set_title(f'Total loss - {epochs} epochs', fontsize= 10);
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_ttl_loss'][start:epochs],label='Training');
+    _ = axs[i].plot(x_data, model.training_history['val']['val_ttl_loss'][start:epochs],label='Validation');
+    _ = axs[i].set_title(f'Total loss - epochs {start}-{epochs}', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
     axs[i].legend()
     i +=1    
-    _ = axs[i].plot(model.training_history[key1]['trn_prim_loss'][:epochs],label='Training');
-    _ = axs[i].plot(model.training_history['val']['val_prim_loss'][:epochs],label='Validation');
-    _ = axs[i].set_title(f'Primary loss - {epochs} epochs', fontsize= 10);
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_prim_loss'][start:epochs],label='Training');
+    _ = axs[i].plot(x_data, model.training_history['val']['val_prim_loss'][start:epochs],label='Validation');
+    _ = axs[i].set_title(f'Primary loss - epochs {start}-{epochs}', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
     i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_snn_loss'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_snn_loss'][:epochs]);
-    _ = axs[i].set_title(f'Soft Nearest Neighbor Loss - {epochs} epochs', fontsize= 10);
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_snn_loss'][start:epochs]);
+    _ = axs[i].plot(x_data, model.training_history['val']['val_snn_loss'][start:epochs]);
+    _ = axs[i].set_title(f'Soft Nearest Neighbor Loss - epochs {start}-{epochs}', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
     i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_lr'][:epochs]);
-
-    _ = axs[i].set_title(f'Learning Rate - {epochs} epochs', fontsize= 10);
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_lr'][start:epochs]);
+    # if model.use_snnl:
+    #     _ = axs[i].plot(x_data, model.training_history[key1]['temp_lr'][start:epochs]);
+    _ = axs[i].set_title(f'Learning Rate - epochs {start}-{epochs}', fontsize= 10);
     _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    _ = axs[i].set_title(f'train_temp_hist - epochs {start}-{epochs}', fontsize= 10);
     if model.use_snnl:
         i +=1
-        _ = axs[i].plot(model.training_history[key1]['temp_hist'][:epochs]);
-        _ = axs[i].set_title(f'train_temp_hist - {epochs} epochs', fontsize= 10);
+        _ = axs[i].plot(x_data, model.training_history[key1]['temp_hist'][start:epochs]);
         _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    # i +=1
+        
     # batches = (len(model.training_history[key1]['temp_grads']) // len(model.training_history[key1]['trn_ttl_loss'])) *epochs
     # _ = axs[i].plot(model.training_history[key1]['temp_grads'][:batches])
     # _ = axs[i].set_title(f'Temperature Gradients - {epochs} epochs', fontsize= 10)
@@ -473,43 +719,7 @@ def plot_train_history(model, epochs= None, n_bins = 25):
     # i +=1
     plt.show()
 
-def plot_train_metrics(model, epochs= None, n_bins = 25):
-    key1, key2 = model.training_history.keys()
-    key1 = 'trn' if key1 == 'train' else key1
- 
-    if epochs is None:
-        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
-    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
-    i = 0
-    _ = axs[i].plot(model.training_history[key1]['trn_accuracy'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_accuracy'][:epochs]);
-    _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_f1'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_f1'][:epochs]);
-    _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i += 1
-    _ = axs[i].plot(model.training_history[key1]['trn_precision'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_precision'][:epochs]);
-    _ = axs[i].set_title(f' Precision - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_roc_auc'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_roc_auc'][:epochs]);
-    _ = axs[i].set_title(f' ROC AUC Score - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_recall'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_recall'][:epochs]);
-    _ = axs[i].set_title(f'Recall - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    plt.show()    
-    
 def plot_model_parms(model, epochs= None, n_bins = 25):
-    
     weights = dict()
     biases = dict()
     grads = dict()
@@ -579,6 +789,108 @@ def plot_TSNE(prj, lbl, cmp, key = None, end = None, epoch = 0):
     
     plt.show()
 
+def plot_TSNE_2(prj, lbl, cmp, key = None, layers = None, items = None, epoch = 0, limits = (None,None)):
+    if layers is None:
+        layers = range(len(prj))
+        
+    if items is None:
+        lbl_len = len(lbl)
+    elif not isinstance(items, list):
+        items = list(items)
+    fig, axs = plt.subplots(1, len(layers), sharey=False, tight_layout=True, figsize=(len(layers)*4,4) )
+
+    for idx, layer in enumerate(layers):
+        if items is None: 
+            df = pd.DataFrame(dict(
+                    x=prj[layer][:,0],
+                    y=prj[layer][:,1],
+                    tpsa=lbl[:],
+                    compound = cmp[:]
+                ))
+        else:
+            df = pd.DataFrame(dict(
+                    x=prj[layer][items,0],
+                    y=prj[layer][items,1],
+                    tpsa=lbl[items],
+                    compound = cmp[items]
+                ))
+        # print(key, np.bincount(lbl), df[key].unique() , palette_count)
+        palette_count = len(df[key].unique())
+        legend = True if layer in [0,4] else False
+        lp=sb.scatterplot( data=df, x ="x", y = "y", hue=key, palette=sb.color_palette(n_colors=palette_count), ax=axs[idx]) #, size=6)
+        _=lp.set_title(f'Epoch: {epoch} layer {layer}', fontsize = 10)
+        lp.legend(loc = 'best', fontsize = 8)
+        lp.set_xlim([limits[0], limits[1]])
+        lp.set_ylim([limits[0], limits[1]])
+    
+    plt.show()
+    return fig
+
+
+def plot_classification_metrics(model, epochs= None, n_bins = 25):
+    key1, key2 = model.training_history.keys()
+    key1 = 'trn' if key1 == 'train' else key1
+ 
+    if epochs is None:
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
+    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
+    i = 0
+    _ = axs[i].plot(model.training_history[key1]['trn_accuracy'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_accuracy'][:epochs]);
+    _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_f1'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_f1'][:epochs]);
+    _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i += 1
+    _ = axs[i].plot(model.training_history[key1]['trn_precision'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_precision'][:epochs]);
+    _ = axs[i].set_title(f' Precision - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_roc_auc'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_roc_auc'][:epochs]);
+    _ = axs[i].set_title(f' ROC AUC Score - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_recall'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_recall'][:epochs]);
+    _ = axs[i].set_title(f'Recall - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    plt.show()        
+
+
+def plot_classification_metrics_2(cm):
+    fig, ax = plt.subplots(1, 3, figsize=(14, 8))
+    
+    pr_display = skm.PrecisionRecallDisplay.from_predictions(cm.labels, cm.logits, name="LinearSVC", plot_chance_level=True, ax=ax[0]);
+    _ = pr_display.ax_.set_title(f" 2-class PR curve - epoch:{cm.epochs} ");
+    
+    roc_display = RocCurveDisplay.from_predictions(cm.labels, cm.logits, pos_label= 1, ax = ax[1])
+    _ = roc_display.ax_.set_title(f" ROC Curve - epoch:{cm.epochs} ")
+    
+    cm_display = ConfusionMatrixDisplay.from_predictions(y_true = cm.labels, y_pred =cm.y_pred, ax = ax[2], colorbar = False)
+    _ = cm_display.ax_.set_title(f" Confusion matrix - epoch:{cm.epochs} ");
+    
+    plt.show()
+
+
+def plot_regression_metrics(model, epochs= None, n_bins = 25):
+    key1, key2 = model.training_history.keys()
+    key1 = 'trn' if key1 == 'train' else key1
+ 
+    if epochs is None:
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
+    fig, axs = plt.subplots(1, 1, sharey=False, tight_layout=True, figsize=(1*4,4) )
+    i = 0
+    _ = axs.plot(model.training_history[key1]['trn_R2_score'][:epochs]);
+    _ = axs.plot(model.training_history['val']['val_R2_score'][:epochs]);
+    _ = axs.set_title(f'R2 Score - {epochs} epochs', fontsize= 10);
+    _ = axs.tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+
 
 #-------------------------------------------------------------------------------------------------------------------
 #  Display routines
@@ -595,14 +907,17 @@ def display_model_summary(model, dataset = 'cellpainting', batch_size = 300 ):
 
 def display_cellpainting_batch(batch_id, batch):
     data, labels, plates, compounds, cmphash,  = batch
-    print("-"*80)
-    print(f" Batch Id: {batch_id}   {type(batch)}  Rows returned {len(batch[0])} features: {len(data[0])}  ")
-    print("-"*80)
-    print(f" idx |  batch[0] |              |                    | batch[3] |[4]|     batch[5]")
-    print(f"     |           |              |                    |          |   |             ")
-    print(f"{len(labels)}")
+    print("-"*135)
+    print(f"  Batch Id: {batch_id}   {type(batch)}  Rows returned {len(batch[0])} features: {len(data[0])}  ")
+    print(f"+-----+--------------+----------------+----------------------+--------+-------+--------------------------------------------------------+")
+    print(f"| idx |   batch[0]   |    batch[1]    |      batch[2]        |batch[3]| [4]   |     batch[5]                                           | ") 
+    print(f"|     |    SOURCE    |    COMPOUND    |       HASH           | BIN    | LABEL |     FEATURES                                           | ")
+    print(f"+-----+--------------+----------------+----------------------+--------+-------+--------------------------------------------------------+")
+         # "  0 | source_1     | JCP2022_006020 | -9223347314827979542 |   10 |  0 | tensor([-0.4223, -0.4150,  0.2968])"
+         # "  1 | source_10    | JCP2022_006020 | -9223347314827979542 |   10 |  0 | tensor([-0.6346, -0.6232, -1.6046])"
+    
     for i in range(len(labels)):
-        print(f" {i:3d} | {plates[i,0]:9s} | {compounds[i]:12s} | {cmphash[i,0]} | {cmphash[i,1]:2d} | {labels[i]:1d} | {data[i,:3]}")
+        print(f"  {i:3d} | {plates[i,0]:12s} | {compounds[i]:12s} | {cmphash[i,0]:20d} | {cmphash[i,1]:4d}   |  {int(labels[i]):2d}   | {data[i,:3]}")
 
 
 def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
@@ -621,7 +936,7 @@ def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
     if model.use_snnl:
         temp_hist = model.training_history[key1]['temp_hist'][idx]
         temp_grad_hist = model.training_history[key1]['temp_grad_hist'][idx]
-        temp_LR = model.training_history[key1]["temp_lr"][idx] if model.use_temp_scheduler else 0.0
+        temp_LR = model.training_history[key1]["temp_lr"][idx] 
     else:
         temp_hist = 0
         temp_grad_hist = 0
@@ -631,14 +946,16 @@ def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
  
     if model.unsupervised:
         if header:
-            print(f"                     |   Trn_loss    PrimLoss      SNNL   |    temp*        grad     |                          |   Vld_loss    PrimLoss      SNNL   |                          |    LR       temp LR  |")
-            print(f"---------------------+------------------------------------+--------------------------+--------------------------+------------------------------------+--------------------------|----------------------|")
+            print(f"                     |   Trn_loss    PrimLoss      SNNL   |    temp*        grad     |   R2                     |   Vld_loss    PrimLoss      SNNL   |   R2                     |    LR       temp LR   |")
+            print(f"---------------------+------------------------------------+--------------------------+--------------------------+------------------------------------+--------------------------|-----------------------|")
                  # "00:45:46 ep   1 / 10 |   9.909963    4.904229    5.005733 |  14.996347   -2.6287e-10 |                          |   9.833426    4.827625    5.005800 |                          |"
         print(f"{model.training_history[key2][f'{key2_p}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
               f"  {model.training_history[key1][f'{key1_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_snn_loss'][idx]:9.6f} |"
-              f"  {temp_hist:9.6f}   {temp_grad_hist:11.4e} |                          |"
+              f"  {temp_hist:9.6f}   {temp_grad_hist:11.4e} |"
+              f"  {model.training_history[key1][f'{key1_p}_R2_score'][idx]:7.4f}                 |"
               f"  {model.training_history[key2][f'{key2_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_snn_loss'][idx]:9.6f} |"
-              f"                          | {trn_LR :9f}  {temp_LR :9f} |")
+              f"  {model.training_history[key2][f'{key2_p}_R2_score'][idx]:7.4f}                 |"
+              f"  {trn_LR :9f}  {temp_LR :9f} |")
         
     else:
         if header:
@@ -655,11 +972,52 @@ def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
               f"  {model.training_history[key2][f'{key2_p}_accuracy'][idx]:.4f}   {model.training_history[key2][f'{key2_p}_f1'][idx]:.4f}   {model.training_history[key2][f'{key2_p}_roc_auc'][idx]:.4f} |" 
               f"  {trn_LR :9f}    {temp_LR :9f}")
 
- 
+
+def display_dist_metrics(dist_metrics, epochs, metric = 'euclidian'):
+    titles = [f'INPUT features - {metric} distances - {epochs} epochs',
+              f'EMBEDDED features - {metric} distances - {epochs} epochs',
+              f'RECONSTURCTED features -  {metric} distances - {epochs} epochs']
+    sub_titles = ["ALL group distances", "INTRA-group (same compound) distances", "INTER-group (diff compound) distances"]
+    k0_list = ['inp', 'emb', 'out']
+    k1_list = ['all', 'same', 'diff']
+    k2_list = ['_min', '_max', '_avg', '_std', ]
+    
+    for idx0,(title, k0) in enumerate(zip(titles, k0_list)):
+        print()        
+        print(title)
+        print('-'*len(title))    
+        
+        for idx1,(subtitle, k1) in enumerate(zip(sub_titles, k1_list)):
+            key = k0+'_'+k1
+            row = idx1   ## 0 (all groups) , 1: same grou, 2: diff_groups
+            print(f"  {subtitle:37s} :    min,max:  [{dist_metrics[key+'_min']:8.4f}, {dist_metrics[key+'_max']:8.4f}]"
+                  f"  | Individual point distances   mean: {dist_metrics['CL_'+key+ '_avg']:8.4f}   std: {dist_metrics['CL_'+key+ '_std']:8.4f}  |"
+                  f"  Group Level Avg. Distances - mean: {dist_metrics[key+'_avg']:8.4f}   std: {dist_metrics[key+'_std']:8.4f} ")
+    print()
+
+    
+def display_classification_metrics(cm):
+    print(f" metrics at epoch {cm.epochs:^4d}")
+    print('-'*22)
+    print(f" F1 Score:  {cm.f1:.7f}")
+    print(f" Accuracy:  {cm.accuracy*100:.2f}%")
+    print(f" Precision: {cm.precision*100:.2f}%")
+    print(f" Recall:    {cm.recall:.7f}")
+    print(f" ROC_AUC:   {cm.roc_auc:.7f}")
+    print()
+    print(cm.cls_report)
+
+
+def display_regr_metrics(rm):
+    print(f" metrics at epoch {rm.epochs:^4d}")
+    print('-'*22)
+    print(f"RMSE Score : {rm.rmse_score:9.6f}")
+    print(f" MSE Score : {rm.mse_score:9.6f}")
+    print(f" MAE Score : {rm.mae_score:9.6f}")
+    print(f"  R2 Score : {rm.R2_score:9.6f} ")    
 #-------------------------------------------------------------------------------------------------------------------
 #  Metric routines
 #-------------------------------------------------------------------------------------------------------------------     
-
 def accuracy(y_true, y_pred) -> float:
     """
     Returns the classification accuracy of the model.
@@ -689,4 +1047,369 @@ def binary_accuracy(y_true, y_prob):
 def binary_f1_score(y_true, y_prob):
     assert (y_true.ndim == 1 and y_true.size == y_prob.size) , f"binary f1 score:  y_true: {y_true.ndim}   {y_true.shape}  y_prob: {y_prob.ndim}   {y_prob.shape}   "
     y_prob = y_prob > 0.5
-    return f1_score(y_true, y_prob)
+    return skm.f1_score(y_true, y_prob)
+
+#-------------------------------------------------------------------------------------------------------------------
+#  Run Model on Test Dataloader
+#-------------------------------------------------------------------------------------------------------------------     
+def run_model_on_test_data(model, data_loader, embedding_layer, verbose = False):
+    """
+    embedding layer: layer that contains embedding (for encoding models)
+    """
+    out = SimpleNamespace()
+    out.labels = np.empty((0))
+    out.logits = np.empty((0))
+    out.compounds = np.empty((0))
+    out.embeddings = {} 
+    
+    for k, layer in enumerate(model.layers):
+        if hasattr(layer,"out_features"):
+            out.embeddings[k] = np.empty((0,layer.out_features))
+        else:
+            out.embeddings[k] = np.empty((0,model.layers[k-1].out_features))
+        if verbose:
+            print(f" layer {k:2d}: - {layer} {out.embeddings[k].shape}")
+
+    out.y_true = np.empty((0,model.layers[0].in_features))
+    if hasattr(model.layers[-1],"out_features"):
+        out.y_pred = np.empty((0,model.layers[-1].out_features))
+        if verbose:
+            print(f" y_pred picked up from layer {k} of {len(model.layers)} layers")
+    elif hasattr(model.layers[-2],"out_features"):
+        out.y_pred = np.empty((0,model.layers[-2].out_features))
+        if verbose:
+            print(f" y_pred picked up from layer {k-1} of {len(model.layers)} layers")
+    else:
+        raise ValueError("last two layers are not linear")
+        
+    ###- Pass Test Dataset through network
+    for idx, (batch_features, batch_labels, batch_wellinfo , batch_compounds, batch_hashbin) in enumerate(data_loader):
+        
+        #    (batch_features, batch_labels, plate_well, compound, hash) 
+        batch_features = batch_features.to(model.device)
+        batch_labels = batch_labels.to(model.device)
+        output_activations, reconstruction =  model.forward(batch_features)
+                
+        for k,v in output_activations.items():
+            out.embeddings[k] = np.concatenate((out.embeddings[k], v.detach().cpu().numpy()))
+        out.compounds = np.concatenate((out.compounds, batch_compounds))    
+        out.y_true = np.concatenate((out.y_true, batch_features.detach().cpu().numpy()))
+        out.labels = np.concatenate((out.labels, batch_labels.detach().cpu().numpy()))
+        out.y_pred = np.concatenate((out.y_pred, reconstruction.detach().cpu().numpy()))
+        if verbose:
+            print(f"   output :  {idx:2d} - Labels:{out.labels.shape[0]:5d}   y_true:{out.y_true.shape}   y_pred:{out.y_pred.shape} ")
+    ###- end
+    
+    out.labels = np.array(out.labels.astype(np.int32))
+    out.comp_labels = np.arange(out.labels.shape[0])//3 
+    out.latent_embedding = out.embeddings[embedding_layer]
+    # logits = np.concatenate((logits, out_logits.detach().numpy()[:,0]))
+    if verbose:
+        print(f" out.latent_embedding shape: {out.latent_embedding.shape}")
+        print(f" out.y_true    :      shape: {out.y_true.shape}")
+        print(f" out.y_pred    :      shape: {out.y_pred.shape}")
+        print(f" out.compounds :      shape: {out.compounds.shape}")
+        print(f" out.labels    :      shape: {out.labels.shape} - Pos Labels {out.labels.sum()}")
+        print(f" out.comp_labels:     shape: {out.comp_labels.shape} - {out.comp_labels[:25]}")
+        for k,v in out.embeddings.items():
+            print(f" out.embeddings[{k:2d}]  :   shape: {v.shape}  {' <---- embedding layer' if k == embedding_layer else ''}")
+   
+    return out
+
+
+#-------------------------------------------------------------------------------------------------------------------
+#  Run Model on Test Dataloader
+#-------------------------------------------------------------------------------------------------------------------     
+def get_latent_representation(model, data_loader, embedding_layer, verbose = False):
+    """
+    embedding layer: layer that contains embedding (for encoding models)
+    """
+    print(f" embedding layer: {embedding_layer} - model.layer: in: {model.layers[embedding_layer].in_features} out: {model.layers[embedding_layer].out_features}")
+    
+    ###- Pass Test Dataset through network
+    for idx, (batch_features, batch_labels, batch_wellinfo , batch_compounds, batch_hashbin) in enumerate(data_loader):      
+                        
+        latent_code =  model.compute_latent_code(batch_features.to(model.device))
+        output_batch = np.hstack((batch_wellinfo, np.expand_dims(batch_compounds,-1), batch_hashbin, np.expand_dims(batch_labels,-1), latent_code.detach().cpu().numpy()))
+        if idx == 0:
+            output = output_batch
+        else :
+            output = np.vstack((output,output_batch))
+        print(output_batch.shape, output.shape)
+    
+    # if verbose:
+    #     print(f" out.latent_embedding shape: {out.embeddings.shape}")
+    #     print(f" out.labels    :      shape: {out.labels.shape} - Pos Labels {out.labels.sum()}")
+    #     print(f" out.wellinfo  :      shape: {out.wellinfo.shape}")
+    #     print(f" out.compounds :      shape: {out.compounds.shape}")
+    #     print(f" out.hashbin   :      shape: {out.hashbin.shape}")
+    return output
+
+def pairwise_cosine_distance(features: torch.Tensor) -> torch.Tensor:
+    """
+    Returns the pairwise cosine distance between two copies
+    of the features matrix.
+
+    Parameter
+    ---------
+    features: torch.Tensor                The input features.
+
+    Returns
+    -------
+    distance_matrix: torch.Tensor         The pairwise cosine distance matrix.
+
+    Example
+    -------
+    >>> import torch
+    >>> from snnl import SNNLoss
+    >>> _ = torch.manual_seed(42)
+    >>> a = torch.rand((4, 2))
+    >>> snnl = SNNLoss(temperature=1.0)
+    >>> snnl.pairwise_cosine_distance(a)
+    tensor([[1.1921e-07, 7.4125e-02, 1.8179e-02, 1.0152e-01],
+            [7.4125e-02, 1.1921e-07, 1.9241e-02, 2.2473e-03],
+            [1.8179e-02, 1.9241e-02, 1.1921e-07, 3.4526e-02],
+            [1.0152e-01, 2.2473e-03, 3.4526e-02, 0.0000e+00]])
+    """
+    normalized_a = torch.nn.functional.normalize(features, dim=1, p=2)
+    return 1.0 - torch.matmul(normalized_a, normalized_a.T)
+    
+    # a, b = features.clone(), features.clone()
+    # normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+    # normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+    # normalized_b = torch.conj(normalized_b).T
+    # product = torch.matmul(normalized_a, normalized_b.T)
+    # distance_matrix = torch.sub(torch.tensor(1.0), product)
+    # return torch.sub(torch.tensor(1.0), product)
+    # return distance_matrix    
+    
+def pairwise_euclidean_distance(features: torch.Tensor ) -> torch.Tensor:
+    """
+    Returns the pairwise Euclidean distance between two copies
+    of the features matrix.
+
+    Parameter
+    ---------
+    features: torch.Tensor               The input features.
+
+    Returns
+    -------
+    distance_matrix: torch.Tensor        The pairwise Euclidean distance matrix.
+
+    Example
+    -------
+    >>> import torch
+    >>> from snnl import SNNLoss
+    >>> _ = torch.manual_seed(42)
+    >>> a = torch.rand((4, 2))
+    >>> snnl = SNNLoss(temperature=1.0)
+    >>> snnl.pairwise_euclidean_distance(a)
+    tensor([[1.1921e-07, 7.4125e-02, 1.8179e-02, 1.0152e-01],
+            [7.4125e-02, 1.1921e-07, 1.9241e-02, 2.2473e-03],
+            [1.8179e-02, 1.9241e-02, 1.1921e-07, 3.4526e-02],
+            [1.0152e-01, 2.2473e-03, 3.4526e-02, 0.0000e+00]])
+    """
+    
+    # distance_matrix = torch.Tensor(squareform(pdist(features)))
+    # a, b = features.clone(), features.clone()
+    # normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
+    # normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
+    # # normalized_b = torch.conj(normalized_b).T
+    # product = torch.matmul(normalized_a, normalized_b.T)
+    # distance_matrix = torch.sub(torch.tensor(1.0), product)
+    return torch.sqrt(((features[:, :, None] - features[:, :, None].T) ** 2).sum(1))
+
+def distance_metrics_sample_set(model_data, num_samples = 10, cps = 3, seed = 1236, display = True):
+    """
+    selects a random set of samples that have been passed through the model
+    prepares the necessary datasets for distance metric computation 
+
+    cps: Compounds per Sample
+    
+    """
+    CPS = cps
+    num_inputs  = model_data.y_true.shape[0] // CPS
+    np.random.seed(seed)
+    
+    sample = np.random.randint(0,num_inputs-1, num_samples)
+    sample = np.array(sorted(sample))
+    sample *= 3
+    
+    sorted_sample = np.concatenate((sample, sample+1, sample+2))
+    sorted_sample.sort()
+    samp_cmpnd  = model_data.compounds[sorted_sample]
+    samp_input  = model_data.y_true[[sorted_sample],:].squeeze()
+    samp_embed  = model_data.latent_embedding[[sorted_sample],:].squeeze()
+    samp_output = model_data.y_pred[[sorted_sample],:].squeeze()
+    if display:
+        print(f" Number of unique compounds    :   {num_inputs}")
+        print(f" Sampled compounds      - shape:   {sample.shape} - {sample}")
+        print(f" Sampled compounds      - shape:   {sorted_sample.shape} - {sorted_sample}")
+        print(f" Sample Input features  - shape:   {samp_input.shape}")
+        print(f" Sample Latent features - shape:   {samp_embed.shape}")
+        print(f" Sample Output features - shape:   {samp_output.shape}")
+    
+    # emb_cos_distance = squareform(pdist(samp_embed , "cosine"))
+    # out_cos_distance = squareform(pdist(samp_output , "cosine"))
+    # inp_euc_distance = squareform(pdist(samp_input))
+    # emb_euc_distance = squareform(pdist(samp_embed))
+    # out_euc_distance = squareform(pdist(samp_output))
+    
+    samp_act = [samp_input, samp_embed, samp_output]
+    return samp_act
+
+def distance_metric_1(measurement):
+    titles = [f'INPUT features - Euclidean distances - {epochs} epochs',
+              f'EMBEDDED features - Euclidean distances - {epochs} epochs',
+              f'RECONSTURCTED features -  Euclidean distances - {epochs} epochs']
+    sub_titles = ["ALL group distances", "INTRA-group (same compound) distances", "INTER-group (diff compound) distances"]
+    k1_list = ['all_grp', 'same_grp', 'diff_grp']
+    k2_list = ['_mean',  '_median', '_stddev', '_min', '_max' ]
+    num_samples = measurement.shape[0]//CPS
+    grp_level = {0:np.zeros((num_samples,num_samples))}
+    dm = dict()
+    non_diag_elmnts = CPS *(CPS-1)
+    for i in range(0, num_samples*CPS, CPS):
+        for j in range(0, num_samples*CPS, CPS):
+            if i == j:
+                # print(f" compound sample {1+i//3:4d}   --  sum of dist errs: {measurement[i:i+3, j:j+3].sum():.4f}")
+                grp_level[0][i//CPS,j//CPS] = measurement[i:i+CPS, j:j+CPS].sum() / non_diag_elmnts  ### 6.0 needs to be parameterized 
+            else:
+                grp_level[0][i//3,j//3] = measurement[i:i+CPS, j:j+CPS].mean()
+    
+    grp_level[1] = grp_level[0].diagonal()   ## same group
+    grp_level[2] = grp_level[0][np.triu_indices(num_samples,k=1)] ## other_group
+    
+    # same_group  = grp_level[0].diagonal()   ## same group
+    # other_group = grp_level[0][np.triu_indices(num_samples,k=1)]
+ 
+
+    for idx,(subtitle, k1) in enumerate(zip(sub_titles, k1_list)):
+        dm[k1+ k2_list[0]] = grp_level[idx].sum() / grp_level[idx].size
+        dm[k1+ k2_list[1]] = np.median(grp_level[idx])
+        dm[k1+ k2_list[2]] = np.std(grp_level[idx]) 
+        dm[k1+ k2_list[3]] = grp_level[idx].min()
+        dm[k1+ k2_list[4]] = grp_level[idx].max()
+        # print(grp_level[idx])            
+        # print()
+        # print(dm[k1+'_mean'])
+        # print()
+        # print(dm[k1+'_median'])
+        # print()
+        # print(dm[k1+'_stddev'])
+        # print()
+        print(f"{idx} {subtitle:39s} :\t mean {dm[k1+'_mean']:8.4f}    median: {dm[k1+'_median']:8.4f}    stddev: {dm[k1+'_stddev'] :8.4f}"
+              f"    min: {dm[k1+'_min'] :8.4f}    max: {dm[k1+'_max'] :8.4f}")
+    print()
+    return dm
+
+
+
+def  compute_regression_metrics(mo):
+    rm = SimpleNamespace()
+    print(f" Compute Regression metrics for epoch {mo.epochs}")
+    rm.epochs = mo.epochs
+    rm.R2_score   = skm.r2_score(y_true = mo.y_true, y_pred = mo.y_pred)
+    rm.mse_score  = skm.mean_squared_error(y_true = mo.y_true, y_pred = mo.y_pred)
+    rm.rmse_score = skm.root_mean_squared_error(y_true = mo.y_true, y_pred = mo.y_pred)
+    rm.mae_score  = skm.mean_absolute_error(y_true = mo.y_true, y_pred = mo.y_pred)
+    # pearson_corr, pearson_p = sps.pearsonr(mo.y_true, mo.y_pred)
+    return rm
+
+
+def  compute_classification_metrics(mo):
+    """
+    mo : model outpust from 'run_model_on_test_data'
+    """
+    cm = SimpleNamespace()
+    print(f" Compute Regression metrics for epoch {mo.epochs}") 
+    cm.metrics = mo.metrics
+    cm.accuracy = skm.accuracy_score(mo.labels, mo.y_pred)
+    cm.roc_auc  = skm.roc_auc_score(mo.labels, mo.logits)
+    cm.precision, cm.recall, cm.f1, _ = skm.precision_recall_fscore_support(mo.labels, mo.y_pred, average='binary', zero_division=0)
+    cm.cls_report = skm.classification_report(mo.labels, mo.y_pred)
+    (mo.labels == mo.y_pred).sum()
+    
+    # cm.test_accuracy = binary_accuracy(y_true=mo.labels, y_prob=mo.logits)
+    # cm.test_f1 = binary_f1_score(y_true=mo.labels, y_prob=mo.logits)
+    return cm
+
+
+def compute_distance_metrics(sample_inputs, epochs = 0, metric ='euclidian',display = False ):
+    assert metric in ['euclidian', 'cosine', 'correlation'], "metric must be one of ['euclidian', 'cosine', 'correlation']"
+    print(f" Compute Distance {metric} distance metrics for epoch {epochs}") 
+    titles = [f'INPUT features - {metric} distances - {epochs} epochs',
+              f'EMBEDDED features - {metric} distances - {epochs} epochs',
+              f'RECONSTURCTED features -  {metric} distances - {epochs} epochs']
+    sub_titles = ["ALL group distances", "INTRA-group (same compound) dist ", "INTER-group (diff compound) dist "]
+    k0_list = ['inp', 'emb', 'out']
+    k1_list = ['all', 'same', 'diff']
+    k2_list = ['_min', '_max', '_avg', '_std',   ]
+    dm = dict()
+    grp_level = dict()
+    cmp_level = dict()
+    
+    for idx0,(k0, sample_input) in enumerate(zip(k0_list, sample_inputs)):
+        pairwise_distance = squareform(pdist(sample_input, metric))
+        
+        # print(sample_input.shape, pairwise_distance.shape)
+        num_samples = pairwise_distance.shape[0]//3
+
+        grp_level[k0] = {0:np.zeros((num_samples,num_samples)),
+                         1:np.zeros((num_samples,num_samples)),
+                         2:np.zeros((num_samples,num_samples))}
+        cmp_level[k0] = {0:np.empty(0),     ## all distances
+                         1:np.empty(0),     ## all same group distances
+                         2: np.empty(0)}    ## all non-same group distances
+        
+        for i in range(0,num_samples*3,3):
+            for j in range(0,num_samples*3,3):
+                tile = pairwise_distance[i:i+3, j:j+3]
+                if i == j: ## same group
+                    upper_triang = tile[np.triu_indices(3,k=1)]
+                    cmp_level[k0][1] = np.hstack((cmp_level[k0][1], upper_triang))
+                    grp_level[k0][0][i//3,j//3] = upper_triang.mean()
+                    # print(tile,'\n', upper_triang, '\n', cmp_level[1], '\n')
+                    # print(f" compound sample {1+i//3:4d}   --  sum of dist errs: {measurement[i:i+3, j:j+3].sum():.4f}")
+                    # grp_level[1][i//3,j//3] = upper_triang.std() 
+                    # grp_level[2][i//3,j//3] = np.median(upper_triang) 
+                # elif i < j:
+                else:
+                    cmp_level[k0][2] = np.hstack((cmp_level[k0][2], tile.reshape(-1)))
+                    grp_level[k0][0][i//3,j//3] = tile.mean()
+                    # print(tile, '\n',tile.reshape(-1) , '\n', cmp_level[2], '\n')
+                    # grp_level[1][i//3,j//3] = tile.std() 
+
+        triupper_indices = np.triu_indices(num_samples,k=1)
+        trilower_indices = np.tril_indices(num_samples,k=-1)
+        
+        cmp_level[k0][0] = np.hstack((cmp_level[k0][1],cmp_level[k0][2]))
+        ## Diagonal distances (same group)
+        grp_level[k0][1] = grp_level[k0][0].diagonal()     ## averarge distances on same groups
+        grp_level[k0][2] = np.hstack((grp_level[k0][0][triupper_indices],grp_level[k0][0][trilower_indices]))   ##  distances non on diagonals (different groups)
+  
+        
+        # grp_level[4] = grp_level[1].diagonal()   ## stds on same group
+        # print(grp_level[0], '\n\n\n', grp_level[0].diagonal(), '\n\n\n',grp_level[0][triupper_indices], '\n\n\n' , grp_level[0][trilower_indices], '\n\n\n') 
+        # grp_level[6] = grp_level[0][triupper_indices] ## avg. distances on diff_group
+        # print( grp_level[6], '\n\n\n' )
+        # grp_level[7] = np.hstack((grp_level[1][triupper_indices],grp_level[1][trilower_indices])) ## std devs on diff_group  
+        # print(f" upper: {grp_level[0][triupper_indices].std()}  lower: {grp_level[0][trilower_indices].std()}    upper+lower: {grp_level[6].std()} ")
+        
+
+        for idx1,(subtitle, k1) in enumerate(zip(sub_titles, k1_list)):
+            key = k0+'_'+k1
+            row = idx1   ## 0 (all groups) , 1: same grou, 2: diff_groups
+            dm[key+ '_min'] = grp_level[k0][row].min()                           ## min(distances)
+            dm[key+ '_max'] = grp_level[k0][row].max()                           ## max(avg_distances)
+            dm[key+ '_avg'] = grp_level[k0][row].sum() / grp_level[k0][row].size     ## averages(distances)
+            dm[key+ '_std'] = grp_level[k0][row].std()                           ## std_dev(distances)
+            dm['CL_'+key+ '_avg'] = cmp_level[k0][idx1].mean()                   ## averages(ALL distances)
+            dm['CL_'+key+ '_std'] = cmp_level[k0][idx1].std()                    ## std_dev(ALL distances)
+    
+    if display:
+        display_dist_metrics(dm,epochs, metric)
+    return dm, grp_level
+
+
+

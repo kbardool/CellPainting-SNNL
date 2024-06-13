@@ -12,6 +12,7 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
                  type : str = None,
                  training_path : str = None, 
                  validation_path : str = None, 
+                 test_path : str = None, 
                  batch_size: int = None,
                  sample_size : int = None, 
                  chunksize :int  = None, 
@@ -32,7 +33,7 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
         # print("Cellpainting __init__ routine", flush=True)
         #Store the filename in object's memory
         type = type.lower()
-        assert (type in ['train', 'val', 'test']), f" train parm must be {{'train' or 'test'}}"
+        assert (type in ['train', 'val', 'test']), f" type parm must be {{'train', 'val', or 'test'}}"
         self.type = type
 
         self.names = names
@@ -55,7 +56,7 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
             self.start =  val_start
             self.end = val_end
         else: 
-            self.filename = validation_path 
+            self.filename = test_path 
             self.start =  test_start
             self.end = test_end
         self.numrows = self.end-self.start

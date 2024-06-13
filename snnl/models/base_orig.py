@@ -18,7 +18,7 @@ from typing import Tuple
 import torch
 from pt_datasets import create_dataloader
 
-from snnl import SNNLoss
+from snnl.losses import SNNLoss
 
 
 class Model(torch.nn.Module):
@@ -216,6 +216,104 @@ class Model(torch.nn.Module):
             else:
                 return epoch_loss
 
+    # def epoch_train_old(self, data_loader: torch.utils.data.DataLoader, epoch: int = None) -> Tuple:
+    #     """
+    #     Trains a model for one epoch.
+
+    #     Parameters
+    #     ----------
+    #     data_loader: torch.utils.dataloader.DataLoader
+    #         The data loader object that consists of the data pipeline.
+    #     epoch: int
+    #         The current epoch training index.
+     
+    #     Returns
+    #     -------
+    #     epoch_loss: float
+    #         The epoch loss.
+    #     epoch_snn_loss: float
+    #         The soft nearest neighbor loss for an epoch.
+    #     epoch_xent_loss: float
+    #         The cross entropy loss for an epoch.
+    #     epoch_accuracy: float
+    #         The epoch accuracy.
+    #     """
+    #     if self.use_snnl:
+    #         epoch_primary_loss = 0
+    #         epoch_snn_loss = 0
+    #     if self.name == "DNN" or self.name == "CNN":
+    #         epoch_accuracy = 0
+    #     epoch_loss = 0
+    #     batch_count = 0
+    
+    #     for batch_features, batch_labels in data_loader:
+    #         if self.name in ["Autoencoder", "DNN"]:
+    #             batch_features = batch_features.view(batch_features.shape[0], -1)
+    #         batch_features = batch_features.to(self.device)
+    #         batch_labels = batch_labels.to(self.device)
+            
+    #         self.optimizer.zero_grad()
+    #         outputs = self.forward(features=batch_features)
+            
+    #         if self.use_snnl:
+    #             train_loss, primary_loss, snn_loss = self.snnl_criterion(
+    #                 model=self,
+    #                 outputs=outputs,
+    #                 features=batch_features,
+    #                 labels=batch_labels,
+    #                 epoch=epoch,
+    #             )
+    #             epoch_loss += train_loss.item()
+    #             epoch_snn_loss += snn_loss.item()
+    #             epoch_primary_loss += primary_loss.item()
+    #         else:
+    #             train_loss = self.criterion(
+    #                 outputs,
+    #                 batch_labels
+    #                 if self.name == "DNN" or self.name == "CNN"
+    #                 else batch_features,
+    #             )
+    #             epoch_loss += train_loss.item()
+            
+    #         if self.name == "DNN" or self.name == "CNN":
+    #             train_accuracy = (outputs.argmax(1) == batch_labels).sum().item() / len(batch_labels)
+    #             epoch_accuracy += train_accuracy
+            
+    #         train_loss.backward()
+    #         self.optimizer.step()
+            
+    #         if self.use_snnl and self.temperature is not None:
+    #             self.optimize_temperature()
+
+    #         batch_count +=1
+        
+    #     epoch_loss /= batch_count ## len(data_loader)
+        
+    #     if self.name in ["DNN", "CNN"]:
+    #         epoch_accuracy /= batch_count ## len(data_loader)
+    #     if self.use_snnl:
+    #         epoch_snn_loss /= batch_count ## len(data_loader)
+    #         epoch_primary_loss /= batch_count  ## len(data_loader)
+    #         if self.name == "DNN" or self.name == "CNN":
+    #             print(f" SNNLoss() - epoch_loss {epoch_loss:.6f}, epoch_snn_loss, {epoch_snn_loss:.6f},  epoch_primary_loss, {epoch_primary_loss:.6f}, epoch_accuracy,  {epoch_accuracy:.6f}")
+    #             if self.verbose:
+    #                 print(f" SNNLoss() - epoch_loss {epoch_loss}, epoch_snn_loss, {epoch_snn_loss},  epoch_primary_loss, {epoch_primary_loss}, epoch_accuracy,  {epoch_accuracy}")
+    #             return epoch_loss, epoch_snn_loss, epoch_primary_loss, epoch_accuracy
+    #         else:
+    #             if self.verbose:
+    #                 print(f"  SNNLoss() - epoch_loss {epoch_loss}, epoch_snn_loss, {epoch_snn_loss},  epoch_primary_loss, {epoch_primary_loss}")
+    #             return epoch_loss, epoch_snn_loss, epoch_primary_loss
+    #     else:
+    #         if self.name == "DNN" or self.name == "CNN":
+    #             if self.verbose:
+    #                 print(f"  SNNLoss() - epoch_loss {epoch_loss}, epoch_snn_loss, {epoch_snn_loss}")
+    #             return epoch_loss, epoch_accuracy
+    #         else:
+    #             if self.verbose:
+    #                 print(f"  SNNLoss() - epoch_loss {epoch_loss}")
+    #             return epoch_loss    
+
+    
     def optimize_temperature(self):
         """
         Learns an optimized temperature parameter.
