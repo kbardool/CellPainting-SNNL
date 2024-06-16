@@ -5,13 +5,11 @@ project_name         :  CellPainting_Profiles
 exp_id               :
 exp_name_pfx         :
 exp_name             : 
-exp_folder           : 
-exp_title            : snglOpt-25Ltnt_512
+exp_title            : snglOpt-025Ltnt_512
 exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 25 dim latent, 512 Midlayer
+exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
-seed_list            : 
-config               :
 
 ## Model parameters
 ##------------------------------------------------------  
@@ -30,19 +28,20 @@ units   : [
 activations : ["relu", "relu", "sigmoid", "relu", "relu", "relu"]    
 input_shape : 1471
 code_units  : 25
+embedding_layer : 4
 
 ## Training parameters
 ##------------------------------------------------------
 show_every    : 1 
 save_every    : 25
 
-learning_rate : 1.00e-03
-loss_factor   : 1.00e+00
+learning_rate : 1.000e-03
+loss_factor   : 1.000e+00
 adam_weight_decay : 0 
 
-snnl_factor   : 0.0e+00
-temperature   : 0.0  
-temperatureLR : 0.0e+00
+snnl_factor   : 0.000e+00
+temperature   : 0.0 
+temperatureLR : 0.000e+00
 SGD_weight_decay  : 0
 
 ## Dataset parameters

@@ -106,7 +106,8 @@ class Autoencoder(Model):
 
         self.name = "AE"
         self.layer_types = []
-        self.layer_activations = activations                
+        self.non_linearities = []
+        # self.layer_activations = activations                
         self.use_scheduler = use_scheduler
         self.use_temp_scheduler = use_temp_scheduler
         self.monitor_grads_layer = monitor_grads_layer
@@ -155,9 +156,10 @@ class Autoencoder(Model):
             elif layer == 'relu':
                 self.layers.append(torch.nn.ReLU())
                 self.layer_types.append('relu')
+                self.non_linearities.append('relu')
             elif layer == 'sigmoid':
                 self.layers.append(torch.nn.Sigmoid())
-                self.layer_types.append('sigmoid')
+                self.non_linearities.append('sigmoid')
             elif layer == 'none':
                 pass
             else :
@@ -178,7 +180,7 @@ class Autoencoder(Model):
             print(f"    AE init() -- mode               : {self.mode}")
             print(f"    AE init() -- unsupervised       : {self.unsupervised}")
             print(f"    AE init() -- layer_types        : {self.layer_types}")
-            print(f"    AE init() -- layer_activations  : {self.layer_activations}")               
+            print(f"    AE init() -- non linearities    : {self.non_linearities}")               
             print(f"    AE init() -- Primary Crtierion  : {self.primary_criterion}")
             print(f"    AE init() -- monitor_grads_layer: {self.monitor_grads_layer}")
             print(f"    AE init() -- scheduler          : {self.scheduler}")

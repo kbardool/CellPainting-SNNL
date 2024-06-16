@@ -99,6 +99,8 @@ class Model(torch.nn.Module):
         self.temperatureLR = temperatureLR
         self.primary_criterion = criterion
         self.training_history = dict()
+        self.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': 0, 'trn_best_loss_ep' : 0 ,
+                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': 0, 'val_best_loss_ep' : 0 }
         self.training_history['trn'] = defaultdict(list)
         self.training_history['val'] = defaultdict(list)
         
@@ -297,7 +299,7 @@ class Model(torch.nn.Module):
         else:
             epoch_metrics.R2_score  /= total_batches
             
-        self.update_training_history('trn', epoch_losses, epoch_metrics)              
+        self.update_training_history('trn', epoch, epoch_losses, epoch_metrics)              
  
         return epoch_losses 
 
@@ -364,12 +366,12 @@ class Model(torch.nn.Module):
         else:
             epoch_metrics.R2_score  /= total_batches
             
-        self.update_training_history('val', epoch_losses, epoch_metrics)
+        self.update_training_history('val', epoch, epoch_losses, epoch_metrics)
  
         return epoch_losses
 
 
-    def update_training_history(self, key, losses, metrics):
+    def update_training_history(self, key, epoch, losses, metrics):
  
         assert  key in ['trn', 'val'], f" invalid history type {key} - must be {{'trn', 'val'}} "
         
@@ -377,6 +379,10 @@ class Model(torch.nn.Module):
         self.training_history[key][f"{key}_ttl_loss"].append(losses.ttl_loss)
         self.training_history[key][f"{key}_prim_loss"].append(losses.primary_loss)
         self.training_history[key][f"{key}_snn_loss"].append(losses.snn_loss)
+        if losses.ttl_loss < self.training_history['gen'][f'{key}_best_loss']:
+            self.training_history['gen'][f'{key}_best_loss'] = losses.ttl_loss
+            self.training_history['gen'][f'{key}_best_loss_ep'] = epoch
+
         
         if not self.unsupervised:
             self.training_history[key][f"{key}_accuracy"].append(metrics.accuracy)
@@ -386,7 +392,10 @@ class Model(torch.nn.Module):
             self.training_history[key][f"{key}_roc_auc"].append(metrics.roc_auc)
         else:
             self.training_history[key][f"{key}_R2_score"].append(metrics.R2_score)
-        
+            if metrics.R2_score > self.training_history['gen'][f'{key}_best_metric']:
+                self.training_history['gen'][f'{key}_best_metric'] = metrics.R2_score
+                self.training_history['gen'][f'{key}_best_metric_ep'] = epoch
+            
         if key == 'trn':        
             self.training_history['trn']['trn_lr'].append(self.optimizer.param_groups[0]['lr'])
             if self.use_snnl:
@@ -451,8 +460,6 @@ class Model(torch.nn.Module):
             self.scheduler.step(loss.primary_loss)
             if  self.training_history['trn']['trn_lr'][-1] != self.optimizer.param_groups[0]['lr']:
                 print(f" Optimizer learning rate reduced to {self.scheduler._last_lr[0]}")
-            # if  self.training_history['trn']['temp_lr'][-1] != self.optimizer.param_groups[1]['lr']:
-            #     print(f" Temperature optimizer learning rate reduced to {self.scheduler._last_lr[1]}")    
                 
                 
     def scheduling_step_2(self, loss):

@@ -5,8 +5,8 @@ project_name         :  CellPainting_Profiles
 exp_id               :
 exp_name_pfx         :
 exp_name             : 
-exp_title            : snglOpt_025Ltnt_128
-exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 25 dim latent, 128 Midlayer
+exp_title            : snglOpt-050Ltnt_512_256
+exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 512-256-50 latent
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
@@ -16,32 +16,37 @@ random_seed          : 1234
 units   : [
     ["linear",1471, 1024],
     ["relu" ,  0, 0],
-    ["linear",1024,  128],
+    ["linear",1024,  512],
     ["relu" ,  0, 0],
-    ["linear", 128,  25],
-    ["linear",  25,  128],
+    ["linear", 512,  256],
     ["relu" ,  0, 0],
-    ["linear", 128, 1024],
+    ["linear", 256,   50],
+    ["sigmoid" ,  0, 0],
+    ["linear",  50,  256],
+    ["relu" ,  0, 0],
+    ["linear", 256,  512],
+    ["relu" ,  0, 0],
+    ["linear", 512, 1024],
     ["relu" ,  0, 0],
     ["linear",1024, 1471]
   ]
-activations : ["relu", "relu", "sigmoid", "relu", "relu", "relu"]    
+
 input_shape : 1471
-code_units  : 25
-embedding_layer : 4
+code_units  : 50
+embedding_layer : 6
 
 ## Training parameters
 ##------------------------------------------------------
 show_every    : 1 
 save_every    : 25
 
-learning_rate : 1.000e-03
-loss_factor   : 1.000e+00
+learning_rate : 1.00e-03
+loss_factor   : 1.00E+00
 adam_weight_decay : 0 
 
 snnl_factor   : 0.000e+00
-temperature   : 0.0 
-temperatureLR : 0.000e+00
+temperature   : 0.000  
+temperatureLR : 0.000
 SGD_weight_decay  : 0
 
 ## Dataset parameters

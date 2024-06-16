@@ -14,28 +14,29 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Utility functions / Metrics """
-import sys
+import argparse
+from collections import defaultdict
+from datetime import datetime
 import json
 import os
 import logging
 import random
-import argparse
+import sys
 from typing import List, Tuple
 from types import SimpleNamespace
-from collections import defaultdict
+import yaml
+
+
 from torchinfo import summary
 import numpy as np
 import pandas as pd
 import seaborn as sb
 import torch
 from matplotlib import pyplot as plt
-from datetime import datetime
 import scipy.stats as sps 
 import sklearn.metrics as skm 
 from scipy.spatial.distance import pdist, squareform, euclidean
 from snnl.models  import Autoencoder
-__author__ = "Abien Fred Agarap"
-__version__ = "1.0.0"
 logger = logging.getLogger(__name__) 
 
 
@@ -70,6 +71,7 @@ def parse_args(input = None):
     group.add_argument(
         "-s",
         "--seed",
+        dest='random_seed',
         required=False,
         default=1234,
         type=int,
@@ -92,8 +94,9 @@ def parse_args(input = None):
         help="the path to the JSON file containing the hyperparameters to use",
     )
     group.add_argument('--wandb' , default=False, action=argparse.BooleanOptionalAction)
-    group.add_argument('--run_id' , type=str, required=False, default=None, help="WandB run id (for run continuations)")
-    group.add_argument('--ckpt'  , type=str, required=False, default=None, help="Checkpoint fle to resume training from")
+    group.add_argument('--run_id' , type=str, dest='exp_id', required=False, default=None, help="WandB run id (for run continuations)")
+    group.add_argument('--ckpt'   , type=str, required=False, default=None, help="Checkpoint fle to resume training from")
+    group.add_argument('--exp_title'  , type=str, required=False, default=None, help="Exp Title (overwrites yaml file value)")
     group.add_argument('--epochs', type=int, required=True, default=0, help="epochs to run")
     group.add_argument('--gpu_id', type=int, required=False, default=0, help="Cuda device id to use" )    
     arguments = parser.parse_args(input)
@@ -116,6 +119,21 @@ def set_global_seed(seed: int) -> None:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
 
+def load_configuration(input_params):
+
+    with open(input_params.configuration) as f:
+        _args = yaml.safe_load(f)
+    
+    input_params = vars(input_params)
+    for k,v in input_params.items():
+        logger.info(f" command line param [{k}] passed, value: [{v}]")
+        if v is not None:
+            _args[k] = v
+    _args['ckpt'] = input_params['ckpt']
+    _args['batch_size'] = _args['cellpainting_args']['batch_size']
+    
+    # args = types.SimpleNamespace(**args, **(vars(input_params)))
+    return SimpleNamespace(**_args)    
 
 def get_hyperparameters(hyperparameters_path: str) -> Tuple:
     """
@@ -309,7 +327,7 @@ def define_autoencoder_model(args, embedding_layer = 0, use_scheduler = True, us
         model = Autoencoder(
             mode = "autoencoding",
             units=args.units,
-            activations = args.activations,
+ 
             embedding_layer = embedding_layer,
             code_units  = args.code_units, 
             input_shape = args.input_shape, 
@@ -330,7 +348,7 @@ def define_autoencoder_model(args, embedding_layer = 0, use_scheduler = True, us
         model = Autoencoder(
             mode="latent_code",
             units=args.units,
-            activations = args.activations,
+ 
             embedding_layer = embedding_layer,
             code_units    = args.code_units,
             input_shape   = args.input_shape,
@@ -591,7 +609,7 @@ def load_checkpoint_v2(model, filename, dryrun = False):
             logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
         
     epoch = checkpoint.get('epoch',-1)
-    logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}\n")
+    logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}")
 
     return model, epoch
 
@@ -921,11 +939,11 @@ def display_cellpainting_batch(batch_id, batch):
 
 
 def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
-    key1, key2 = model.training_history.keys()
-    key1_p = 'trn' if key1 == 'trn' else ''
-    key2_p = 'val' if key1_p == 'trn' else ''
+    # key1, key2 = model.training_history.keys()
+    key1 = 'trn' ##if key1 == 'trn' else ''
+    key2 = 'val' ##if key1_p == 'trn' else ''
     
-    history_len = len(model.training_history[key1][f'{key1_p}_ttl_loss'])
+    history_len = len(model.training_history[key1][f'{key1}_ttl_loss'])
     epochs = history_len if epochs is None else epochs
     epoch  = 0 if epoch is None else epoch
     header = True if epoch == 0 else header
@@ -949,12 +967,12 @@ def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
             print(f"                     |   Trn_loss    PrimLoss      SNNL   |    temp*        grad     |   R2                     |   Vld_loss    PrimLoss      SNNL   |   R2                     |    LR       temp LR   |")
             print(f"---------------------+------------------------------------+--------------------------+--------------------------+------------------------------------+--------------------------|-----------------------|")
                  # "00:45:46 ep   1 / 10 |   9.909963    4.904229    5.005733 |  14.996347   -2.6287e-10 |                          |   9.833426    4.827625    5.005800 |                          |"
-        print(f"{model.training_history[key2][f'{key2_p}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
-              f"  {model.training_history[key1][f'{key1_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_snn_loss'][idx]:9.6f} |"
+        print(f"{model.training_history[key2][f'{key2}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
+              f"  {model.training_history[key1][f'{key1}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1}_snn_loss'][idx]:9.6f} |"
               f"  {temp_hist:9.6f}   {temp_grad_hist:11.4e} |"
-              f"  {model.training_history[key1][f'{key1_p}_R2_score'][idx]:7.4f}                 |"
-              f"  {model.training_history[key2][f'{key2_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_snn_loss'][idx]:9.6f} |"
-              f"  {model.training_history[key2][f'{key2_p}_R2_score'][idx]:7.4f}                 |"
+              f"  {model.training_history[key1][f'{key1}_R2_score'][idx]:7.4f}   {model.training_history['gen'].get('trn_best_metric_ep',0)+1:4d}          |"
+              f"  {model.training_history[key2][f'{key2}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2}_snn_loss'][idx]:9.6f} |"
+              f"  {model.training_history[key2][f'{key2}_R2_score'][idx]:7.4f}   {model.training_history['gen'].get('val_best_metric_ep',0)+1:4d}          |"
               f"  {trn_LR :9f}  {temp_LR :9f} |")
         
     else:
@@ -964,12 +982,12 @@ def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
                  # "                     |  Trn_loss     CEntropy      SNNL   |    temp        grad     |   ACC       F1     ROCAuc |   Vld_loss    CEntropy      SNNL   |    ACC      F1     ROCAuc |"
                  # "---------------------+------------------------------------+-------------------------+---------------------------+------------------------------------+---------------------------|"
                  # "00:44:43 ep   1 / 10 |  10.054366    3.660260    6.394106 |  14.999862   1.5653e-04 |  0.7885   0.0796   0.5129 |   8.464406    2.070062    6.394344 |  0.8754   0.0223   0.5203 |"
-        print(f"{model.training_history[key2][f'{key2_p}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
-              f"  {model.training_history[key1][f'{key1_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1_p}_snn_loss'][idx]:9.6f} |"
+        print(f"{model.training_history[key2][f'{key2}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
+              f"  {model.training_history[key1][f'{key1}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1}_snn_loss'][idx]:9.6f} |"
               f"  {temp_hist:9.6f}   {temp_grad_hist:11.4e} |"
-              f"  {model.training_history[key1][f'{key1_p}_accuracy'][idx]:.4f}   {model.training_history[key1][f'{key1_p}_f1'][idx]:.4f}   {model.training_history[key1][f'{key1_p}_roc_auc'][idx]:.4f} |"
-              f"  {model.training_history[key2][f'{key2_p}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2_p}_snn_loss'][idx]:9.6f} |"
-              f"  {model.training_history[key2][f'{key2_p}_accuracy'][idx]:.4f}   {model.training_history[key2][f'{key2_p}_f1'][idx]:.4f}   {model.training_history[key2][f'{key2_p}_roc_auc'][idx]:.4f} |" 
+              f"  {model.training_history[key1][f'{key1}_accuracy'][idx]:.4f}   {model.training_history[key1][f'{key1}_f1'][idx]:.4f}   {model.training_history[key1][f'{key1}_roc_auc'][idx]:.4f} |"
+              f"  {model.training_history[key2][f'{key2}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2}_snn_loss'][idx]:9.6f} |"
+              f"  {model.training_history[key2][f'{key2}_accuracy'][idx]:.4f}   {model.training_history[key2][f'{key2}_f1'][idx]:.4f}   {model.training_history[key2][f'{key2}_roc_auc'][idx]:.4f} |" 
               f"  {trn_LR :9f}    {temp_LR :9f}")
 
 

@@ -1,7 +1,9 @@
+import logging
+from typing import Dict, Tuple, List
 import numpy as np
 import pandas as pd
 import torch
-from typing import Dict, Tuple, List
+logger = logging.getLogger(__name__) 
 
 #-------------------------------------------------------------------------------------------------------------------
 #  CellpaintingDataset
@@ -42,7 +44,7 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
         self.compounds_per_batch = compounds_per_batch
         self.iterator = iterator
         # chunksize should be a mulitple of sample_size
-        # self.batch_size = batch_size
+        self.batch_size = batch_size
         self.sample_size = sample_size
         if chunksize is None:
             self.chunksize = self.sample_size * self.compounds_per_batch
@@ -61,12 +63,23 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
             self.end = test_end
         self.numrows = self.end-self.start
         
-        print(f" Building CellPantingDataset from NOTEBOOK")
-        print(f"    _init()_    -- filename:          {self.filename}")
-        print(f"    _init()_    -- type :             {self.type}")
-        print(f"    _init()_    -- start :            {self.start}")
-        print(f"    _init()_    -- end :              {self.end}")
-        print(f"    _init()_    -- numrows :          {self.numrows}")
+        file_sz = self.end - self.start
+        smp_sz = self.sample_size
+        buf_sz = self.compounds_per_batch
+        bth_sz = self.batch_size
+        recs_per_batch = smp_sz * bth_sz * buf_sz        
+        bth_per_epoch = file_sz // recs_per_batch
+        logger.info(f" Building CellPantingDataset for {self.type}")
+        logger.info(f" filename:  {self.filename}")
+        logger.info(f" type    :  {self.type}")
+        logger.info(f" start   :  {self.start}")
+        logger.info(f" end     :  {self.end}")
+        logger.info(f" numrows :  {self.numrows}")
+        logger.info(f" Each mini-batch contains {recs_per_batch/smp_sz} compounds with {smp_sz} samples per compound : total {recs_per_batch} rows")
+        logger.info(f" Number of {recs_per_batch} row full size batches per epoch: {bth_per_epoch}")
+        logger.info(f" Rows covered by {bth_per_epoch} full size batches ({recs_per_batch} rows) per epoch:  {(file_sz // recs_per_batch) * recs_per_batch}")
+        logger.info(f" Last partial batch contains : {file_sz % recs_per_batch} rows")
+        logger.info(f" ") 
         
     # self.group_labels = np.arange(self.batch_size * self.sample_size, dtype = np.int64) // self.sample_size
         # print(f" Dataset batch_size: {self.batch_size}" )

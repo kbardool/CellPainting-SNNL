@@ -1,4 +1,7 @@
-python AE_baseline.py --runmode baseline --wandb  --epochs 50 --gpu_id 2\
-                      -c  ./hyperparameters/ae_cp_025_512.yaml 
-##                      --run_id x5k02apw \
-##                      --ckpt AE_baseline_20240612_snglOpt-50Ltnt_512_ep_050.pt
+python AE_baseline.py -c ./hyperparameters/ae_cp_025_512.yaml \
+	                  --epochs      50 \
+                      --runmode     baseline \
+                      --wandb \
+                      --gpu_id      2\
+                      --run_id      tcvl4wdr \
+                      --ckpt        AE_baseline_20240613_snglOpt-025Ltnt_512_ep_400.pt
