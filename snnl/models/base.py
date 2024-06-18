@@ -98,9 +98,11 @@ class Model(torch.nn.Module):
         self.sample_size = sample_size
         self.temperatureLR = temperatureLR
         self.primary_criterion = criterion
+        self.best_metric = 0
+        self.best_epoch  = 0
         self.training_history = dict()
-        self.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': 0, 'trn_best_loss_ep' : 0 ,
-                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': 0, 'val_best_loss_ep' : 0 }
+        self.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : 0 ,
+                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': np.inf, 'val_best_loss_ep' : 0 }
         self.training_history['trn'] = defaultdict(list)
         self.training_history['val'] = defaultdict(list)
         
@@ -308,7 +310,7 @@ class Model(torch.nn.Module):
                     data_loader: torch.utils.data.DataLoader, 
                     epoch: int = None, 
                     verbose: bool = False) -> Tuple:
-
+        self.new_best = False
         epoch_losses = SimpleNamespace()
         epoch_losses.ttl_loss = 0
         epoch_losses.snn_loss = 0
@@ -367,10 +369,15 @@ class Model(torch.nn.Module):
             epoch_metrics.R2_score  /= total_batches
             
         self.update_training_history('val', epoch, epoch_losses, epoch_metrics)
- 
+        self.update_best_metric()
         return epoch_losses
 
-
+    def update_best_metric(self):
+        if self.best_epoch !=  self.training_history['gen'][f'val_best_metric_ep']:
+            self.best_metric =  self.training_history['gen'][f'val_best_metric']
+            self.best_epoch = self.training_history['gen'][f'val_best_metric_ep']
+            self.new_best = True
+        
     def update_training_history(self, key, epoch, losses, metrics):
  
         assert  key in ['trn', 'val'], f" invalid history type {key} - must be {{'trn', 'val'}} "
@@ -382,8 +389,7 @@ class Model(torch.nn.Module):
         if losses.ttl_loss < self.training_history['gen'][f'{key}_best_loss']:
             self.training_history['gen'][f'{key}_best_loss'] = losses.ttl_loss
             self.training_history['gen'][f'{key}_best_loss_ep'] = epoch
-
-        
+            
         if not self.unsupervised:
             self.training_history[key][f"{key}_accuracy"].append(metrics.accuracy)
             self.training_history[key][f"{key}_f1"].append(metrics.f1)

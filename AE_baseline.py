@@ -64,7 +64,7 @@ from snnl.utils import parse_args, load_configuration, set_global_seed, get_devi
 from snnl.utils import display_epoch_metrics
 from snnl.utils import CellpaintingDataset, InfiniteDataLoader, custom_collate_fn
 from snnl.utils import display_model_summary, define_autoencoder_model
-from snnl.utils import save_checkpoint_v2, load_checkpoint_v2
+from snnl.utils import save_checkpoint_v3, load_checkpoint_v2
 
 timestamp = datetime.now().strftime('%Y_%m_%d_%H:%M:%S')
 logger = logging.getLogger(__name__) 
@@ -234,6 +234,8 @@ logger.info(f" ")
 logger.info(f" Best validation loss   : {model.training_history['gen']['val_best_loss']:6f} - epoch: {model.training_history['gen']['val_best_loss_ep']}") 
 logger.info(f" Best validation metric : {model.training_history['gen']['val_best_metric']:6f} - epoch: {model.training_history['gen']['val_best_metric_ep']}") 
 logger.info(f" ")
+logger.info(f" Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
+
 
 if WANDB_ACTIVE:
     wandb.config.update(args,allow_val_change=True )
@@ -263,10 +265,20 @@ for epoch in range(starting_epoch,epochs):
         epoch_metrics = {x:y[-1] for x,y in model.training_history['val'].items()} | \
                         {x:y[-1] for x,y in model.training_history['trn'].items()} 
         wandb_log_metrics( data = epoch_metrics, step = epoch)
-    
+
+    if model.new_best:
+        # filename = f"{model.name}_{args.runmode}_{args.exp_date}_{args.exp_title}_BEST_ep_{epoch+1:03d}"
+        save_checkpoint_v3(epoch+1, model, args, update_best=True)        
     if (epoch + 1) % args.save_every == 0:
-        filename = f"{model.name}_{args.runmode}_{args.exp_date}_{args.exp_title}_ep_{epoch+1:03d}"
-        save_checkpoint_v2(epochs, model, filename, update_latest=False, update_best=False)    
+        # filename = f"{model.name}_{args.runmode}_{args.exp_date}_{args.exp_title}_ep_{epoch+1:03d}"
+        # save_checkpoint_v2(epoch+1, model, filename, update_latest=False, update_best=False)    
+        save_checkpoint_v3(epoch+1, model, args)    
+#        
+# Write last checkpoint 
+#
+
+logger.info(f" Final checkpoint epoch {epoch+1}")
+save_checkpoint_v3(epoch+1, model, args, update_latest=True)            
 
 #
 # Finish WandB logging

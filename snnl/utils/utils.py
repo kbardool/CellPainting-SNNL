@@ -126,12 +126,12 @@ def load_configuration(input_params):
     
     input_params = vars(input_params)
     for k,v in input_params.items():
-        logger.info(f" command line param [{k}] passed, value: [{v}]")
+        logger.info(f" command line param {k:25s} : [{v}]")
         if v is not None:
             _args[k] = v
     _args['ckpt'] = input_params['ckpt']
     _args['batch_size'] = _args['cellpainting_args']['batch_size']
-    
+    logger.info(f" command line param {'exp_title':25s} : [{_args['exp_title']}]")
     # args = types.SimpleNamespace(**args, **(vars(input_params)))
     return SimpleNamespace(**_args)    
 
@@ -512,6 +512,46 @@ def save_checkpoint_v2(epoch, model, filename, update_latest=False, update_best=
                   'params': dict()
                  }
     
+    model_attributes = model.__dict__
+    for key, value in model_attributes.items():
+        if key not in checkpoint:
+            if key[0] == '_' :
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- {key} in ignore_attributes - will not be added")
+            else:
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- add to checkpoint dict")
+                checkpoint['params'][key] = value
+        else:
+            if verbose:
+                print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
+    if verbose:
+        print(checkpoint.keys())    
+ 
+    filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+    torch.save(checkpoint, filename) 
+    logger.info(f" Model exported to {filename}.")
+
+
+def save_checkpoint_v3(epoch, model, args, filename = None, update_latest=False, update_best=False, verbose = False):
+    from types import NoneType
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+        
+    checkpoint = {'epoch'                     : epoch,
+                  'state_dict'                : model.state_dict(),
+                  'optimizer'                 : model.optimizer,
+                  'temp_optimizer'            : model.temp_optimizer,
+                  'optimizer_state_dict'      : model.optimizer.state_dict() if model.optimizer is not None else None,
+                  'temp_optimizer_state_dict' : model.temp_optimizer.state_dict() if model.temp_optimizer is not None else None,
+                  'scheduler'                 : model.scheduler,
+                  'temp_scheduler'            : model.temp_scheduler,
+                  'scheduler_state_dict'      : model.scheduler.state_dict() if model.use_scheduler else None,
+                  'temp_scheduler_state_dict' : model.temp_scheduler.state_dict() if model.use_temp_scheduler else None ,
+                  'params': dict()
+                 }
+    
     
     model_attributes = model.__dict__
     for key, value in model_attributes.items():
@@ -528,15 +568,21 @@ def save_checkpoint_v2(epoch, model, filename, update_latest=False, update_best=
                 print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
     if verbose:
         print(checkpoint.keys())    
-    if update_latest:
-        s_filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
-    elif update_best:
-        s_filename = os.path.join(model_checkpoints_folder, f"{filename}_model_best.pt")
-    else:
-        filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
- 
+    
+    if filename is None: 
+        filename = f"{model.name}_{args.runmode}_{args.exp_date}_{args.exp_title}"      
+        
+        if update_latest:
+            s_filename = f"LAST_ep_{epoch:03d}"
+        elif update_best:
+            s_filename = f"BEST"
+        else:
+            s_filename = f"ep_{epoch:03d}"
+        filename = f"{filename}_{s_filename}"
+        
+    filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
     torch.save(checkpoint, filename) 
-    logger.info(f" Model exported to {filename}.")
+    logger.info(f" Model exported to {filename} - epoch: {epoch}")
 
 
 def load_checkpoint(model, filename, verbose = False ):
@@ -679,13 +725,13 @@ def fix_checkpoint_v2 (filename):
         print(sys.exc_info())
 
     return  fixed_checkpoint
+
+
 #-------------------------------------------------------------------------------------------------------------------
 #  Plotting routines
 #-------------------------------------------------------------------------------------------------------------------     
-
 def plot_train_history(model, epochs= None, start= 0, n_bins = 25):
-    key1, key2 = model.training_history.keys()
-    key1 = 'trn' if key1 == 'train' else key1
+    key1 = 'trn' 
 
     if epochs is None:
         epochs = len(model.training_history[key1]['trn_ttl_loss'])
@@ -736,6 +782,71 @@ def plot_train_history(model, epochs= None, start= 0, n_bins = 25):
     # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    
     # i +=1
     plt.show()
+
+
+def plot_classification_metrics(model, epochs= None, n_bins = 25):
+    key1 = 'trn' 
+ 
+    if epochs is None:
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
+    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
+    i = 0
+    _ = axs[i].plot(model.training_history[key1]['trn_accuracy'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_accuracy'][:epochs]);
+    _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_f1'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_f1'][:epochs]);
+    _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i += 1
+    _ = axs[i].plot(model.training_history[key1]['trn_precision'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_precision'][:epochs]);
+    _ = axs[i].set_title(f' Precision - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_roc_auc'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_roc_auc'][:epochs]);
+    _ = axs[i].set_title(f' ROC AUC Score - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_recall'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_recall'][:epochs]);
+    _ = axs[i].set_title(f'Recall - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    plt.show()        
+
+
+def plot_classification_metrics_2(cm):
+    fig, ax = plt.subplots(1, 3, figsize=(14, 8))
+    
+    pr_display = skm.PrecisionRecallDisplay.from_predictions(cm.labels, cm.logits, name="LinearSVC", plot_chance_level=True, ax=ax[0]);
+    _ = pr_display.ax_.set_title(f" 2-class PR curve - epoch:{cm.epochs} ");
+    
+    roc_display = RocCurveDisplay.from_predictions(cm.labels, cm.logits, pos_label= 1, ax = ax[1])
+    _ = roc_display.ax_.set_title(f" ROC Curve - epoch:{cm.epochs} ")
+    
+    cm_display = ConfusionMatrixDisplay.from_predictions(y_true = cm.labels, y_pred =cm.y_pred, ax = ax[2], colorbar = False)
+    _ = cm_display.ax_.set_title(f" Confusion matrix - epoch:{cm.epochs} ");
+    
+    plt.show()
+
+
+def plot_regression_metrics(model, epochs= None, n_bins = 25):
+    key1 = 'trn'
+ 
+    if epochs is None:
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
+    fig, axs = plt.subplots(1, 1, sharey=False, tight_layout=True, figsize=(1*4,4) )
+    i = 0
+    _ = axs.plot(model.training_history[key1]['trn_R2_score'][:epochs]);
+    _ = axs.plot(model.training_history['val']['val_R2_score'][:epochs]);
+    _ = axs.set_title(f'R2 Score - {epochs} epochs', fontsize= 10);
+    _ = axs.tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+
+
 
 def plot_model_parms(model, epochs= None, n_bins = 25):
     weights = dict()
@@ -844,70 +955,6 @@ def plot_TSNE_2(prj, lbl, cmp, key = None, layers = None, items = None, epoch = 
     plt.show()
     return fig
 
-
-def plot_classification_metrics(model, epochs= None, n_bins = 25):
-    key1, key2 = model.training_history.keys()
-    key1 = 'trn' if key1 == 'train' else key1
- 
-    if epochs is None:
-        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
-    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
-    i = 0
-    _ = axs[i].plot(model.training_history[key1]['trn_accuracy'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_accuracy'][:epochs]);
-    _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_f1'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_f1'][:epochs]);
-    _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i += 1
-    _ = axs[i].plot(model.training_history[key1]['trn_precision'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_precision'][:epochs]);
-    _ = axs[i].set_title(f' Precision - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_roc_auc'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_roc_auc'][:epochs]);
-    _ = axs[i].set_title(f' ROC AUC Score - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_recall'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_recall'][:epochs]);
-    _ = axs[i].set_title(f'Recall - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    plt.show()        
-
-
-def plot_classification_metrics_2(cm):
-    fig, ax = plt.subplots(1, 3, figsize=(14, 8))
-    
-    pr_display = skm.PrecisionRecallDisplay.from_predictions(cm.labels, cm.logits, name="LinearSVC", plot_chance_level=True, ax=ax[0]);
-    _ = pr_display.ax_.set_title(f" 2-class PR curve - epoch:{cm.epochs} ");
-    
-    roc_display = RocCurveDisplay.from_predictions(cm.labels, cm.logits, pos_label= 1, ax = ax[1])
-    _ = roc_display.ax_.set_title(f" ROC Curve - epoch:{cm.epochs} ")
-    
-    cm_display = ConfusionMatrixDisplay.from_predictions(y_true = cm.labels, y_pred =cm.y_pred, ax = ax[2], colorbar = False)
-    _ = cm_display.ax_.set_title(f" Confusion matrix - epoch:{cm.epochs} ");
-    
-    plt.show()
-
-
-def plot_regression_metrics(model, epochs= None, n_bins = 25):
-    key1, key2 = model.training_history.keys()
-    key1 = 'trn' if key1 == 'train' else key1
- 
-    if epochs is None:
-        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
-    fig, axs = plt.subplots(1, 1, sharey=False, tight_layout=True, figsize=(1*4,4) )
-    i = 0
-    _ = axs.plot(model.training_history[key1]['trn_R2_score'][:epochs]);
-    _ = axs.plot(model.training_history['val']['val_R2_score'][:epochs]);
-    _ = axs.set_title(f'R2 Score - {epochs} epochs', fontsize= 10);
-    _ = axs.tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
 
 
 #-------------------------------------------------------------------------------------------------------------------

@@ -5,8 +5,8 @@ project_name         :  CellPainting_Profiles
 exp_id               :
 exp_name_pfx         :
 exp_name             : 
-exp_title            : snglOpt-100Ltnt_512
-exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 100 dim latent, 512 Midlayer
+exp_title            : scpb200-100Ltnt_512
+exp_description      : AE Baseline - SnglOpt, 100 dim latent, 512 Midlayer, 200 cpb
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
@@ -25,6 +25,7 @@ units   : [
     ["relu" ,  0, 0],
     ["linear", 1024, 1471]
   ]
+activations : ["relu", "relu", "sigmoid", "relu", "relu", "relu"]    
 input_shape : 1471
 code_units  : 100
 embedding_layer : 4
@@ -49,7 +50,7 @@ dataset : "cellpainting"
 cellpainting_args : 
     sample_size     : 3
     batch_size      : 1
-    compounds_per_batch : 100
+    compounds_per_batch : 200
     training_path   : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder.csv"
     validation_path : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder_test.csv"
     test_path       : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder_test.csv"
