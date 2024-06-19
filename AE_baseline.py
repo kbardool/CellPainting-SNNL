@@ -186,33 +186,33 @@ else:
     epochs = args.epochs
     logger.info(f" INITIALIZE TRAINING - Run epochs {starting_epoch+1} to {epochs} ")
 
-print(f" Current device       : {current_device}")
-print(f" Model device         : {model.device}")
-print(f" Model embedding_layer: {model.embedding_layer}")
-print(f" SNNL temperature     : {model.temperature}")
-print(f" Learning rate        : {model.optimizer.param_groups[0]['lr']}") 
-print(f" snnl_factor          : {model.snnl_factor}")
-print(f" loss_factor          : {model.loss_factor}")
-print(f" monitor_grads_layer  : {model.monitor_grads_layer}")
-print(f" Use Scheduler        : {model.use_scheduler}") 
-print(f" Use snnl             : {model.use_snnl}") 
+logger.info(f" Current device         : {current_device}")
+logger.info(f" Model device           : {model.device}")
+logger.info(f" Model embedding_layer  : {model.embedding_layer}")
+logger.info(f" SNNL temperature       : {model.temperature}")
+logger.info(f" Learning rate          : {model.optimizer.param_groups[0]['lr']}") 
+logger.info(f" snnl_factor            : {model.snnl_factor}")
+logger.info(f" loss_factor            : {model.loss_factor}")
+logger.info(f" monitor_grads_layer    : {model.monitor_grads_layer}")
+logger.info(f" Use Scheduler          : {model.use_scheduler}") 
+logger.info(f" Use snnl               : {model.use_snnl}") 
 if model.use_snnl:
-    print(f" Temperature         : {model.temperature.item()}")
-    print(f" Temperature LR      : {model.optimizer.param_groups[1]['lr']}") 
-    print(f" Use Temp Scheduler  : {model.use_temp_scheduler}") 
-    print(f" Temp Scheduler      : {model.temp_scheduler}") 
+    logger.info(f" Temperature            : {model.temperature.item()}")
+    logger.info(f" Temperature LR         : {model.optimizer.param_groups[1]['lr']}") 
+    logger.info(f" Use Temp Scheduler     : {model.use_temp_scheduler}") 
+    logger.info(f" Temp Scheduler         : {model.temp_scheduler}") 
     if model.temp_optimizer is not None:
-        print(f" Temperature LR       : {model.temp_optimizer.param_groups[0]['lr']}") 
-print()
+        logger.info(f" Temperature LR         : {model.temp_optimizer.param_groups[0]['lr']}") 
+logger.info(f" ") 
 
 if resume_training:    
     for th_key in ['trn', 'val']:
         for k,v in model.training_history[th_key].items():
             if isinstance(v[-1],str):
-                print(f" {k:20s} : {v[-1]:s}  ")
+                logger.info(f" {k:22s} : {v[-1]:s}  ")
             else:
-                print(f" {k:20s} : {v[-1]:6f} ")
-        print()    
+                logger.info(f" {k:22s} : {v[-1]:6f} ")
+        logger.info(f" ")    
 
 if 'gen' not in model.training_history:
     print(f" Define self.training_history['gen'] ")
@@ -227,6 +227,9 @@ if 'gen' not in model.training_history:
         tmp1 = np.argmax(model.training_history[key][f'{key}_R2_score'])
         model.training_history['gen'][f'{key}_best_metric_ep'] = tmp1
         model.training_history['gen'][f'{key}_best_metric'] = model.training_history[key][f'{key}_R2_score'][tmp1]
+
+if WANDB_ACTIVE:
+    wandb.config.update(args,allow_val_change=True )
  
 logger.info(f" Best training loss     : {model.training_history['gen']['trn_best_loss']:6f} - epoch: {model.training_history['gen']['trn_best_loss_ep']}") 
 logger.info(f" Best training metric   : {model.training_history['gen']['trn_best_metric']:6f} - epoch: {model.training_history['gen']['trn_best_metric_ep']}") 
@@ -235,25 +238,21 @@ logger.info(f" Best validation loss   : {model.training_history['gen']['val_best
 logger.info(f" Best validation metric : {model.training_history['gen']['val_best_metric']:6f} - epoch: {model.training_history['gen']['val_best_metric_ep']}") 
 logger.info(f" ")
 logger.info(f" Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
-
-
-if WANDB_ACTIVE:
-    wandb.config.update(args,allow_val_change=True )
+logger.info(f" Experiment run id      : {args.exp_id}")
+logger.info(f" Experiment Name        : {args.exp_name} ")
+logger.info(f" Experiment Date        : {args.exp_date} ")
+logger.info(f" Experiment Title       : {args.exp_title} ")
+logger.info(f" Experiment Notes       : {args.exp_description}")
+logger.info(f" Run epochs             : {starting_epoch+1:4d} to {epochs:4d}")
 
 #
 #  Running Training Loop
 #
 
-logger.info(f" Experiment run id:  {args.exp_id}")
-logger.info(f" Experiment Name  :  {args.exp_name} ")
-logger.info(f" Experiment Date  :  {args.exp_date} ")
-logger.info(f" Experiment Title :  {args.exp_title} ")
-logger.info(f" Experiment Notes :  {args.exp_description}")
-logger.info(f" Run epochs {starting_epoch+1:4d} to {epochs:4d}")
-
 header = True
 
 for epoch in range(starting_epoch,epochs):
+    
     train_loss = model.epoch_train(train_loader, epoch)
     val_loss = model.epoch_validate(val_loader, epoch)
     
@@ -263,20 +262,18 @@ for epoch in range(starting_epoch,epochs):
     
     if WANDB_ACTIVE:
         epoch_metrics = {x:y[-1] for x,y in model.training_history['val'].items()} | \
-                        {x:y[-1] for x,y in model.training_history['trn'].items()} 
+                        {x:y[-1] for x,y in model.training_history['trn'].items()} | \
+                        {x:y     for x,y in model.training_history['gen'].items()} 
         wandb_log_metrics( data = epoch_metrics, step = epoch)
 
     if model.new_best:
-        # filename = f"{model.name}_{args.runmode}_{args.exp_date}_{args.exp_title}_BEST_ep_{epoch+1:03d}"
         save_checkpoint_v3(epoch+1, model, args, update_best=True)        
+        
     if (epoch + 1) % args.save_every == 0:
-        # filename = f"{model.name}_{args.runmode}_{args.exp_date}_{args.exp_title}_ep_{epoch+1:03d}"
-        # save_checkpoint_v2(epoch+1, model, filename, update_latest=False, update_best=False)    
         save_checkpoint_v3(epoch+1, model, args)    
 #        
-# Write last checkpoint 
+# Write final checkpoint 
 #
-
 logger.info(f" Final checkpoint epoch {epoch+1}")
 save_checkpoint_v3(epoch+1, model, args, update_latest=True)            
 

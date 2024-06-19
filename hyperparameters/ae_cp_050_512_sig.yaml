@@ -5,7 +5,7 @@ project_name         :  CellPainting_Profiles
 exp_id               :
 exp_name_pfx         :
 exp_name             : 
-exp_title            : snglOpt-050Ltnt_512_sig
+exp_title            : snglOpt_050Ltnt_512_sig
 exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 50 dim latent, 512 Midlayer
 exp_folder           : 
 folder_sfx           :

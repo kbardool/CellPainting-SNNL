@@ -4,4 +4,4 @@ python AE_baseline.py -c ./hyperparameters/ae_cp_025_512.yaml \
                       --wandb \
                       --gpu_id      2\
                       --run_id      tcvl4wdr \
-                      --ckpt        AE_baseline_20240613_snglOpt-025Ltnt_512_ep_400.pt
+                      --ckpt        AE_base_snglOpt_025Ltnt_512_20240613_ep_400.pt

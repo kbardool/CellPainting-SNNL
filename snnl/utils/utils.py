@@ -323,7 +323,7 @@ def define_autoencoder_model(args, embedding_layer = 0, use_scheduler = True, us
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
     if args.runmode.lower() == "baseline":
-        print(f"Defining model in baseline mode")
+        logger.info(f"Defining model in baseline mode")
         model = Autoencoder(
             mode = "autoencoding",
             units=args.units,
@@ -344,7 +344,7 @@ def define_autoencoder_model(args, embedding_layer = 0, use_scheduler = True, us
             device = device
             )
     elif args.runmode.lower() == "snnl":
-        print(f"Defining model in SNNL mode ")
+        logger.info(f"Defining model in SNNL mode ")
         model = Autoencoder(
             mode="latent_code",
             units=args.units,
@@ -570,7 +570,7 @@ def save_checkpoint_v3(epoch, model, args, filename = None, update_latest=False,
         print(checkpoint.keys())    
     
     if filename is None: 
-        filename = f"{model.name}_{args.runmode}_{args.exp_date}_{args.exp_title}"      
+        filename = f"{model.name}_{args.runmode[:4]}_{args.exp_title}_{args.exp_date}"      
         
         if update_latest:
             s_filename = f"LAST_ep_{epoch:03d}"
@@ -629,8 +629,6 @@ def load_checkpoint_v2(model, filename, dryrun = False):
 
     for key, value in checkpoint.items():
         logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
-    print()
-    
     
     if not dryrun:
         model.load_state_dict(checkpoint['state_dict'])

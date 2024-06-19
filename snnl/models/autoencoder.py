@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
-
+import logger
 import numpy as np
 import pandas as pd
 import torch
@@ -18,6 +18,8 @@ from sklearn.metrics import accuracy_score, f1_score, roc_curve, roc_auc_score,\
                             precision_recall_curve, precision_recall_fscore_support
                             
 from snnl.models import Model
+logger = logging.getLogger(__name__) 
+
 #-------------------------------------------------------------------------------------------------------------------
 #  Autoencoder class  
 #-------------------------------------------------------------------------------------------------------------------
@@ -144,7 +146,7 @@ class Autoencoder(Model):
         self.layers = torch.nn.ModuleList() 
         for idx, ((layer, in_features, out_features) ) in enumerate( units ):
             type = layer.lower()
-            print(f"    layer pair:  {idx:3d}  type:{layer:15s}  input: {in_features:6d}  output: {out_features:6d}  " 
+            logger.info(f"    layer pair:  {idx:3d}  type:{layer:15s}  input: {in_features:6d}  output: {out_features:6d}  " 
                   f"  weights: [{out_features}, {in_features}]   ")
         
             if layer =='linear':

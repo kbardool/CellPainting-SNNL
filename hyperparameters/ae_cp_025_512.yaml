@@ -6,7 +6,7 @@ exp_id               :
 exp_name_pfx         :
 exp_date             :
 exp_name             : 
-exp_title            : snglOpt-025Ltnt_512
+exp_title            : snglOpt_025Ltnt_512
 exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 25 dim latent, 512 Midlayer
 exp_folder           : 
 folder_sfx           :
