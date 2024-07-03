@@ -1,0 +1,63 @@
+## General / W&B params with 200 dim embedding layer
+##------------------------------------------------------
+defaults:
+ - _self_
+ - dataset: cellpainting
+
+project_name         :  CellPainting_Profiles
+## Leave empty to have date_time used 
+exp_id               :
+exp_name_pfx         :
+exp_name             : 
+exp_date             : 
+exp_title            : dcpb{0:03d}_200Ltnt_512
+exp_description      : AE {1} - DualOpt, 200 dim latent, 512 Midlayer, {0} cpb
+exp_folder           : 
+folder_sfx           :
+random_seed          : 1234
+
+## Model parameters
+##------------------------------------------------------  
+# units   : [
+#     ["linear", 1471, 1024],
+#     ["relu" ,  0, 0],
+#     ["linear", 1024,  512],
+#     ["relu" ,  0, 0],
+#     ["linear", 512,   200],
+#     ["linear", 200,  512],
+#     ["relu" ,  0, 0],
+#     ["linear", 512, 1024],
+#     ["relu" ,  0, 0],
+#     ["linear", 1024, 1471]
+#   ]
+# input_shape : 1471
+# code_units  : 200
+# embedding_layer : 4
+
+## Training parameters
+##------------------------------------------------------
+show_every    : 1 
+save_every    : 25
+
+learning_rate : 1.000e-03
+loss_factor   : 1.000e+00
+adam_weight_decay : 0.90 
+
+snnl_factor   : 0.500e+00
+temperature   : 123
+temp_learning : True
+use_temp_optimizer: True
+use_temp_scheduler: True
+temperatureLR : 1.000e-06
+SGD_weight_decay  : 0.90
+
+## Dataset parameters
+##------------------------------------------------------
+ 
+
+## Data & Folder parameters
+##------------------------------------------------------
+paths:
+  log_dir        :     ./logs
+  result_dir     :     ./results
+  checkpoint_dir :     ./ckpt

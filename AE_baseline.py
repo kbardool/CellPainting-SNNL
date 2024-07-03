@@ -17,8 +17,6 @@ __author__ = "Kevin Bardool"
 __version__ = "1.0.0"
 """Sample module for using Autoencoder with SNNL"""
  
-
-# %%
 import os
 import sys
 import csv
@@ -47,8 +45,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from torchinfo import summary
-
-# logger = logging.getLogger('AutoEncoder')
+import wandb
 
 torch.set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=150, profile=None, sci_mode=None)
 pp = pprint.PrettyPrinter(indent=4)
@@ -56,12 +53,10 @@ pd.options.display.width = 132
 torch.set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=150, profile=None, sci_mode=None)
 np.set_printoptions(edgeitems=3, infstr='inf', linewidth=150, nanstr='nan')
 
-import wandb
 from KevinsRoutines.utils.utils_wandb    import  init_wandb, wandb_log_metrics,wandb_watch
 from KevinsRoutines.utils.utils_general  import  list_namespace 
-
 from snnl.utils import parse_args, load_configuration, set_global_seed, get_device, set_device
-from snnl.utils import display_epoch_metrics
+from snnl.utils import display_epoch_metrics, display_model_parameters
 from snnl.utils import CellpaintingDataset, InfiniteDataLoader, custom_collate_fn
 from snnl.utils import display_model_summary, define_autoencoder_model
 from snnl.utils import save_checkpoint_v3, load_checkpoint_v2
@@ -118,6 +113,7 @@ val_loader = InfiniteDataLoader(dataset=val_dataset, batch_size = args.batch_siz
 # WandB initialization 
 #
 WANDB_ACTIVE = args.wandb
+EXP_DATE = datetime.now().strftime('%Y%m%d_%H%M')
 
 if WANDB_ACTIVE:
     if args.exp_id is not None:
@@ -126,41 +122,27 @@ if WANDB_ACTIVE:
     else:
         logger.info(" Initialize WandB Run")
         resume_wandb = False
-        args.exp_name = 'AE_'+datetime.now().strftime('%m%d_%H%M')
+        args.exp_name = f"AE_{EXP_DATE}"
     
     wandb_run = init_wandb(args)
-    
-    args.exp_id = wandb_run.id
-    args.exp_date = '2024'+args.exp_name[3:7]
+    args.exp_date = args.exp_name[3:]
     
     logger.info(f" WandB tracking started ")
-    logger.info(f" Experiment Run id: {args.exp_id}   / {wandb_run.id}")
-    logger.info(f" Experiment Name  : {args.exp_name} / {wandb_run.name} ")
-    logger.info(f" Experiment Date  : {args.exp_date}  ")
-    logger.info(f" Experiment Notes : {args.exp_description} / {wandb_run.notes} ")
+    logger.info(f" Project  :  {args.project_name}")    
+    logger.info(f" Run id   :  {args.exp_id}   / {wandb_run.id}")
+    logger.info(f" Name     :  {args.exp_name} / {wandb_run.name} ")
+    logger.info(f" Title    :  {args.exp_title}")    
+    logger.info(f" Date     :  {args.exp_date}  ")
+    logger.info(f" Notes    :  {args.exp_description} / {wandb_run.notes} ")
 else: 
     logger.info(f" *** W&&B Logging is INACTIVE *** ")
-    args.exp_name = 'AE_'+datetime.now().strftime('%m%d_%H%M')
-    args.exp_date = datetime.now().strftime('%Y%m%d')    
+    args.exp_name = f"AE_{EXP_DATE}"
+    args.exp_date = EXP_DATE
 
-
-# %%
+#
 #  Define Model
 # 
-# ## Override arguments
-# args.temperature   = 0.0
-# args.loss_factor   = 1.0        ## 2.0e+00
-# args.snnl_factor   = 0.0       ## 1.0e+00
-# args.learning_rate = 1.0e-03    ## 0.001
-# args.temperatureLR = 0.0e-00    ## 1e-4
-# print(f"   Latent dim        {args.code_units}")
-# print(f"   loss_factor       {args.loss_factor}")
-# print(f"   snnl_factor       {args.snnl_factor}")
-# print(f"   temperature       {args.temperature}")
-# print(f"   learning_rate     {args.learning_rate}")
-# print(f"   temperatureLR:    {args.temperatureLR}")
-
-model = define_autoencoder_model(args, embedding_layer = args.embedding_layer, device = current_device)
+model = define_autoencoder_model(args, device = current_device)
 list_namespace(args)
 
 if WANDB_ACTIVE:
@@ -170,107 +152,72 @@ if WANDB_ACTIVE:
 # Load model checkpoint if provided 
 #
 if args.ckpt is not None:
-    resume_training = True
-    mdl , last_epoch = load_checkpoint_v2(model, args.ckpt)  
+    model.resume_training = True
+    model , last_epoch = load_checkpoint_v2(model, args.ckpt, verbose = True )  
     model.train()
     model.device = current_device
     model = model.cuda(device=current_device)
     logging.info(f" Loaded Model device {model.device} -  Last completed epoch : {last_epoch}")
-    starting_epoch = last_epoch
-    epochs = last_epoch + args.epochs
-    logger.info(f" RESUME TRAINING - Run epochs {starting_epoch+1} to {epochs} ")
+    model.starting_epoch = last_epoch
+    model.ending_epoch = last_epoch + args.epochs
+    logging.info(f" RESUME TRAINING - Run {args.epochs} epochs: epoch {model.starting_epoch+1} to {model.ending_epoch} ")
+
+    if 'gen' not in model.training_history:
+        print(f" Define self.training_history['gen'] ")
+        model.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : 0 ,
+                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': np.inf, 'val_best_loss_ep' : 0 }        
+    
+        for key in ['trn', 'val']:
+            tmp = np.argmin(model.training_history[key][f'{key}_ttl_loss'])
+            model.training_history['gen'][f'{key}_best_loss_ep'] = tmp
+            model.training_history['gen'][f'{key}_best_loss']    = model.training_history[key][f'{key}_ttl_loss'][tmp]
+            
+            tmp1 = np.argmax(model.training_history[key][f'{key}_R2_score'])
+            model.training_history['gen'][f'{key}_best_metric_ep'] = tmp1
+            model.training_history['gen'][f'{key}_best_metric'] = model.training_history[key][f'{key}_R2_score'][tmp1]
     
 else:
-    resume_training = False
-    starting_epoch = 0
-    epochs = args.epochs
-    logger.info(f" INITIALIZE TRAINING - Run epochs {starting_epoch+1} to {epochs} ")
+    model.resume_training = False
+    model.starting_epoch = 0
+    model.ending_epoch = args.epochs
+    logging.info(f" INITIALIZE TRAINING - Run {args.epochs} epochs: epoch {model.starting_epoch+1} to {model.ending_epoch} ")
 
-logger.info(f" Current device         : {current_device}")
-logger.info(f" Model device           : {model.device}")
-logger.info(f" Model embedding_layer  : {model.embedding_layer}")
-logger.info(f" SNNL temperature       : {model.temperature}")
-logger.info(f" Learning rate          : {model.optimizer.param_groups[0]['lr']}") 
-logger.info(f" snnl_factor            : {model.snnl_factor}")
-logger.info(f" loss_factor            : {model.loss_factor}")
-logger.info(f" monitor_grads_layer    : {model.monitor_grads_layer}")
-logger.info(f" Use Scheduler          : {model.use_scheduler}") 
-logger.info(f" Use snnl               : {model.use_snnl}") 
-if model.use_snnl:
-    logger.info(f" Temperature            : {model.temperature.item()}")
-    logger.info(f" Temperature LR         : {model.optimizer.param_groups[1]['lr']}") 
-    logger.info(f" Use Temp Scheduler     : {model.use_temp_scheduler}") 
-    logger.info(f" Temp Scheduler         : {model.temp_scheduler}") 
-    if model.temp_optimizer is not None:
-        logger.info(f" Temperature LR         : {model.temp_optimizer.param_groups[0]['lr']}") 
-logger.info(f" ") 
+display_model_parameters(model)
 
-if resume_training:    
-    for th_key in ['trn', 'val']:
-        for k,v in model.training_history[th_key].items():
-            if isinstance(v[-1],str):
-                logger.info(f" {k:22s} : {v[-1]:s}  ")
-            else:
-                logger.info(f" {k:22s} : {v[-1]:6f} ")
-        logger.info(f" ")    
-
-if 'gen' not in model.training_history:
-    print(f" Define self.training_history['gen'] ")
-    model.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': 0, 'trn_best_loss_ep' : 0 ,
-                                    'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': 0, 'val_best_loss_ep' : 0 }        
-
-    for key in ['trn', 'val']:
-        tmp = np.argmin(model.training_history[key][f'{key}_ttl_loss'])
-        model.training_history['gen'][f'{key}_best_loss_ep'] = tmp
-        model.training_history['gen'][f'{key}_best_loss']    = model.training_history[key][f'{key}_ttl_loss'][tmp]
-        
-        tmp1 = np.argmax(model.training_history[key][f'{key}_R2_score'])
-        model.training_history['gen'][f'{key}_best_metric_ep'] = tmp1
-        model.training_history['gen'][f'{key}_best_metric'] = model.training_history[key][f'{key}_R2_score'][tmp1]
-
-if WANDB_ACTIVE:
-    wandb.config.update(args,allow_val_change=True )
- 
-logger.info(f" Best training loss     : {model.training_history['gen']['trn_best_loss']:6f} - epoch: {model.training_history['gen']['trn_best_loss_ep']}") 
-logger.info(f" Best training metric   : {model.training_history['gen']['trn_best_metric']:6f} - epoch: {model.training_history['gen']['trn_best_metric_ep']}") 
-logger.info(f" ") 
-logger.info(f" Best validation loss   : {model.training_history['gen']['val_best_loss']:6f} - epoch: {model.training_history['gen']['val_best_loss_ep']}") 
-logger.info(f" Best validation metric : {model.training_history['gen']['val_best_metric']:6f} - epoch: {model.training_history['gen']['val_best_metric_ep']}") 
-logger.info(f" ")
-logger.info(f" Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
 logger.info(f" Experiment run id      : {args.exp_id}")
 logger.info(f" Experiment Name        : {args.exp_name} ")
 logger.info(f" Experiment Date        : {args.exp_date} ")
 logger.info(f" Experiment Title       : {args.exp_title} ")
 logger.info(f" Experiment Notes       : {args.exp_description}")
-logger.info(f" Run epochs             : {starting_epoch+1:4d} to {epochs:4d}")
+logger.info(f" Run epochs             : {model.starting_epoch+1:4d} to {model.ending_epoch:4d}")
 
+if WANDB_ACTIVE:
+    wandb.config.update(args,allow_val_change=True )
+    
 #
 #  Running Training Loop
 #
-
 header = True
 
-for epoch in range(starting_epoch,epochs):
-    
+for epoch in range(model.starting_epoch, model.ending_epoch):
     train_loss = model.epoch_train(train_loader, epoch)
     val_loss = model.epoch_validate(val_loader, epoch)
     
-    display_epoch_metrics(model, epoch, epochs, header)
+    display_epoch_metrics(model, epoch, model.ending_epoch, header)
     header = False
     model.scheduling_step(val_loss)
     
     if WANDB_ACTIVE:
-        epoch_metrics = {x:y[-1] for x,y in model.training_history['val'].items()} | \
-                        {x:y[-1] for x,y in model.training_history['trn'].items()} | \
-                        {x:y     for x,y in model.training_history['gen'].items()} 
+        epoch_metrics = {x:y     for x,y in model.training_history['gen'].items()} | \
+                        {x:y[-1] for x,y in model.training_history['val'].items()} | \
+                        {x:y[-1] for x,y in model.training_history['trn'].items()} 
         wandb_log_metrics( data = epoch_metrics, step = epoch)
-
+    
     if model.new_best:
         save_checkpoint_v3(epoch+1, model, args, update_best=True)        
-        
     if (epoch + 1) % args.save_every == 0:
         save_checkpoint_v3(epoch+1, model, args)    
+        
 #        
 # Write final checkpoint 
 #

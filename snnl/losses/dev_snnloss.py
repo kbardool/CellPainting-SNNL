@@ -51,6 +51,7 @@ class SNNLoss(torch.nn.Module):
     def __init__(
         self,
         mode: str = "classifier",
+        device: torch.device = None,      
         temperature: float = None,
         unsupervised: bool = None,
         use_annealing: bool = False,
@@ -101,6 +102,7 @@ class SNNLoss(torch.nn.Module):
             self.unsupervised = unsupervised
             
         self.temperature = temperature
+        self.device = device 
         self.use_annealing = use_annealing
         self.use_sum = use_sum
         self.code_units = code_units
@@ -124,7 +126,8 @@ class SNNLoss(torch.nn.Module):
         outputs: torch.Tensor,
         features: torch.Tensor,
         labels: torch.Tensor,
-        # epoch: int,
+        epoch: int = 0 ,
+        batch: int = 0
     ) -> Tuple:
         """
         Defines the forward pass for the Soft Nearest Neighbor Loss.
@@ -154,16 +157,10 @@ class SNNLoss(torch.nn.Module):
         # if self.use_annealing:
         #     self.temperature = 1.0 / ((1.0 + epoch) ** 0.55)
         #     print(f"anneal temperature : {self.temperature}")
-
-        # if self.verbose:  
-        #     print(f" SNNLoss.forward() - self.mode       {self.mode}")
-        #     print(f" SNNLoss.forward() - features.shape  {features.shape}")
-        #     print(f" SNNLoss.forward() - temperature     {self.temperature}")
-        #     print(f" SNNLoss.forward() - labels.shape    {labels.shape}\n {labels}")
-        #     print(f" outputs: {type(outputs)}   shape: {outputs.shape}   {outputs[:10]}")
-        #     print(f" labels : {type(labels)}    shape: {labels.shape}    {labels[:10]}")
-                
+                 
         self.layers_snnl = []
+        self.batch = batch
+        self.epoch = epoch
         activations = self.compute_activations(model=model, features=features)
 
         for key, value in activations.items():
@@ -178,12 +175,16 @@ class SNNLoss(torch.nn.Module):
             elif (self.mode == "sae") and (key == 9) :
                 value = value[:, : self.code_units]
               
-            self.distance_matrix = self.pairwise_cosine_distance(features=value)
-            self.pairwise_distance_matrix = self.normalize_distance_matrix(features=value,device=model.device)
+            self.dist_mat = self.pairwise_cosine_distance(features=value)
+            self.dist_mat_exp= self.distance_matrix_exponential(features=value)
+            if torch.any(torch.isnan(self.dist_mat_exp)):
+                print(f"{self.epoch}/{self.batch} pairwise similarity matrix - {self.dist_mat.shape} Min: {self.dist_mat.min()}  Max: {self.dist_mat.max()}")        
+                print(f"{self.epoch}/{self.batch} pairwise distance exponent - {self.dist_mat_exp.shape} Min: {self.dist_mat_exp.min()}  Max: {self.dist_mat_exp.max()}")        
             self.sampling_probability = self.compute_sampling_probability()
             self.summed_masked_pick_probability = self.mask_sampling_probability(labels, device=model.device)
             snnl = torch.mean( -torch.log(self.stability_epsilon + self.summed_masked_pick_probability))
-            
+
+            # print(f"{self.epoch}/{self.batch} distance matrix exponent   - {self.dist_mat_exp.shape} Min: { self.dist_mat_exp.min()}  Max: { self.dist_mat_exp.max()}"        
             # print(f" SNNLoss.forward() - key: {key:3d}  val: {value.shape}  {value.ndim}  features sum: {value.sum():.4f}  Temp:{self.temperature.item():.4f}  SNNL: {snnl:.4f}")
             # self.display_debug_info_2()
             
@@ -233,8 +234,7 @@ class SNNLoss(torch.nn.Module):
 
         activations = dict()
         
-        if self.mode == "classifier":
-            # layers = model.layers[:-1] if self.mode == "classifier" else model.layers
+        if self.mode in [ "autoencoding", "latent_code"]:
             layers = model.layers
             for index, layer in enumerate(layers):
                 if index == 0:
@@ -242,46 +242,46 @@ class SNNLoss(torch.nn.Module):
                 else:
                     activations[index] = layer(activations[index - 1])
                     
-        elif self.mode in [ "autoencoding", "latent_code"]:
-            layers = model.layers
-            for index, layer in enumerate(layers):
-                if index == 0:
-                    activations[index] = layer(features)
-                else:
-                    activations[index] = layer(activations[index - 1])
-
-        elif self.mode == "sae":
-            for index, layer in enumerate(
-                torch.nn.Sequential(*model.encoder, *model.decoder)
-            ):
-                activations[index] = layer(
-                    features if index == 0 else activations[index - 1]
-                )
-        elif self.mode == "resnet":
-            for index, (name, layer) in enumerate(list(model.resnet.named_children())):
-                if index == 0:
-                    activations[index] = layer(features)
-                elif index == 9:
-                    value = activations[index - 1].view(
-                        activations[index - 1].shape[0], -1
-                    )
-                    activations[index] = layer(value)
-                else:
-                    activations[index] = layer(activations[index - 1])
-        elif self.mode == "custom":
-            for index, layer in enumerate(list(model.children())):
-                activations[index] = (
-                    layer(features) if index == 0 else layer(activations[index - 1])
-                )
-        elif self.mode == "moe":
-            layers = dict(model.named_children())
-            layers = layers.get("feature_extractor")
-            if isinstance(layers[0], torch.nn.Linear) and len(features.shape) > 2:
-                features = features.view(features.shape[0], -1)
-            for index, layer in enumerate(layers):
-                activations[index] = (
-                    layer(features) if index == 0 else layer(activations.get(index - 1))
-                )
+        # elif self.mode == "classifier":
+        #     # layers = model.layers[:-1] if self.mode == "classifier" else model.layers
+        #     layers = model.layers
+        #     for index, layer in enumerate(layers):
+        #         if index == 0:
+        #             activations[index] = layer(features)
+        #         else:
+        #             activations[index] = layer(activations[index - 1])                    
+        # elif self.mode == "sae":
+        #     for index, layer in enumerate(
+        #         torch.nn.Sequential(*model.encoder, *model.decoder)
+        #     ):
+        #         activations[index] = layer(
+        #             features if index == 0 else activations[index - 1]
+        #         )
+        # elif self.mode == "resnet":
+        #     for index, (name, layer) in enumerate(list(model.resnet.named_children())):
+        #         if index == 0:
+        #             activations[index] = layer(features)
+        #         elif index == 9:
+        #             value = activations[index - 1].view(
+        #                 activations[index - 1].shape[0], -1
+        #             )
+        #             activations[index] = layer(value)
+        #         else:
+        #             activations[index] = layer(activations[index - 1])
+        # elif self.mode == "custom":
+        #     for index, layer in enumerate(list(model.children())):
+        #         activations[index] = (
+        #             layer(features) if index == 0 else layer(activations[index - 1])
+        #         )
+        # elif self.mode == "moe":
+        #     layers = dict(model.named_children())
+        #     layers = layers.get("feature_extractor")
+        #     if isinstance(layers[0], torch.nn.Linear) and len(features.shape) > 2:
+        #         features = features.view(features.shape[0], -1)
+        #     for index, layer in enumerate(layers):
+        #         activations[index] = (
+        #             layer(features) if index == 0 else layer(activations.get(index - 1))
+        #         )
         return activations
 
     def pairwise_cosine_distance(self, features: torch.Tensor) -> torch.Tensor:
@@ -313,12 +313,12 @@ class SNNLoss(torch.nn.Module):
                 [1.0152e-01, 2.2473e-03, 3.4526e-02, 0.0000e+00]])
         """
         normalized_a = torch.nn.functional.normalize(features, dim=1, p=2)
-        return 1.0 - torch.matmul(normalized_a, normalized_a.T)
-        # a, b = features.clone(), features.clone()
-        # normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
-        # normalized_b = torch.conj(normalized_b).T
-        # product = torch.matmul(normalized_a, normalized_b.T)
-        # return torch.sub(torch.tensor(1.0), product)
+        sim_mat = torch.matmul(normalized_a, normalized_a.T)
+        # print(f"{self.epoch}/{self.batch} normalized features tensor - {normalized_a.shape} Min: {normalized_a.min()}  Max: {normalized_a.max()}")        
+        # print(f"{self.epoch}/{self.batch} pairwise similarity matrix - {sim_mat.shape} Min: {sim_mat.min()}  Max: {sim_mat.max()}")        
+        ## distance = 1 - similarity (-1 <= similarity <= +1)
+        return 1.0 - sim_mat
+        
    
     def pairwise_euclidean_distance(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -351,18 +351,17 @@ class SNNLoss(torch.nn.Module):
         # a, b = features.clone(), features.clone()
         # normalized_a = torch.nn.functional.normalize(a, dim=1, p=2)
         # normalized_b = torch.nn.functional.normalize(b, dim=1, p=2)
-        # # normalized_b = torch.conj(normalized_b).T
+        # normalized_b = torch.conj(normalized_b).T
         # product = torch.matmul(normalized_a, normalized_b.T)
         # distance_matrix = torch.sub(torch.tensor(1.0), product)
         return torch.sqrt(((features[:, :, None] - features[:, :, None].T) ** 2).sum(1))
    
-    def normalize_distance_matrix(
+    def distance_matrix_exponential(
         self,
         features: torch.Tensor,
-        device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     ) -> torch.Tensor:
         """
-        Normalizes the pairwise distance matrix.
+        Computes the exp(distance matrix).
 
         Parameters
         ----------
@@ -375,8 +374,8 @@ class SNNLoss(torch.nn.Module):
 
         Returns
         -------
-        pairwise_distance_matrix: torch.Tensor
-            The normalized pairwise distance matrix.
+        dme : pairwise_distance_matrix_exponential: torch.Tensor
+            The exponental of all elements of pairwise distance matrix.
 
         Example
         -------
@@ -386,20 +385,18 @@ class SNNLoss(torch.nn.Module):
         >>> a = torch.rand((4, 2))
         >>> snnl = SNNLoss(temperature=1.0)
         >>> distance_matrix = snnl.pairwise_cosine_distance(a)
-        >>> snnl.normalize_distance_matrix(a, distance_matrix, device=torch.device("cpu"))
+        >>> snnl.distance_matrix_exponential(a, distance_matrix, device=torch.device("cpu"))
         tensor([[-1.1921e-07,  9.2856e-01,  9.8199e-01,  9.0346e-01],
                 [ 9.2856e-01, -1.1921e-07,  9.8094e-01,  9.9776e-01 ],
                 [ 9.8199e-01,  9.8094e-01, -1.1921e-07,  9.6606e-01 ],
                 [ 9.0346e-01,  9.9776e-01,  9.6606e-01,  0.0000e+00 ]])
         """
         ## 30-3-2024 KB Added stability_epsilson to self.temperature
-        # pairwise_distance_matrix = torch.exp(
-        #     -(distance_matrix / (self.stability_epsilon + self.temperature))
-        # ) - torch.eye(features.shape[0]).to(device)
+        # dme = torch.exp(-(distance_matrix / (self.stability_epsilon + self.temperature))) - torch.eye(features.shape[0]).to(device)
 
-        pairwise_distance_matrix = torch.exp(-(self.distance_matrix / self.temperature)) - torch.eye(features.shape[0]).to(device)
-        
-        return pairwise_distance_matrix
+        dme = torch.exp(-(self.dist_mat / self.temperature)) - torch.eye(features.shape[0]).to(self.device)
+        # print(f"{self.epoch}/{self.batch} distance matrix exponent   - {dme.shape} Min: {dme.min()}  Max: {dme.max()}")
+        return dme
 
     def compute_sampling_probability(
         self, 
@@ -427,14 +424,14 @@ class SNNLoss(torch.nn.Module):
         >>> a = torch.rand((4, 2))
         >>> snnl = SNNLoss(temperature=1.0)
         >>> distance_matrix = snnl.pairwise_cosine_distance(a)
-        >>> distance_matrix = snnl.normalize_distance_matrix(a, distance_matrix)
+        >>> distance_matrix = snnl.distance_matrix_exponential(a, distance_matrix)
         >>> snnl.compute_sampling_probability(distance_matrix)
         tensor([[-4.2363e-08,  3.2998e-01,  3.4896e-01,  3.2106e-01],
                 [ 3.1939e-01, -4.1004e-08,  3.3741e-01,  3.4319e-01 ],
                 [ 3.3526e-01,  3.3491e-01, -4.0700e-08,  3.2983e-01 ],
                 [ 3.1509e-01,  3.4798e-01,  3.3693e-01,  0.0000e+00 ]])
         """
-        sampling_probability = self.pairwise_distance_matrix / (self.stability_epsilon + self.pairwise_distance_matrix.sum(1).unsqueeze(1) )
+        sampling_probability = self.dist_mat_exp / (self.stability_epsilon + self.dist_mat_exp.sum(1).unsqueeze(1) )
         sampling_probability = torch.clamp(sampling_probability,0.0,None)
         
         return sampling_probability
@@ -469,7 +466,7 @@ class SNNLoss(torch.nn.Module):
         >>> a = torch.rand((4, 2))
         >>> snnl = SNNLoss(temperature=1.0)
         >>> distance_matrix = snnl.pairwise_cosine_distance(a)
-        >>> distance_matrix = snnl.normalize_distance_matrix(a, distance_matrix)
+        >>> distance_matrix = snnl.distance_matrix_exponential(a, distance_matrix)
         >>> pick_probability = snnl.compute_sampling_probability(distance_matrix)
         >>> snnl.mask_sampling_probability(labels, pick_probability)
         tensor([0.3490, 0.3432, 0.3353, 0.3480])
@@ -481,17 +478,26 @@ class SNNLoss(torch.nn.Module):
     
         return summed_masked_pick_probability
 
+
+
     def display_debug_info_1(self):
         print('-'*80)
         print('--- Distance matrix ','-'*80)
-        print(self.distance_matrix)
-        print(self.distance_matrix.min().item(), self.distance_matrix.argmin().item())
-        print('--- Pairwise distance matrix ','-'*80)
-        print(self.pairwise_distance_matrix)
-        print(self.pairwise_distance_matrix.min().item(), self.pairwise_distance_matrix.argmin().item())
+        print(self.dist_mat)
+        print(self.dist_mat.min().item(), self.dist_mat.argmin().item())
+        print(f"{self.epoch}/{self.batch} pairwise similarity matrix - {self.dist_mat.shape}  "
+              f"Min: {self.dist_mat.min()}  Max: {self.dist_mat.max()}  Sum: {self.dist_mat.sum()}")        
+        # print(f"{self.epoch}/{self.batch} normalized features tensor - {normalized_a.shape} Min: {normalized_a.min()}  Max: {normalized_a.max()}")        
+        
+        print('--- Distance matrix exponential ','-'*80)
+        print(f"{self.epoch}/{self.batch} distance matrix exponent   - {self.dist_mat_exp.shape}  "
+              f"Min: {self.dist_mat_exp.min()}  Max: {self.dist_mat_exp.max()}  Sum: {self.dist_mat_exp.sum()}")
+        
         print('--- Pick Probability','-'*80)
-        print(self.pick_probability)
-        print('min  ', self.pick_probability.min().item(), self.pick_probability.argmin().item())
+        print(self.sampling_probability)
+        print(f"{self.epoch}/{self.batch} distance matrix exponent   - {self.sampling_probability.shape}  "
+              f"Min: {self.sampling_probability.min()}  ArgMin: {self.sampling_probability.argmin()}")
+        
         print('--- Summed Picked Probability ','-'*80)
         summ = (self.stability_epsilon + self.summed_masked_pick_probability)
         print(summ) 
@@ -499,11 +505,14 @@ class SNNLoss(torch.nn.Module):
         print( -torch.log(summ))
         
     def display_debug_info_2(self):
-        print(f"                   - distance mat : {self.distance_matrix.shape}  {self.distance_matrix.min()}   {self.distance_matrix.max()}   sum: {self.distance_matrix.sum():.4f}")
-        print(f"                   - pairwise dist: {self.pairwise_distance_matrix.shape}  {self.pairwise_distance_matrix.min()}   {self.pairwise_distance_matrix.max()}   sum: {self.pairwise_distance_matrix.sum():.4f}")
-        print(f"                   - sampling prob: {self.sampling_probability.shape}  {self.sampling_probability.min()}  {self.sampling_probability.max()}   sum: {self.sampling_probability.sum():.4f}")
-        print(f"                   - sum mask pick: {self.summed_masked_pick_probability.shape}  {self.summed_masked_pick_probability.min()} {self.summed_masked_pick_probability.max():.4f}"
-              f" sum: {self.summed_masked_pick_probability.sum():.4f}")
-        print(f"                   - snnl: {snnl:.5f}")
+        print(f"{self.epoch}/{self.batch} pairwise similarity matrix - {self.dist_mat.shape}  "
+              f"Min: {self.dist_mat.min()}  Max: {self.dist_mat.max()}  Sum: {self.dist_mat.sum():.4f}")   
+        print(f"{self.epoch}/{self.batch} distance matrix exponent   - {self.dist_mat_exp.shape}  "
+              f"Min: {self.dist_mat_exp.min()}  Max: {self.dist_mat_exp.max()}   Sum: {self.dist_mat_exp.sum()}")
+        print(f"{self.epoch}/{self.batch}  sampling prob: {self.sampling_probability.shape}  "
+              f"Min: {self.sampling_probability.min()}  Max: {self.sampling_probability.max()}   Sum: {self.sampling_probability.sum():.4f}")
+        print(f"                   - sum mask pick: {self.summed_masked_pick_probability.shape}  "
+              f"Min: {self.summed_masked_pick_probability.min()}  Max: {self.summed_masked_pick_probability.max():.4f}  Sum: {self.summed_masked_pick_probability.sum():.4f}")
+        print(f"                   - snnl: {self.snnl:.5f}")
         print(self.sampling_probability[:12,:12])
         print(self.sample_labels )

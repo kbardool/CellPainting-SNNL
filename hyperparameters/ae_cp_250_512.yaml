@@ -5,8 +5,8 @@ project_name         : CellPainting_Profiles
 exp_id               :
 exp_name_pfx         : 
 exp_name             : 
-exp_title            : snglOpt_250Ltnt_512
-exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 250 dim latent, 512 Midlayer
+exp_title            : sngl{0:0d}_250Ltnt_512
+exp_description      : AE Baseline - snglOpt, 250 dim latent, 512 Midlayer, {0} cpb
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234

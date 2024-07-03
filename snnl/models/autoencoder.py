@@ -4,20 +4,13 @@ from typing import Dict, Tuple
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
-import logger
+import logging
 import numpy as np
 import pandas as pd
 import torch
-import argparse
-from types import SimpleNamespace
-from datetime import datetime
-from pt_datasets import create_dataloader
 from typing import Dict, List, Tuple
-from collections import defaultdict
-from sklearn.metrics import accuracy_score, f1_score, roc_curve, roc_auc_score,\
-                            precision_recall_curve, precision_recall_fscore_support
-                            
 from snnl.models import Model
+# from snnl.utils  import display_epoch_metrics
 logger = logging.getLogger(__name__) 
 
 #-------------------------------------------------------------------------------------------------------------------
@@ -38,31 +31,39 @@ class Autoencoder(Model):
 
     def __init__(
         self,
-        criterion = None,
         mode: str = "autoencoding",
+        device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+        
         units: List = [] ,
         code_units: int = 50,
-        activations: List = [],
         embedding_layer: int = 0,
-        learning_rate: float = 1e-3,
-        use_snnl: bool = False,
-        loss_factor: float = 1.0,
-        snnl_factor: float = 100.0,
-        temperature: int = 0.0,
-        temperatureLR: int = 0.0,
-        adam_weight_decay: float = 0.0,
-        SGD_weight_decay: float = 0.0,        
-        use_annealing: bool = True,
-        monitor_grads_layer: int = None,
-        use_sum: bool = False,
-        stability_epsilon: float = 1e-5,
-        dropout_p: float = 0.5,            
         input_shape: int = 0 ,
         sample_size: int = None,  
-        device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-        verbose: bool = False,
-        use_scheduler: bool = False, 
+        dropout_p: float = 0.5,            
+
+        criterion = None,
+        use_single_loss: bool = False, 
+        loss_factor: float = 1.0,
+        use_prim_optimzier: bool = False,
+        use_prim_scheduler: bool = False, 
+        learning_rate: float = 1e-3,
+        adam_weight_decay: float = 0.0,
+        
+        use_snnl: bool = False,
+        snnl_factor: float = 0.0,
+        temperature: int = 0.0,
+
+        use_temp_optimzier: bool = False,
         use_temp_scheduler: bool = False, 
+        temperatureLR: int = 0.0,
+        SGD_weight_decay: float = 0.0,        
+        SGD_momentum: float = 0.0,        
+        use_annealing: bool = False,
+        use_sum: bool = False,
+        
+        monitor_grads_layer: int = None,
+        stability_epsilon: float = 1e-5,
+        verbose: bool = False,
     ):
         """
         Constructs the autoencoder model with the following units,
@@ -84,6 +85,9 @@ class Autoencoder(Model):
             factor implies SNNL maximization.
         temperature: int
             The SNNL temperature.
+        temp_leanring: bool
+            Learn the SNNL temperature through backpropigation
+            Uses static temperature when False 
         use_annealing: bool
             Whether to use annealing temperature or not.
         use_sum: bool
@@ -104,22 +108,35 @@ class Autoencoder(Model):
             
         assert sample_size is not None, f"sample_size must be specified in Autoencoder initialization"
         if use_temp_scheduler:
-            assert use_snnl, f" temp_scheduler = True but use_snnl is false - will be ignored"
-
+            assert use_snnl, f" temp_scheduler = True,  but use_snnl = False"
+        # assert not(self.use_annealing and self.use_temp_optimizer)," Temperature annealing and Temp optimization are mutually exclusive"
+        
+        
         self.name = "AE"
         self.layer_types = []
         self.non_linearities = []
         # self.layer_activations = activations                
-        self.use_scheduler = use_scheduler
-        self.use_temp_scheduler = use_temp_scheduler
         self.monitor_grads_layer = monitor_grads_layer
         
-        self.learning_rate = learning_rate       
-        self.adam_weight_decay = adam_weight_decay
+        self.use_single_loss= use_single_loss
+        self.optimizers = {}
+        self.schedulers = {} 
+
         self.optimizer = None
-        self.temp_optimizer = None
         self.scheduler = None 
+        self.learning_rate = learning_rate       
+        self.use_prim_optimizer = use_prim_optimzier
+        self.use_prim_scheduler = use_prim_scheduler
+        self.use_annealing = use_annealing
+        
+        self.temp_optimizer =  None
         self.temp_scheduler = None 
+        self.temperatureLR = temperatureLR
+        self.use_temp_optimizer = use_temp_optimzier
+        self.use_temp_scheduler = use_temp_scheduler
+        self.adam_weight_decay = adam_weight_decay
+        self.SGD_weight_decay = SGD_weight_decay
+        self.SGD_momentum = SGD_momentum
         
         super().__init__(
             mode=mode,
@@ -175,7 +192,13 @@ class Autoencoder(Model):
             else:
                 pass
  
-        self.setup_optimizers()
+        self.temp_params = [p for name, p in self.named_parameters() if 'temperature' in name]
+        self.network_params = [p for name, p in self.named_parameters() if 'temperature' not in name]
+    
+        if self.use_prim_optimizer:
+            self.setup_prim_optimizer()
+        if self.use_temp_optimizer:
+            self.setup_temp_optimizer()
 
         self.to(self.device) 
         if verbose:         
@@ -192,31 +215,27 @@ class Autoencoder(Model):
             print(f"    AE init() -- temperature LR     : {self.temperatureLR}")
             print(f"    AE init() -- temp_scheduler     : {self.temp_scheduler}")
 
-    def setup_optimizers(self):
+    def setup_prim_optimizer(self):
         
-        temp_params = [p for name, p in self.named_parameters() if 'temperature' in name]
-        network_params = [p for name, p in self.named_parameters() if 'temperature' not in name]
-        
-        self.optimizer = torch.optim.Adam(params = network_params, lr=self.learning_rate, weight_decay = self.adam_weight_decay)
-        if self.use_snnl:
-            self.optimizer.add_param_group({'params': temp_params, 'lr': self.temperatureLR, 'weight_decay': self.adam_weight_decay})
+        params= self.network_params + self.temp_params if self.use_single_loss else self.network_params
  
-        if self.use_scheduler:
-            self.scheduler = self._ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=50, 
-                                                     threshold=0.000001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08, verbose =True) 
+        self.optimizers['prim'] = torch.optim.Adam(params = params, lr=self.learning_rate, weight_decay = self.adam_weight_decay)
         
+        if self.use_prim_scheduler:
+            self.schedulers['prim'] = self._ReduceLROnPlateau(self.optimizers['prim'], mode='min', factor=0.5, patience=50, 
+                                                     threshold=0.000001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08)         
         
-        # self.optimizer = torch.optim.Adam(params=parameter_dict['Adam'], lr=learning_rate, weight_decay = adam_weight_decay)
-        # if self.use_scheduler:
-        #     self.scheduler = self._ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=50, 
-        #                                              threshold=0.00001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08, verbose =True)  
-        # if self.use_snnl:
-        #     self.temp_optimizer = torch.optim.SGD(params=parameter_dict['temp'], lr=self.temperatureLR, momentum=0.9, weight_decay = SGD_weight_decay)            
-        #     if self.use_temp_scheduler:
-        #         self.temp_scheduler = self._ReduceLROnPlateau(self.temp_optimizer, mode='min', factor=0.5, patience=30, 
-        #                                                  threshold=0.00001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08, verbose =True)        
-                    
-    
+    def setup_temp_optimizer(self):
+
+        self.optimizers['temp'] = torch.optim.SGD(params=self.temp_params, lr=self.temperatureLR, 
+                                              momentum = self.SGD_momentum, 
+                                              weight_decay = self.SGD_weight_decay)            
+
+        if self.use_temp_scheduler:
+            self.schedulers['temp'] = self._ReduceLROnPlateau(self.optimizers['temp'], mode='min', factor=0.5, patience=50, 
+                                                        threshold=0.000001, threshold_mode='rel', cooldown=10, min_lr=0, eps=1e-08)
+ 
+
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Defines the forward pass by the model.
@@ -242,6 +261,7 @@ class Autoencoder(Model):
         reconstruction = activations.get(len(activations) - 1)
         
         return activations, reconstruction
+
 
     def compute_latent_code(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -273,7 +293,8 @@ class Autoencoder(Model):
 
     
     def fit(
-        self, data_loader: torch.utils.data.DataLoader, epochs: int, show_every: int = 1
+        self, train_loader: torch.utils.data.DataLoader, val_loader: torch.utils.data.DataLoader,
+        starting_epoch: int, epochs: int, show_every: int = 1
     ) -> None:
         """
         Trains the autoencoder model.
@@ -289,13 +310,13 @@ class Autoencoder(Model):
         """
         header = True
         for epoch in range(starting_epoch,epochs):
-            train_loss = model.epoch_train(train_loader, epoch)
-            model.model_history('train', train_loss)
+            train_loss = self.epoch_train(train_loader, epoch)
+            self.model_history('train', train_loss)
         
-            validation_loss = model.epoch_validate(val_loader, epoch)
-            model.model_history('val', validation_loss)
+            validation_loss = self.epoch_validate(val_loader, epoch)
+            self.model_history('val', validation_loss)
             
-            display_epoch_metrics(model, epoch, epochs, header)
+            display_epoch_metrics(self, epoch, epochs, header)
             header = False    
          
 

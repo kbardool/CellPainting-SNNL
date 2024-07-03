@@ -67,38 +67,25 @@ def set_device(device_id):
     
 def parse_args(input = None):
     parser = argparse.ArgumentParser(description="DNN classifier with SNNL")
-    group = parser.add_argument_group("Parameters")
-    group.add_argument(
-        "-s",
-        "--seed",
-        dest='random_seed',
-        required=False,
-        default=1234,
-        type=int,
-        help="the random seed value to use, default: [1234]",
-    )
-    group.add_argument(
-        "-m",
-        "--runmode",
-        required=False,
-        default="baseline",
-        type=str,
-        help="the model running mode - options: [baseline (default) | snnl]",
-    )
-    group.add_argument(
-        "-c",
-        "--configuration",
-        required=True,
-        # default="examples/hyperparameters/dnn.json",
-        type=str,
-        help="the path to the JSON file containing the hyperparameters to use",
-    )
-    group.add_argument('--wandb' , default=False, action=argparse.BooleanOptionalAction)
-    group.add_argument('--run_id' , type=str, dest='exp_id', required=False, default=None, help="WandB run id (for run continuations)")
-    group.add_argument('--ckpt'   , type=str, required=False, default=None, help="Checkpoint fle to resume training from")
-    group.add_argument('--exp_title'  , type=str, required=False, default=None, help="Exp Title (overwrites yaml file value)")
-    group.add_argument('--epochs', type=int, required=True, default=0, help="epochs to run")
-    group.add_argument('--gpu_id', type=int, required=False, default=0, help="Cuda device id to use" )    
+    grp = parser.add_argument_group("Parameters")
+    
+    grp.add_argument("--config","--configuration" , type=str  , dest="configuration",required=True, help=" yaml file containing hyperparameters to use")
+    grp.add_argument('--ckpt'    , type=str  , required=False, default=None, help="Checkpoint fle to resume training from")
+    grp.add_argument('--cpb'     , type=int  , required=True, default=0, help="Compounds per batch" )    
+    grp.add_argument('--exp_title',type=str  , required=False, default=None, help="Exp Title (overwrites yaml file value)")
+    grp.add_argument('--epochs'  , type=int  , required=True , default=0, help="epochs to run")
+    grp.add_argument('--gpu_id'  , type=int  , required=False, default=0, help="Cuda device id to use" )    
+    grp.add_argument('--lr'      , type=float, required=False, default=None, dest='learning_rate', help="Learning Rate" )    
+    grp.add_argument('--run_id'  , type=str  , required=False, default=None, dest='exp_id',  help="WandB run id (for run continuations)")
+    grp.add_argument("--runmode" , type=str  , required=False, default="baseline", help="the model running mode: [baseline (default) | snnl]")
+    grp.add_argument("--seed"    , type=int  , required=False, default=1234, dest='random_seed', help="the random seed value to use, default: [1234]")
+    grp.add_argument('--prim_opt', default=False, dest="use_prim_optimizer", action=argparse.BooleanOptionalAction)
+    grp.add_argument('--temp_opt', default=False, dest="use_temp_optimizer", action=argparse.BooleanOptionalAction)
+    grp.add_argument('--temp_annealing', default=False, dest="use_annealing", action=argparse.BooleanOptionalAction)
+    grp.add_argument('--single_loss', default=False, dest="use_single_loss", action=argparse.BooleanOptionalAction)
+    grp.add_argument('--temp'    , type=float, required=False, default=None, dest='temperature'  , help="Temperature" )    
+    grp.add_argument('--temp_lr' , type=float, required=False, default=None, dest='temperatureLR', help="Learning Rate" )    
+    grp.add_argument('--wandb'   , default=False, required=False, action=argparse.BooleanOptionalAction)
     arguments = parser.parse_args(input)
     return arguments
 
@@ -129,9 +116,25 @@ def load_configuration(input_params):
         logger.info(f" command line param {k:25s} : [{v}]")
         if v is not None:
             _args[k] = v
+
+    _args['exp_title'] = _args['exp_title'].format(_args['cpb'])
+    _args['exp_description'] = _args['exp_description'].format(_args['cpb'],_args['runmode'])
+    _args['cellpainting_args']['compounds_per_batch'] = _args['cpb']
     _args['ckpt'] = input_params['ckpt']
     _args['batch_size'] = _args['cellpainting_args']['batch_size']
+    
+    _args.setdefault('use_prim_scheduler', True)
+    _args.setdefault('use_temp_optimizer', False)
+    _args.setdefault('use_annealing', False)
+    _args.setdefault('use_sum', False)
+    _args.setdefault('SGD_momentum', 0)
+    _args['use_temp_scheduler'] = _args.setdefault('use_temp_scheduler', False) if _args['use_temp_optimizer'] else False
+    
+
+    assert not(_args['use_annealing'] and _args['use_temp_optimizer'])," Temperature annealing and Temp optimization are mutually exclusive"   
+    
     logger.info(f" command line param {'exp_title':25s} : [{_args['exp_title']}]")
+    
     # args = types.SimpleNamespace(**args, **(vars(input_params)))
     return SimpleNamespace(**_args)    
 
@@ -317,8 +320,10 @@ def get_hyperparameters(hyperparameters_path: str) -> Tuple:
 #-------------------------------------------------------------------------------------------------------------------
 #  Define Model
 #-------------------------------------------------------------------------------------------------------------------     
-def define_autoencoder_model(args, embedding_layer = 0, use_scheduler = True, use_temp_scheduler = False, device = None):
-    assert  embedding_layer != 0, "embedding_layer cannot be zero"
+def define_autoencoder_model(args,  device = None):
+    assert  args.embedding_layer != 0, "embedding_layer cannot be zero"
+    print(f" EMBEDDING LAYER: {args.embedding_layer}")
+    
     if device is None: 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
@@ -326,633 +331,56 @@ def define_autoencoder_model(args, embedding_layer = 0, use_scheduler = True, us
         logger.info(f"Defining model in baseline mode")
         model = Autoencoder(
             mode = "autoencoding",
-            units=args.units,
+            device = device,
  
-            embedding_layer = embedding_layer,
+            units=args.units,
             code_units  = args.code_units, 
+            embedding_layer = args.embedding_layer,
             input_shape = args.input_shape, 
             sample_size = args.cellpainting_args['sample_size'],
+            
             criterion   = torch.nn.MSELoss(reduction='mean'),
             loss_factor = args.loss_factor,
             learning_rate=args.learning_rate,
+            use_prim_scheduler = args.use_prim_scheduler,
             adam_weight_decay = args.adam_weight_decay,
-            use_scheduler = use_scheduler,
-            
-            use_snnl = False,
-            snnl_factor= 0.0,
-            use_temp_scheduler = use_temp_scheduler,
-            device = device
             )
     elif args.runmode.lower() == "snnl":
         logger.info(f"Defining model in SNNL mode ")
         model = Autoencoder(
             mode="latent_code",
-            units=args.units,
+            device = device,
  
-            embedding_layer = embedding_layer,
-            code_units    = args.code_units,
-            input_shape   = args.input_shape,
-            sample_size   = args.cellpainting_args['sample_size'],
-            criterion     = torch.nn.MSELoss(reduction='mean'),
-            loss_factor   = args.loss_factor,
-            learning_rate = args.learning_rate,
-            adam_weight_decay = args.adam_weight_decay,
-            use_scheduler = use_scheduler,
+            units=args.units,
+            code_units      = args.code_units,
+            embedding_layer = args.embedding_layer,
+            input_shape     = args.input_shape,
+            sample_size     = args.cellpainting_args['sample_size'],
+            use_single_loss = args.use_single_loss,
             
+            criterion       = torch.nn.MSELoss(reduction='mean'),
+            loss_factor     = args.loss_factor,
+            learning_rate   = args.learning_rate,
+            use_prim_optimzier =args.use_prim_optimizer,
+            use_prim_scheduler = args.use_prim_scheduler,
+            adam_weight_decay = args.adam_weight_decay,
             use_snnl=True,
             snnl_factor = args.snnl_factor,
             temperature = args.temperature,
+            # temp_learning = args.temp_learning,
+            use_temp_optimzier=args.use_temp_optimizer,
             temperatureLR = args.temperatureLR,
-            use_annealing = False,        
-            use_sum = False,
+            use_temp_scheduler = args.use_temp_scheduler,
             SGD_weight_decay = args.SGD_weight_decay,
-            use_temp_scheduler = use_temp_scheduler,
-            device = device
+            SGD_momentum = args.SGD_momentum,
+            use_annealing = args.use_annealing,        
+            use_sum = args.use_sum,
             )
     else:
         raise ValueError("Choose runmode between [baseline] and [snnl] only.")
         
     return model
     
-#-------------------------------------------------------------------------------------------------------------------
-#  Import and Export routines
-#-------------------------------------------------------------------------------------------------------------------     
-
-def export_results(model: torch.nn.Module, filename: str):
-    """
-    Exports the training results stored in model class to a JSON file.
-
-    Parameters
-    ----------
-    model: torch.nn.Module
-        The trained model object.
-    filename: str
-        The filename of the JSON file to write.
-    """
-    output = defaultdict(dict)
-    results_dir = "results"
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
-    filename = os.path.join(results_dir, f"{filename}.json")
-   
-    model_attributes = model.__dict__
-    for key, value in model_attributes.items():
-        # print(f"{key:40s}, {type(value)}")
-        if key == 'training_history':
-            output[key] = value
-        elif key[0] == "_"  or key == "layer_activations":
-            continue
-        elif type(value) in [torch.device, torch.optim.Adam , torch.optim.SGD, torch.optim.lr_scheduler.ReduceLROnPlateau]:
-            continue
-        else:
-            output['params'][key] = value
-    with open(filename, "w") as file:
-        json.dump(output, file)
-    logger.info(f" Model Results exported to {filename}.")
-
-
-def import_results(filename: str):
-    """
-    Exports the training results stored in model class to a JSON file.
-
-    Parameters
-    ----------
-    model: torch.nn.Module
-        The trained model object.
-    filename: str
-        The filename of the JSON file to write.
-    """
- 
-    results_dir = "results"
-    filename = os.path.join(results_dir, f"{filename}.json")
-    with open(filename, "r") as file:
-        results = json.load(file)
-    return results
-
-
-def save_model(model: torch.nn.Module, filename: str):
-    """
-    Exports the input model to the examples/export directory.
-
-    Parameters
-    ----------
-    model: torch.nn.Module
-        The (presumably) trained model object.
-    filename: str
-        The filename for the trained model to export.
-    """
-    path = os.path.join("examples", "export")
-    if not os.path.exists(path):
-        os.mkdir(path)
-    path = os.path.join(path, f"{filename}.pt")
-    torch.save(model, path)
-    logger.info(f" Model exported to {path}.")
-
-
-def load_model(filename: str) -> torch.nn.Module:
-    """
-    Exports the input model to the examples/export directory.
-
-    Parameters
-    ----------
-    model: torch.nn.Module
-        The (presumably) trained model object.
-    filename: str
-        The filename for the trained model to export.
-    """
-    path = os.path.join("examples", "export")
-    if not os.path.exists(path):
-        print(f"path {path} doesn't exist")
-    path = os.path.join(path, filename)
-    logger.info(f" Model imported from {path}.")
-    return torch.load(path)
-
-
-def save_checkpoint(epoch, model, filename, update_latest=False, update_best=False):
-    model_checkpoints_folder = os.path.join("ckpts")
-    if not os.path.exists(model_checkpoints_folder):
-        print(f"path {model_checkpoints_folder} doesn't exist")
-    checkpoint = {'epoch': epoch,
-                  'use_snnl': model.use_snnl,
-                  'state_dict': model.state_dict,
-                  'optimizer_state_dict': model.optimizer.state_dict(),
-                  'temp_optimizer_state_dict': model.temp_optimizer.state_dict(),
-                 }
-    
-    # checkpoint['scheduler'] =  model.scheduler.state_dict() if model.use_scheduler else None
-    # checkpoint['temp_scheduler'] =  model.temp_scheduler.state_dict() if model.use_temp_scheduler else None 
-    
-        
-    if update_latest:
-        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
-    elif update_best:
-        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_best.pt")
-    else:
-        filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
-    torch.save(checkpoint, filename) 
-    logger.info(f" Model exported to {filename}.")
-
-
-def save_checkpoint_v2(epoch, model, filename, update_latest=False, update_best=False, verbose = False):
-    from types import NoneType
-    model_checkpoints_folder = os.path.join("ckpts")
-    if not os.path.exists(model_checkpoints_folder):
-        print(f"path {model_checkpoints_folder} doesn't exist")
-        
-    checkpoint = {'epoch'                     : epoch,
-                  'state_dict'                : model.state_dict(),
-                  'optimizer'                 : model.optimizer,
-                  'temp_optimizer'            : model.temp_optimizer,
-                  'optimizer_state_dict'      : model.optimizer.state_dict() if model.optimizer is not None else None,
-                  'temp_optimizer_state_dict' : model.temp_optimizer.state_dict() if model.temp_optimizer is not None else None,
-                  'scheduler'                 : model.scheduler,
-                  'temp_scheduler'            : model.temp_scheduler,
-                  'scheduler_state_dict'      : model.scheduler.state_dict() if model.use_scheduler else None,
-                  'temp_scheduler_state_dict' : model.temp_scheduler.state_dict() if model.use_temp_scheduler else None ,
-                  'params': dict()
-                 }
-    
-    model_attributes = model.__dict__
-    for key, value in model_attributes.items():
-        if key not in checkpoint:
-            if key[0] == '_' :
-                if verbose:
-                    print(f"{key:40s}, {str(type(value)):60s} -- {key} in ignore_attributes - will not be added")
-            else:
-                if verbose:
-                    print(f"{key:40s}, {str(type(value)):60s} -- add to checkpoint dict")
-                checkpoint['params'][key] = value
-        else:
-            if verbose:
-                print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
-    if verbose:
-        print(checkpoint.keys())    
- 
-    filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
-    torch.save(checkpoint, filename) 
-    logger.info(f" Model exported to {filename}.")
-
-
-def save_checkpoint_v3(epoch, model, args, filename = None, update_latest=False, update_best=False, verbose = False):
-    from types import NoneType
-    model_checkpoints_folder = os.path.join("ckpts")
-    if not os.path.exists(model_checkpoints_folder):
-        print(f"path {model_checkpoints_folder} doesn't exist")
-        
-    checkpoint = {'epoch'                     : epoch,
-                  'state_dict'                : model.state_dict(),
-                  'optimizer'                 : model.optimizer,
-                  'temp_optimizer'            : model.temp_optimizer,
-                  'optimizer_state_dict'      : model.optimizer.state_dict() if model.optimizer is not None else None,
-                  'temp_optimizer_state_dict' : model.temp_optimizer.state_dict() if model.temp_optimizer is not None else None,
-                  'scheduler'                 : model.scheduler,
-                  'temp_scheduler'            : model.temp_scheduler,
-                  'scheduler_state_dict'      : model.scheduler.state_dict() if model.use_scheduler else None,
-                  'temp_scheduler_state_dict' : model.temp_scheduler.state_dict() if model.use_temp_scheduler else None ,
-                  'params': dict()
-                 }
-    
-    
-    model_attributes = model.__dict__
-    for key, value in model_attributes.items():
-        if key not in checkpoint:
-            if key[0] == '_' :
-                if verbose:
-                    print(f"{key:40s}, {str(type(value)):60s} -- {key} in ignore_attributes - will not be added")
-            else:
-                if verbose:
-                    print(f"{key:40s}, {str(type(value)):60s} -- add to checkpoint dict")
-                checkpoint['params'][key] = value
-        else:
-            if verbose:
-                print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
-    if verbose:
-        print(checkpoint.keys())    
-    
-    if filename is None: 
-        filename = f"{model.name}_{args.runmode[:4]}_{args.exp_title}_{args.exp_date}"      
-        
-        if update_latest:
-            s_filename = f"LAST_ep_{epoch:03d}"
-        elif update_best:
-            s_filename = f"BEST"
-        else:
-            s_filename = f"ep_{epoch:03d}"
-        filename = f"{filename}_{s_filename}"
-        
-    filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
-    torch.save(checkpoint, filename) 
-    logger.info(f" Model exported to {filename} - epoch: {epoch}")
-
-
-def load_checkpoint(model, filename, verbose = False ):
-    epoch = 9999
-    try:
-        checkpoints_folder = os.path.join("ckpts")
-        checkpoint = torch.load(os.path.join(checkpoints_folder, filename))
-        if verbose:
-            print(checkpoint.keys())
-            print(" --> load model state_dict")
-        model.load_state_dict(checkpoint['state_dict'])
-        if verbose:
-            print(" --> load optimizer state_dict")
-        model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-        if "scheduler" in checkpoint and (hasattr(model, 'scheduler')):
-            model.scheduler = checkpoint['scheduler']
-        epoch = checkpoint.get('epoch',0)
-        logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}\n")
-         
-    # except FileNotFoundError:
-    #     Exception("Previous state checkpoint not found.")
-    except :
-        print(sys.exc_info())
-
-    return model, epoch
-
-
-def load_checkpoint_v2(model, filename, dryrun = False):
-    epoch = -1
-    if filename[-3:] != '.pt':
-        filename+='.pt'
-    logging.info(f" Load model checkpoint from  {filename}")    
-    ckpt_file = os.path.join("ckpts", filename)
-    
-    try:
-        checkpoint = torch.load(ckpt_file)
-    except FileNotFoundError:
-        Exception("Previous state checkpoint not found.")
-        print("FileNotFound Exception")
-    except :
-        print("Other Exception")
-        print(sys.exc_info())
-
-    for key, value in checkpoint.items():
-        logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
-    
-    if not dryrun:
-        model.load_state_dict(checkpoint['state_dict'])
-
-        for key, value in checkpoint['params'].items():
-            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
-            model.__dict__[key] = value
-            
-        if model.optimizer is not None:
-            model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        
-        if model.temp_optimizer is not None:
-            model.temp_optimizer.load_state_dict(checkpoint['temp_optimizer_state_dict'])
-        
-        if model.scheduler is not None:
-            model.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-            
-        if model.temp_scheduler is not None:
-            model.temp_scheduler.load_state_dict(checkpoint['temp_scheduler_state_dict'])
-    else:
-        for key, value in checkpoint['params'].items():
-            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
-        
-    epoch = checkpoint.get('epoch',-1)
-    logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}")
-
-    return model, epoch
-
-
-def load_model_from_ckpt(model, runmode = None, date = None, title = None, epochs = None, 
-                         filename =None, cpb = None, factor = None , dryrun = False, v1 = True, verbose = False):
-    # filename = f"AE_{args.model.lower()}_{date}_{title}_{epochs:03d}_cpb_{args.compounds_per_batch}_factor_{factor}.pt"    
-    if filename is None:
-        if factor is None:
-            filename = f"{model.name}_{runmode}_{date}_{title}_ep_{epochs:03d}.pt"
-        else:
-            filename = f"{model.name}_{runmode}_{date}_{title}_{epochs:03d}_cpb_{cpb}_factor_{factor:d}.pt"
-        print(filename)
-        
-    if os.path.exists(os.path.join('ckpts', filename)):
-        # print(f"\n {filename}   *** Checkpoint EXISTS *** \n")
-        if v1:
-            model, last_epoch = load_checkpoint(model, filename)
-        else:
-            model, last_epoch = load_checkpoint_v2(model, filename, dryrun)
-        _ = model.eval()
-        # model = model.to(current_device)
-        # model.to('cpu')
-        if verbose:
-            print(f" model device: {model.device}")
-            print(f" model temperature: {model.temperature}")
-    else:
-        logger.error(f" {filename} *** Checkpoint DOES NOT EXIST *** \n")
-        raise ValueError(f"\n {filename} *** Checkpoint DOES NOT EXIST *** \n")
-        
-    return model
-    
-
-def fix_checkpoint_v2 (filename):
-
-    checkpoints_folder = os.path.join("ckpts")
-    orig_ckpt_file = os.path.join(checkpoints_folder, filename+'.pt')
-    fixed_ckpt_file = os.path.join(checkpoints_folder, filename+'_fixed.pt')
-    
-    print(f" ==> Original checkpoint: {orig_ckpt_file}")
-    print(f" ==> Fixed    checkpoint: {fixed_ckpt_file}")
-    
-    try:
-        checkpoint = torch.load(orig_ckpt_file)
-        print(f"\n ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {checkpoint['epoch']}\n")
-    except FileNotFoundError:
-        Exception("Original checkpoint not found.")
-    except :
-        print("Other Exception")
-        print(sys.exc_info())
-
-    fixed_checkpoint = dict()
-    fixed_checkpoint['params'] = dict()
-    for key, value in checkpoint.items():
-        if key in ['epoch', 'state_dict', 'optimizer_state_dict', 'temp_optimizer_state_dict', 'scheduler_state_dict', 'temp_scheduler_state_dict' ]:
-            fixed_checkpoint[key] = value
-            print(f"{key:40s}, {str(type(value)):60s}  -- major key set  ")
-        else:
-            fixed_checkpoint['params'][key] = value
-            print(f"{key:40s}, {str(type(value)):60s}  -- params key set  ")
-            
-    try:
-        torch.save(fixed_checkpoint, fixed_ckpt_file) 
-        print(f"[INFO] Model exported to { fixed_ckpt_file}.")
-    except :
-        print("Other Exception 2")
-        print(sys.exc_info())
-
-    return  fixed_checkpoint
-
-
-#-------------------------------------------------------------------------------------------------------------------
-#  Plotting routines
-#-------------------------------------------------------------------------------------------------------------------     
-def plot_train_history(model, epochs= None, start= 0, n_bins = 25):
-    key1 = 'trn' 
-
-    if epochs is None:
-        epochs = len(model.training_history[key1]['trn_ttl_loss'])
-     
-    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
-    x_data = np.arange(start,epochs)
-    labelsize = 6
-    # We can set the number of bins with the *bins* keyword argument.
-    i = 0
-    _ = axs[i].plot(x_data, model.training_history[key1]['trn_ttl_loss'][start:epochs],label='Training');
-    _ = axs[i].plot(x_data, model.training_history['val']['val_ttl_loss'][start:epochs],label='Validation');
-    _ = axs[i].set_title(f'Total loss - epochs {start}-{epochs}', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    axs[i].legend()
-    i +=1    
-    _ = axs[i].plot(x_data, model.training_history[key1]['trn_prim_loss'][start:epochs],label='Training');
-    _ = axs[i].plot(x_data, model.training_history['val']['val_prim_loss'][start:epochs],label='Validation');
-    _ = axs[i].set_title(f'Primary loss - epochs {start}-{epochs}', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(x_data, model.training_history[key1]['trn_snn_loss'][start:epochs]);
-    _ = axs[i].plot(x_data, model.training_history['val']['val_snn_loss'][start:epochs]);
-    _ = axs[i].set_title(f'Soft Nearest Neighbor Loss - epochs {start}-{epochs}', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(x_data, model.training_history[key1]['trn_lr'][start:epochs]);
-    # if model.use_snnl:
-    #     _ = axs[i].plot(x_data, model.training_history[key1]['temp_lr'][start:epochs]);
-    _ = axs[i].set_title(f'Learning Rate - epochs {start}-{epochs}', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    _ = axs[i].set_title(f'train_temp_hist - epochs {start}-{epochs}', fontsize= 10);
-    if model.use_snnl:
-        i +=1
-        _ = axs[i].plot(x_data, model.training_history[key1]['temp_hist'][start:epochs]);
-        _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    # i +=1
-        
-    # batches = (len(model.training_history[key1]['temp_grads']) // len(model.training_history[key1]['trn_ttl_loss'])) *epochs
-    # _ = axs[i].plot(model.training_history[key1]['temp_grads'][:batches])
-    # _ = axs[i].set_title(f'Temperature Gradients - {epochs} epochs', fontsize= 10)
-    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    # i +=1
-    # _ = axs[i].plot(model.training_history[key1]['temp_grad_hist'][:epochs]);
-    # _ = axs[i].set_title(f"Temperature Grad at end of epochs - {epochs} epochs", fontsize= 10);
-    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    # i +=1
-    # _ = axs[i].plot(model.training_history[key1]['layer_grads'][:epochs]);
-    # _ = axs[i].set_title(f"Monitored layer gradient - {epochs} epochs", fontsize= 10);
-    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    
-    # i +=1
-    plt.show()
-
-
-def plot_classification_metrics(model, epochs= None, n_bins = 25):
-    key1 = 'trn' 
- 
-    if epochs is None:
-        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
-    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
-    i = 0
-    _ = axs[i].plot(model.training_history[key1]['trn_accuracy'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_accuracy'][:epochs]);
-    _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_f1'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_f1'][:epochs]);
-    _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i += 1
-    _ = axs[i].plot(model.training_history[key1]['trn_precision'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_precision'][:epochs]);
-    _ = axs[i].set_title(f' Precision - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_roc_auc'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_roc_auc'][:epochs]);
-    _ = axs[i].set_title(f' ROC AUC Score - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    _ = axs[i].plot(model.training_history[key1]['trn_recall'][:epochs]);
-    _ = axs[i].plot(model.training_history['val']['val_recall'][:epochs]);
-    _ = axs[i].set_title(f'Recall - {epochs} epochs', fontsize= 10);
-    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-    i +=1
-    plt.show()        
-
-
-def plot_classification_metrics_2(cm):
-    fig, ax = plt.subplots(1, 3, figsize=(14, 8))
-    
-    pr_display = skm.PrecisionRecallDisplay.from_predictions(cm.labels, cm.logits, name="LinearSVC", plot_chance_level=True, ax=ax[0]);
-    _ = pr_display.ax_.set_title(f" 2-class PR curve - epoch:{cm.epochs} ");
-    
-    roc_display = RocCurveDisplay.from_predictions(cm.labels, cm.logits, pos_label= 1, ax = ax[1])
-    _ = roc_display.ax_.set_title(f" ROC Curve - epoch:{cm.epochs} ")
-    
-    cm_display = ConfusionMatrixDisplay.from_predictions(y_true = cm.labels, y_pred =cm.y_pred, ax = ax[2], colorbar = False)
-    _ = cm_display.ax_.set_title(f" Confusion matrix - epoch:{cm.epochs} ");
-    
-    plt.show()
-
-
-def plot_regression_metrics(model, epochs= None, n_bins = 25):
-    key1 = 'trn'
- 
-    if epochs is None:
-        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
-    fig, axs = plt.subplots(1, 1, sharey=False, tight_layout=True, figsize=(1*4,4) )
-    i = 0
-    _ = axs.plot(model.training_history[key1]['trn_R2_score'][:epochs]);
-    _ = axs.plot(model.training_history['val']['val_R2_score'][:epochs]);
-    _ = axs.set_title(f'R2 Score - {epochs} epochs', fontsize= 10);
-    _ = axs.tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
-
-
-
-def plot_model_parms(model, epochs= None, n_bins = 25):
-    weights = dict()
-    biases = dict()
-    grads = dict()
-    layer_id = dict()
-    i = 0
-    for k, layer in enumerate(model.layers):
-        if type(layer) == torch.nn.modules.linear.Linear:
-            layer_id[i] =k
-            weights[i] = layer.weight.cpu().detach().numpy()
-            biases[i] = layer.bias.cpu().detach().numpy()
-            grads[i] = layer.weight.grad.cpu().detach().numpy()
-            i+=1
-    num_layers = i
- 
-    
-    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
-    print(f" |      | Weights:                                              |  Biases:                                     |   Gradients:                          |")
-    print(f" | layr |                      min           max         stdev  |             min          max          stdev  |      min          max          stdev  |")
-    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
-          # f" |    0 | (1024, 1471)     -11.536192     5.169790     0.151953 |   1024   -8.655299     2.601529     2.123748 |   -0.010149     0.010479     0.000481 |""
-    for k in layer_id.keys():
-        print(f" | {k:4d} | {str(weights[k].shape):15s}  {weights[k].min():-10.6f}   {weights[k].max():-10.6f}   {weights[k].std():-10.6f}"
-              f" |  {biases[k].shape[0]:5d}  {biases[k].min():-10.6f}   {biases[k].max():-10.6f}   {biases[k].std():-10.6f}"
-              f" |  {grads[k].min():-10.6f}   {grads[k].max():-10.6f}   {grads[k].std():-10.6f} |")
-    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
-    print('\n\n')
-    
-    fig, axs = plt.subplots(3, num_layers, sharey=False, tight_layout=True, figsize=(num_layers*4,13) )
-    
-    # print("Weights:")
-    for k, weight in weights.items():
-        _ = axs[0,k].hist(weight.ravel(), bins=n_bins)
-        _ = axs[0,k].set_title(f" layer{layer_id[k]} {weight.shape} weights - ep:{epochs}", fontsize=9);
-        _ = axs[0,k].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    
-    # print("Biases:")
-    for k, bias in biases.items():
-        _ = axs[1,k].hist(bias.ravel(), bins=n_bins)
-        _ = axs[1,k].set_title(f" layer{layer_id[k]} {bias.shape} biases - ep:{epochs}", fontsize= 9);
-        _ = axs[1,k].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-    
-    # print("Gradients:")
-    for k, grad in grads.items():
-        _ = axs[2,k].hist(grad.ravel(), bins=n_bins)
-        _ = axs[2,k].set_title(f" layer{layer_id[k]} {grad.shape} gradients - ep:{epochs}", fontsize= 9);
-        _ = axs[2,k].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
-        _ = axs[2,k].tick_params(axis='both', which='minor', labelsize=4)
-    plt.show()
-
-
-def plot_TSNE(prj, lbl, cmp, key = None, end = None, epoch = 0):
-    if end is None:
-        end = len(lbl)
-    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(20,4) )
-    for layer in [0,1,2,3,4]:
-        df = pd.DataFrame(dict(
-            x=prj[layer][:end,0],
-            y=prj[layer][:end,1],
-            tpsa=lbl[0:end],
-            compound = cmp[0:end]
-        ))
-        # print(key, np.bincount(lbl), df[key].unique() , palette_count)
-        palette_count = len(df[key].unique())
-        legend = True if layer in [0,4] else False
-        lp=sb.scatterplot( data=df, x ="x", y = "y", hue=key, palette=sb.color_palette(n_colors=palette_count), ax=axs[layer], legend = legend) #, size=6)
-        _=lp.set_title(f'Epoch: {epoch} layer {layer}', fontsize = 10)
-    
-    plt.show()
-
-def plot_TSNE_2(prj, lbl, cmp, key = None, layers = None, items = None, epoch = 0, limits = (None,None)):
-    if layers is None:
-        layers = range(len(prj))
-        
-    if items is None:
-        lbl_len = len(lbl)
-    elif not isinstance(items, list):
-        items = list(items)
-    fig, axs = plt.subplots(1, len(layers), sharey=False, tight_layout=True, figsize=(len(layers)*4,4) )
-
-    for idx, layer in enumerate(layers):
-        if items is None: 
-            df = pd.DataFrame(dict(
-                    x=prj[layer][:,0],
-                    y=prj[layer][:,1],
-                    tpsa=lbl[:],
-                    compound = cmp[:]
-                ))
-        else:
-            df = pd.DataFrame(dict(
-                    x=prj[layer][items,0],
-                    y=prj[layer][items,1],
-                    tpsa=lbl[items],
-                    compound = cmp[items]
-                ))
-        # print(key, np.bincount(lbl), df[key].unique() , palette_count)
-        palette_count = len(df[key].unique())
-        legend = True if layer in [0,4] else False
-        lp=sb.scatterplot( data=df, x ="x", y = "y", hue=key, palette=sb.color_palette(n_colors=palette_count), ax=axs[idx]) #, size=6)
-        _=lp.set_title(f'Epoch: {epoch} layer {layer}', fontsize = 10)
-        lp.legend(loc = 'best', fontsize = 8)
-        lp.set_xlim([limits[0], limits[1]])
-        lp.set_ylim([limits[0], limits[1]])
-    
-    plt.show()
-    return fig
-
 
 
 #-------------------------------------------------------------------------------------------------------------------
@@ -967,6 +395,57 @@ def display_model_summary(model, dataset = 'cellpainting', batch_size = 300 ):
         summary_input_size = (batch_size, 28, 28)
     print(summary(model, input_size=summary_input_size, col_names = col_names))
 
+def display_model_parameters(model):
+    print(f" Model device           : {model.device}")
+    print(f" Model embedding_layer  : {model.embedding_layer}")
+    print(f" loss_factor            : {model.loss_factor}")
+    print(f" monitor_grads_layer    : {model.monitor_grads_layer}")
+    print(f" Use Single Loss        : {model.use_single_loss}")
+    print(f" Use Prim Optimizer     : {model.use_prim_optimizer}") 
+    print(f" Use Prim Scheduler     : {model.use_prim_scheduler}") 
+    if model.use_prim_optimizer:
+        print(f" Main Optimizer Params  : {model.optimizers['prim']}") 
+        sch_stat = ''
+        for k,v in model.schedulers['prim'].state_dict().items():
+            sch_stat +=f"\n    {k}: {v}  "
+        print(f" Scheduler              : {model.schedulers['prim']} {sch_stat}") 
+    print()
+    print(f" Use snnl               : {model.use_snnl}") 
+    if model.use_snnl:
+        print(f" SNNL factor            : {model.snnl_factor}")
+        print(f" SNNL temperature       : {model.temperature}")
+        print(f" SNNL Temperature       : {model.temperature.item()}")
+        # print(f" Temp learning          : {model.temp_learning}")
+    print()
+    print(f" Use Temp Optimizer     : {model.use_temp_optimizer}") 
+    print(f" Use Temp Scheduler     : {model.use_temp_scheduler}") 
+    if model.use_temp_optimizer:
+        if model.use_single_loss:
+            print(f" Main Optimizer LR Grp 1 Temp): {model.optimizers['prim'].param_groups[1]['lr']}") 
+        else:
+            print(f" Temperature Optimizer Params : {model.optimizers['temp']}") 
+            if model.use_temp_scheduler:
+                sch_stat = ''
+                for k,v in model.schedulers['temp'].state_dict().items():
+                    sch_stat +=f"\n    {k}: {v}  "            
+                print(f" Temp Scheduler         : {model.schedulers['temp']} {sch_stat}")
+
+    if model.resume_training:    
+        for th_key in ['trn', 'val']:
+            for k,v in model.training_history[th_key].items():
+                if isinstance(v[-1],str):
+                    print(f" {k:22s} : {v[-1]:s}  ")
+                else:
+                    print(f" {k:22s} : {v[-1]:6f} ")
+
+    print(f" ") 
+    print(f" Best training loss     : {model.training_history['gen']['trn_best_loss']:<8.6f} - epoch: {model.training_history['gen']['trn_best_loss_ep']}") 
+    print(f" Best training metric   : {model.training_history['gen']['trn_best_metric']:8.6f} - epoch: {model.training_history['gen']['trn_best_metric_ep']}") 
+    print(f" ") 
+    print(f" Best validation loss   : {model.training_history['gen']['val_best_loss']:<8.6f} - epoch: {model.training_history['gen']['val_best_loss_ep']}") 
+    print(f" Best validation metric : {model.training_history['gen']['val_best_metric']:8.6f} - epoch: {model.training_history['gen']['val_best_metric_ep']}") 
+    print(f" ")
+    print(f" Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
 
 def display_cellpainting_batch(batch_id, batch):
     data, labels, plates, compounds, cmphash,  = batch
@@ -1004,21 +483,21 @@ def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
         temp_hist = 0
         temp_grad_hist = 0
         temp_LR = 0
-        
-    trn_LR = model.training_history[key1]["trn_lr"][idx] if model.use_scheduler else 0.0
+    print(idx)
+    trn_LR = model.training_history[key1]["trn_lr"][idx] if model.use_prim_scheduler else 0.0
  
     if model.unsupervised:
         if header:
-            print(f"                     |   Trn_loss    PrimLoss      SNNL   |    temp*        grad     |   R2                     |   Vld_loss    PrimLoss      SNNL   |   R2                     |    LR       temp LR   |")
-            print(f"---------------------+------------------------------------+--------------------------+--------------------------+------------------------------------+--------------------------|-----------------------|")
+            print(f"  time   ep / eps |  Trn_loss   Primary      SNNL  |   temp*         grad    |   R2      BestEp         |  Vld_loss   Primary      SNNL  |   R2       BestEp          |   LR        temp LR    |")
+            print(f"------------------+--------------------------------+-------------------------+--------------------------+--------------------------------+----------------------------|------------------------|")
                  # "00:45:46 ep   1 / 10 |   9.909963    4.904229    5.005733 |  14.996347   -2.6287e-10 |                          |   9.833426    4.827625    5.005800 |                          |"
-        print(f"{model.training_history[key2][f'{key2}_time'][idx]} ep {epoch + 1:3d} /{epochs:3d} |"
-              f"  {model.training_history[key1][f'{key1}_ttl_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1}_prim_loss'][idx]:9.6f}   {model.training_history[key1][f'{key1}_snn_loss'][idx]:9.6f} |"
-              f"  {temp_hist:9.6f}   {temp_grad_hist:11.4e} |"
-              f"  {model.training_history[key1][f'{key1}_R2_score'][idx]:7.4f}   {model.training_history['gen'].get('trn_best_metric_ep',0)+1:4d}          |"
-              f"  {model.training_history[key2][f'{key2}_ttl_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2}_prim_loss'][idx]:9.6f}   {model.training_history[key2][f'{key2}_snn_loss'][idx]:9.6f} |"
-              f"  {model.training_history[key2][f'{key2}_R2_score'][idx]:7.4f}   {model.training_history['gen'].get('val_best_metric_ep',0)+1:4d}          |"
-              f"  {trn_LR :9f}  {temp_LR :9f} |")
+        print(f"{model.training_history[key2][f'{key2}_time'][idx]} {epoch + 1:^3d}/{epochs:^4d} |"
+              f" {model.training_history[key1][f'{key1}_ttl_loss'][idx]:8.4f}   {   model.training_history[key1][f'{key1}_prim_loss'][idx]:8.4f}   {   model.training_history[key1][f'{key1}_snn_loss'][idx]:8.4f} |"
+              f" {temp_hist:10.6f}  {temp_grad_hist:11.4e} |"
+              f" {model.training_history[key1][f'{key1}_R2_score'][idx]:8.4f}   {model.training_history['gen'].get('trn_best_metric_ep',0)+1:3d}           |"
+              f" {model.training_history[key2][f'{key2}_ttl_loss'][idx]:8.4f}   {   model.training_history[key2][f'{key2}_prim_loss'][idx]:8.4f}   {   model.training_history[key2][f'{key2}_snn_loss'][idx]:8.4f} |"
+              f" {model.training_history[key2][f'{key2}_R2_score'][idx]:8.4f}   {model.training_history['gen'].get('val_best_metric_ep',0)+1:3d}             |"
+              f" {trn_LR :10.3e}  {temp_LR :10.3e} |")
         
     else:
         if header:
@@ -1321,7 +800,8 @@ def distance_metrics_sample_set(model_data, num_samples = 10, cps = 3, seed = 12
     samp_act = [samp_input, samp_embed, samp_output]
     return samp_act
 
-def distance_metric_1(measurement):
+def distance_metric_1(measurement, cps = 3, epochs = 0):
+    CPS = cps
     titles = [f'INPUT features - Euclidean distances - {epochs} epochs',
               f'EMBEDDED features - Euclidean distances - {epochs} epochs',
               f'RECONSTURCTED features -  Euclidean distances - {epochs} epochs']
@@ -1474,5 +954,752 @@ def compute_distance_metrics(sample_inputs, epochs = 0, metric ='euclidian',disp
         display_dist_metrics(dm,epochs, metric)
     return dm, grp_level
 
+
+
+#-------------------------------------------------------------------------------------------------------------------
+#  Import and Export routines
+#-------------------------------------------------------------------------------------------------------------------     
+
+def export_results(model: torch.nn.Module, filename: str):
+    """
+    Exports the training results stored in model class to a JSON file.
+
+    Parameters
+    ----------
+    model: torch.nn.Module
+        The trained model object.
+    filename: str
+        The filename of the JSON file to write.
+    """
+    output = defaultdict(dict)
+    results_dir = "results"
+    if not os.path.exists(results_dir):
+        os.mkdir(results_dir)
+    filename = os.path.join(results_dir, f"{filename}.json")
+   
+    model_attributes = model.__dict__
+    for key, value in model_attributes.items():
+        # print(f"{key:40s}, {type(value)}")
+        if key == 'training_history':
+            output[key] = value
+        elif key[0] == "_"  or key == "layer_activations":
+            continue
+        elif type(value) in [torch.device, torch.optim.Adam , torch.optim.SGD, torch.optim.lr_scheduler.ReduceLROnPlateau]:
+            continue
+        else:
+            output['params'][key] = value
+    with open(filename, "w") as file:
+        json.dump(output, file)
+    logger.info(f" Model Results exported to {filename}.")
+
+
+def import_results(filename: str):
+    """
+    Exports the training results stored in model class to a JSON file.
+
+    Parameters
+    ----------
+    model: torch.nn.Module
+        The trained model object.
+    filename: str
+        The filename of the JSON file to write.
+    """
+ 
+    results_dir = "results"
+    filename = os.path.join(results_dir, f"{filename}.json")
+    with open(filename, "r") as file:
+        results = json.load(file)
+    return results
+
+
+def save_model(model: torch.nn.Module, filename: str):
+    """
+    Exports the input model to the examples/export directory.
+
+    Parameters
+    ----------
+    model: torch.nn.Module
+        The (presumably) trained model object.
+    filename: str
+        The filename for the trained model to export.
+    """
+    path = os.path.join("examples", "export")
+    if not os.path.exists(path):
+        os.mkdir(path)
+    path = os.path.join(path, f"{filename}.pt")
+    torch.save(model, path)
+    logger.info(f" Model exported to {path}.")
+
+
+def load_model(filename: str) -> torch.nn.Module:
+    """
+    Exports the input model to the examples/export directory.
+
+    Parameters
+    ----------
+    model: torch.nn.Module
+        The (presumably) trained model object.
+    filename: str
+        The filename for the trained model to export.
+    """
+    path = os.path.join("examples", "export")
+    if not os.path.exists(path):
+        print(f"path {path} doesn't exist")
+    path = os.path.join(path, filename)
+    logger.info(f" Model imported from {path}.")
+    return torch.load(path)
+
+
+def save_checkpoint(epoch, model, filename, update_latest=False, update_best=False):
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+    checkpoint = {'epoch': epoch,
+                  'use_snnl': model.use_snnl,
+                  'state_dict': model.state_dict,
+                  'optimizer_state_dict': model.optimizer.state_dict(),
+                  'temp_optimizer_state_dict': model.temp_optimizer.state_dict(),
+                 }
+    
+    # checkpoint['scheduler'] =  model.scheduler.state_dict() if model.use_prim_scheduler else None
+    # checkpoint['temp_scheduler'] =  model.temp_scheduler.state_dict() if model.use_temp_scheduler else None 
+    
+        
+    if update_latest:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_latest.pt")
+    elif update_best:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}_model_best.pt")
+    else:
+        filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+    torch.save(checkpoint, filename) 
+    logger.info(f" Model exported to {filename}.")
+
+
+def save_checkpoint_v2(epoch, model, filename, update_latest=False, update_best=False, verbose = False):
+    from types import NoneType
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+        
+    checkpoint = {'epoch'                     : epoch,
+                  'state_dict'                : model.state_dict(),
+                  'optimizer'                 : model.optimizer,
+                  'temp_optimizer'            : model.temp_optimizer,
+                  'optimizer_state_dict'      : model.optimizer.state_dict() if model.optimizer is not None else None,
+                  'temp_optimizer_state_dict' : model.temp_optimizer.state_dict() if model.temp_optimizer is not None else None,
+                  'scheduler'                 : model.scheduler,
+                  'temp_scheduler'            : model.temp_scheduler,
+                  'scheduler_state_dict'      : model.scheduler.state_dict() if model.use_prim_scheduler else None,
+                  'temp_scheduler_state_dict' : model.temp_scheduler.state_dict() if model.use_temp_scheduler else None ,
+                  'params': dict()
+                 }
+    
+    model_attributes = model.__dict__
+    for key, value in model_attributes.items():
+        if key not in checkpoint:
+            if key[0] == '_' :
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- {key} in ignore_attributes - will not be added")
+            else:
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- add to checkpoint dict")
+                checkpoint['params'][key] = value
+        else:
+            if verbose:
+                print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
+    if verbose:
+        print(checkpoint.keys())    
+ 
+    filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+    torch.save(checkpoint, filename) 
+    logger.info(f" Model exported to {filename}.")
+
+
+def save_checkpoint_v3(epoch, model, args, filename = None, update_latest=False, update_best=False, verbose = False):
+    from types import NoneType
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+        
+    checkpoint = {'epoch'                     : epoch,
+                  'state_dict'                : model.state_dict(),
+                  'optimizer'                 : model.optimizer,
+                  'temp_optimizer'            : model.temp_optimizer,
+                  'optimizer_state_dict'      : model.optimizer.state_dict() if model.optimizer is not None else None,
+                  'temp_optimizer_state_dict' : model.temp_optimizer.state_dict() if model.temp_optimizer is not None else None,
+                  'scheduler'                 : model.scheduler,
+                  'temp_scheduler'            : model.temp_scheduler,
+                  'scheduler_state_dict'      : model.scheduler.state_dict() if model.use_prim_scheduler else None,
+                  'temp_scheduler_state_dict' : model.temp_scheduler.state_dict() if model.use_temp_scheduler else None ,
+                  'params': dict()
+                 }
+    
+    
+    model_attributes = model.__dict__
+    for key, value in model_attributes.items():
+        if key not in checkpoint:
+            if key[0] == '_' :
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- {key} in ignore_attributes - will not be added")
+            else:
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- add to checkpoint dict")
+                checkpoint['params'][key] = value
+        else:
+            if verbose:
+                print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
+    if verbose:
+        print(checkpoint.keys())    
+    
+    if filename is None: 
+        filename = f"{model.name}_{args.runmode[:4]}_{args.exp_title}_{args.exp_date}"      
+        
+        if update_latest:
+            s_filename = f"LAST_ep_{epoch:03d}"
+        elif update_best:
+            s_filename = f"BEST"
+        else:
+            s_filename = f"ep_{epoch:03d}"
+        filename = f"{filename}_{s_filename}"
+        
+    filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+    torch.save(checkpoint, filename) 
+    logger.info(f" Model exported to {filename} - epoch: {epoch}")
+
+def save_checkpoint_v4(epoch, model, args, filename = None, update_latest=False, update_best=False, verbose = False):
+    from types import NoneType
+    model_checkpoints_folder = os.path.join("ckpts")
+    if not os.path.exists(model_checkpoints_folder):
+        print(f"path {model_checkpoints_folder} doesn't exist")
+        
+    checkpoint = {'epoch'                     : epoch,
+                  'state_dict'                : model.state_dict(),
+                  'optimizers'                : {k:v for k,v in model.optimizers.items()},
+                  'optimizers_state_dict'     : {k:v.state_dict() for k,v in model.optimizers.items()},
+                  'schedulers'                : {k:v for k,v in model.schedulers.items()},
+                  'schedulers_state_dict'     : {k:v.state_dict() for k,v in model.schedulers.items()},
+                  
+                #   'optimizer_state_dict'      : model.optimizer.state_dict() if model.optimizer is not None else None,
+                #   'temp_optimizer_state_dict' : model.temp_optimizer.state_dict() if model.temp_optimizer is not None else None,
+                #   'scheduler_state_dict'      : model.scheduler.state_dict() if model.use_prim_scheduler else None,
+                #   'temp_scheduler_state_dict' : model.temp_scheduler.state_dict() if model.use_temp_scheduler else None ,
+                  'params': dict()
+                 }
+    
+    
+    model_attributes = model.__dict__
+    for key, value in model_attributes.items():
+        if key not in checkpoint:
+            if key[0] == '_' :
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- {key} in ignore_attributes - will not be added")
+            else:
+                if verbose:
+                    print(f"{key:40s}, {str(type(value)):60s} -- add to checkpoint dict")
+                checkpoint['params'][key] = value
+        else:
+            if verbose:
+                print(f"{key:40s}, {str(type(value)):60s} -- {key} already in checkpoint dict")
+    if verbose:
+        print(checkpoint.keys())    
+    
+    if filename is None: 
+        filename = f"{model.name}_{args.runmode[:4]}_{args.exp_title}_{args.exp_date}"      
+        
+        if update_latest:
+            s_filename = f"LAST_ep_{epoch:03d}"
+        elif update_best:
+            s_filename = f"BEST"
+        else:
+            s_filename = f"ep_{epoch:03d}"
+        filename = f"{filename}_{s_filename}"
+        
+    filename = os.path.join(model_checkpoints_folder, f"{filename}.pt")
+    torch.save(checkpoint, filename) 
+    logger.info(f" Model exported to {filename} - epoch: {epoch}")
+
+def load_checkpoint(model, filename, verbose = False ):
+    epoch = 9999
+    try:
+        checkpoints_folder = os.path.join("ckpts")
+        checkpoint = torch.load(os.path.join(checkpoints_folder, filename))
+        if verbose:
+            print(checkpoint.keys())
+            print(" --> load model state_dict")
+        model.load_state_dict(checkpoint['state_dict'])
+        if verbose:
+            print(" --> load optimizer state_dict")
+        model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+        if "scheduler" in checkpoint and (hasattr(model, 'scheduler')):
+            model.scheduler = checkpoint['scheduler']
+        epoch = checkpoint.get('epoch',0)
+        logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}\n")
+         
+    # except FileNotFoundError:
+    #     Exception("Previous state checkpoint not found.")
+    except :
+        print(sys.exc_info())
+
+    return model, epoch
+
+
+def load_checkpoint_v2(model, filename, dryrun = False,verbose=False):
+    epoch = -1
+    if filename[-3:] != '.pt':
+        filename+='.pt'
+    logging.info(f" Load model checkpoint from  {filename}")    
+    ckpt_file = os.path.join("ckpts", filename)
+    
+    try:
+        checkpoint = torch.load(ckpt_file)
+    except FileNotFoundError:
+        Exception("Previous state checkpoint not found.")
+        print("FileNotFound Exception")
+    except :
+        print("Other Exception")
+        print(sys.exc_info())
+
+    for key, value in checkpoint.items():
+        logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+    
+    if not dryrun:
+        model.load_state_dict(checkpoint['state_dict'])
+        if verbose:
+            print(f"model state dict:\n {checkpoint['state_dict'].keys()}")
+            print(f"   temperature  :   {checkpoint['state_dict']['temperature'].item()}")
+            print(f"   snnl_criterion.temperature: {checkpoint['state_dict']['snnl_criterion.temperature'].item()}")
+
+        for key, value in checkpoint['params'].items():
+            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+            model.__dict__[key] = value
+            
+        if model.optimizer is not None:
+            model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            if verbose:
+                print(f"optimizer state dict:\n {checkpoint['optimizer_state_dict']['param_groups']}")
+
+        if model.scheduler is not None:
+            model.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            if verbose:
+                print(f"scheduler state dict:\n  {checkpoint['scheduler_state_dict']}")
+            
+        
+        if model.temp_optimizer is not None:
+            model.temp_optimizer.load_state_dict(checkpoint['temp_optimizer_state_dict'])
+            if verbose:
+                print(f"temp optimizer state dict:\n  {checkpoint['temp_optimizer_state_dict']['param_groups']}")
+            
+        if model.temp_scheduler is not None:
+            model.temp_scheduler.load_state_dict(checkpoint['temp_scheduler_state_dict'])
+            if verbose:
+                print(f"temp scheduler state dict:\n  {checkpoint['temp_scheduler_state_dict']}")
+    else:
+        for key, value in checkpoint['params'].items():
+            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+
+    epoch = checkpoint.get('epoch',-1)
+    logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}")
+    logger.info(f"     Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
+
+    if 'gen' not in model.training_history:
+        print(f" Define self.training_history['gen'] ")
+        model.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : 0 ,
+                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': np.inf, 'val_best_loss_ep' : 0 }        
+    
+        for key in ['trn', 'val']:
+            tmp = np.argmin(model.training_history[key][f'{key}_ttl_loss'])
+            model.training_history['gen'][f'{key}_best_loss_ep'] = tmp
+            model.training_history['gen'][f'{key}_best_loss']    = model.training_history[key][f'{key}_ttl_loss'][tmp]
+            
+            tmp1 = np.argmax(model.training_history[key][f'{key}_R2_score'])
+            model.training_history['gen'][f'{key}_best_metric_ep'] = tmp1
+            model.training_history['gen'][f'{key}_best_metric'] = model.training_history[key][f'{key}_R2_score'][tmp1]
+            
+        model.best_metric = model.training_history['gen'][f'val_best_metric']  
+        model.best_epoch  = model.training_history['gen'][f'val_best_metric_ep']              
+        
+    return model, epoch
+
+
+def load_checkpoint_v4(model, filename, dryrun = False,verbose=False):
+    epoch = -1
+    if filename[-3:] != '.pt':
+        filename+='.pt'
+    logging.info(f" Load model checkpoint from  {filename}")    
+    ckpt_file = os.path.join("ckpts", filename)
+    
+    try:
+        checkpoint = torch.load(ckpt_file)
+    except FileNotFoundError:
+        Exception("Previous state checkpoint not found.")
+        print("FileNotFound Exception")
+    except :
+        print("Other Exception")
+        print(sys.exc_info())
+
+    for key, value in checkpoint.items():
+        logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+    
+    if not dryrun:
+        model.load_state_dict(checkpoint['state_dict'])
+        if verbose:
+            print(f"model state dict:\n {checkpoint['state_dict'].keys()}")
+            print(f"   temperature  :   {checkpoint['state_dict']['temperature'].item()}")
+            print(f"   snnl_criterion.temperature: {checkpoint['state_dict']['snnl_criterion.temperature'].item()}")
+
+        for key, value in checkpoint['params'].items():
+            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+            model.__dict__[key] = value
+            
+        model.optimizers = {k:v for k,v in checkpoint['optimizers'].items()}
+        model.schedulers = {k:v for k,v in checkpoint['schedulers'].items()}
+        
+        for k,v in checkpoint['optimizers_state_dict'].items():
+            model.optimizers[k].load_state_dict(v)
+        for k,v in checkpoint['schedulers_state_dict'].items():
+            model.schedulers[k].load_state_dict(v)
+
+        # if model.optimizer is not None:
+        #     model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        #     if verbose:
+        #         print(f"optimizer state dict:\n {checkpoint['optimizer_state_dict']['param_groups']}")
+
+        # if model.scheduler is not None:
+        #     model.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        #     if verbose:
+        #         print(f"scheduler state dict:\n  {checkpoint['scheduler_state_dict']}")           
+        
+        # if model.temp_optimizer is not None:
+        #     model.temp_optimizer.load_state_dict(checkpoint['temp_optimizer_state_dict'])
+        #     if verbose:
+        #         print(f"temp optimizer state dict:\n  {checkpoint['temp_optimizer_state_dict']['param_groups']}")
+            
+        # if model.temp_scheduler is not None:
+        #     model.temp_scheduler.load_state_dict(checkpoint['temp_scheduler_state_dict'])
+        #     if verbose:
+        #         print(f"temp scheduler state dict:\n  {checkpoint['temp_scheduler_state_dict']}")
+    else:
+        for key, value in checkpoint['params'].items():
+            logging.debug(f"{key:40s}, {str(type(value)):60s}  -- model attr set")
+
+    epoch = checkpoint.get('epoch',-1)
+    logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}")
+    logger.info(f"     Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
+
+    if 'gen' not in model.training_history:
+        print(f" Define self.training_history['gen'] ")
+        model.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : 0 ,
+                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': np.inf, 'val_best_loss_ep' : 0 }        
+    
+        for key in ['trn', 'val']:
+            tmp = np.argmin(model.training_history[key][f'{key}_ttl_loss'])
+            model.training_history['gen'][f'{key}_best_loss_ep'] = tmp
+            model.training_history['gen'][f'{key}_best_loss']    = model.training_history[key][f'{key}_ttl_loss'][tmp]
+            
+            tmp1 = np.argmax(model.training_history[key][f'{key}_R2_score'])
+            model.training_history['gen'][f'{key}_best_metric_ep'] = tmp1
+            model.training_history['gen'][f'{key}_best_metric'] = model.training_history[key][f'{key}_R2_score'][tmp1]
+            
+        model.best_metric = model.training_history['gen'][f'val_best_metric']  
+        model.best_epoch  = model.training_history['gen'][f'val_best_metric_ep']              
+        
+    return model, epoch
+
+
+def load_model_from_ckpt(model, runmode = None, date = None, title = None, epochs = None, 
+                         filename =None, cpb = None, factor = None , dryrun = False, v1 = True, verbose = False):
+    # filename = f"AE_{args.model.lower()}_{date}_{title}_{epochs:03d}_cpb_{args.compounds_per_batch}_factor_{factor}.pt"    
+    if filename is None:
+        if factor is None:
+            filename = f"{model.name}_{runmode}_{date}_{title}_ep_{epochs:03d}.pt"
+        else:
+            filename = f"{model.name}_{runmode}_{date}_{title}_{epochs:03d}_cpb_{cpb}_factor_{factor:d}.pt"
+        print(filename)
+        
+    if os.path.exists(os.path.join('ckpts', filename)):
+        # print(f"\n {filename}   *** Checkpoint EXISTS *** \n")
+        if v1:
+            model, last_epoch = load_checkpoint(model, filename)
+        else:
+            model, last_epoch = load_checkpoint_v2(model, filename, dryrun)
+        _ = model.eval()
+        # model = model.to(current_device)
+        # model.to('cpu')
+        if verbose:
+            print(f" model device: {model.device}")
+            print(f" model temperature: {model.temperature}")
+    else:
+        logger.error(f" {filename} *** Checkpoint DOES NOT EXIST *** \n")
+        raise ValueError(f"\n {filename} *** Checkpoint DOES NOT EXIST *** \n")
+        
+    return model
+    
+
+def fix_checkpoint_v2 (filename):
+
+    checkpoints_folder = os.path.join("ckpts")
+    orig_ckpt_file = os.path.join(checkpoints_folder, filename+'.pt')
+    fixed_ckpt_file = os.path.join(checkpoints_folder, filename+'_fixed.pt')
+    
+    print(f" ==> Original checkpoint: {orig_ckpt_file}")
+    print(f" ==> Fixed    checkpoint: {fixed_ckpt_file}")
+    
+    try:
+        checkpoint = torch.load(orig_ckpt_file)
+        print(f"\n ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {checkpoint['epoch']}\n")
+    except FileNotFoundError:
+        Exception("Original checkpoint not found.")
+    except :
+        print("Other Exception")
+        print(sys.exc_info())
+
+    fixed_checkpoint = dict()
+    fixed_checkpoint['params'] = dict()
+    for key, value in checkpoint.items():
+        if key in ['epoch', 'state_dict', 'optimizer_state_dict', 'temp_optimizer_state_dict', 'scheduler_state_dict', 'temp_scheduler_state_dict' ]:
+            fixed_checkpoint[key] = value
+            print(f"{key:40s}, {str(type(value)):60s}  -- major key set  ")
+        else:
+            fixed_checkpoint['params'][key] = value
+            print(f"{key:40s}, {str(type(value)):60s}  -- params key set  ")
+            
+    try:
+        torch.save(fixed_checkpoint, fixed_ckpt_file) 
+        print(f"[INFO] Model exported to { fixed_ckpt_file}.")
+    except :
+        print("Other Exception 2")
+        print(sys.exc_info())
+
+    return  fixed_checkpoint
+
+#-------------------------------------------------------------------------------------------------------------------
+#  Plotting routines
+#-------------------------------------------------------------------------------------------------------------------     
+def plot_train_history(model, epochs= None, start= 0, n_bins = 25):
+    key1 = 'trn' 
+
+    if epochs is None:
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])
+     
+    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
+    x_data = np.arange(start,epochs)
+    labelsize = 6
+    # We can set the number of bins with the *bins* keyword argument.
+    i = 0
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_ttl_loss'][start:epochs],label='Training');
+    _ = axs[i].plot(x_data, model.training_history['val']['val_ttl_loss'][start:epochs],label='Validation');
+    _ = axs[i].set_title(f'Total loss - epochs {start}-{epochs}', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    axs[i].legend()
+    i +=1    
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_prim_loss'][start:epochs],label='Training');
+    _ = axs[i].plot(x_data, model.training_history['val']['val_prim_loss'][start:epochs],label='Validation');
+    _ = axs[i].set_title(f'Primary loss - epochs {start}-{epochs}', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_snn_loss'][start:epochs]);
+    _ = axs[i].plot(x_data, model.training_history['val']['val_snn_loss'][start:epochs]);
+    _ = axs[i].set_title(f'Soft Nearest Neighbor Loss - epochs {start}-{epochs}', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(x_data, model.training_history[key1]['trn_lr'][start:epochs]);
+    _ = axs[i].set_title(f'Primary Loss Learning Rate - epochs {start}-{epochs}', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    if model.use_snnl:
+        _ = axs[i].plot(x_data, model.training_history[key1]['temp_lr'][start:epochs]);
+        _ = axs[i].set_title(f'Prim/Temp Loss LR - epochs {start}-{epochs}', fontsize= 10);
+    if model.use_snnl:
+        i +=1
+        _ = axs[i].plot(x_data, model.training_history[key1]['temp_hist'][start:epochs]);
+        _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    # i +=1
+        _ = axs[i].set_title(f'train_temp_hist - epochs {start}-{epochs}', fontsize= 10);
+        
+    # batches = (len(model.training_history[key1]['temp_grads']) // len(model.training_history[key1]['trn_ttl_loss'])) *epochs
+    # _ = axs[i].plot(model.training_history[key1]['temp_grads'][:batches])
+    # _ = axs[i].set_title(f'Temperature Gradients - {epochs} epochs', fontsize= 10)
+    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    # i +=1
+    # _ = axs[i].plot(model.training_history[key1]['temp_grad_hist'][:epochs]);
+    # _ = axs[i].set_title(f"Temperature Grad at end of epochs - {epochs} epochs", fontsize= 10);
+    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    # i +=1
+    # _ = axs[i].plot(model.training_history[key1]['layer_grads'][:epochs]);
+    # _ = axs[i].set_title(f"Monitored layer gradient - {epochs} epochs", fontsize= 10);
+    # _ = axs[i].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)    
+    # i +=1
+    plt.show()
+
+
+def plot_classification_metrics(model, epochs= None, n_bins = 25):
+    key1 = 'trn' 
+ 
+    if epochs is None:
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
+    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(5*4,4) )
+    i = 0
+    _ = axs[i].plot(model.training_history[key1]['trn_accuracy'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_accuracy'][:epochs]);
+    _ = axs[i].set_title(f'Accuracy - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_f1'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_f1'][:epochs]);
+    _ = axs[i].set_title(f'F1 Score - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i += 1
+    _ = axs[i].plot(model.training_history[key1]['trn_precision'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_precision'][:epochs]);
+    _ = axs[i].set_title(f' Precision - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_roc_auc'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_roc_auc'][:epochs]);
+    _ = axs[i].set_title(f' ROC AUC Score - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    _ = axs[i].plot(model.training_history[key1]['trn_recall'][:epochs]);
+    _ = axs[i].plot(model.training_history['val']['val_recall'][:epochs]);
+    _ = axs[i].set_title(f'Recall - {epochs} epochs', fontsize= 10);
+    _ = axs[i].tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+    i +=1
+    plt.show()        
+
+
+def plot_classification_metrics_2(cm):
+    fig, ax = plt.subplots(1, 3, figsize=(14, 8))
+    
+    pr_display = skm.PrecisionRecallDisplay.from_predictions(cm.labels, cm.logits, name="LinearSVC", plot_chance_level=True, ax=ax[0]);
+    _ = pr_display.ax_.set_title(f" 2-class PR curve - epoch:{cm.epochs} ");
+    
+    roc_display = skm.RocCurveDisplay.from_predictions(cm.labels, cm.logits, pos_label= 1, ax = ax[1])
+    _ = roc_display.ax_.set_title(f" ROC Curve - epoch:{cm.epochs} ")
+    
+    cm_display = skm.ConfusionMatrixDisplay.from_predictions(y_true = cm.labels, y_pred =cm.y_pred, ax = ax[2], colorbar = False)
+    _ = cm_display.ax_.set_title(f" Confusion matrix - epoch:{cm.epochs} ");
+    
+    plt.show()
+
+
+def plot_regression_metrics(model, epochs= None, n_bins = 25):
+    key1 = 'trn'
+ 
+    if epochs is None:
+        epochs = len(model.training_history[key1]['trn_ttl_loss'])    
+    fig, axs = plt.subplots(1, 1, sharey=False, tight_layout=True, figsize=(1*4,4) )
+    i = 0
+    _ = axs.plot(model.training_history[key1]['trn_R2_score'][:epochs]);
+    _ = axs.plot(model.training_history['val']['val_R2_score'][:epochs]);
+    _ = axs.set_title(f'R2 Score - {epochs} epochs', fontsize= 10);
+    _ = axs.tick_params(axis='both', which='major', labelsize=7, labelrotation=45)
+
+
+
+def plot_model_parms(model, epochs= None, n_bins = 25):
+    weights = dict()
+    biases = dict()
+    grads = dict()
+    layer_id = dict()
+    i = 0
+    for k, layer in enumerate(model.layers):
+        if type(layer) == torch.nn.modules.linear.Linear:
+            layer_id[i] =k
+            weights[i] = layer.weight.cpu().detach().numpy()
+            biases[i] = layer.bias.cpu().detach().numpy()
+            grads[i] = layer.weight.grad.cpu().detach().numpy()
+            i+=1
+    num_layers = i
+ 
+    
+    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
+    print(f" |      | Weights:                                              |  Biases:                                     |   Gradients:                          |")
+    print(f" | layr |                      min           max         stdev  |             min          max          stdev  |      min          max          stdev  |")
+    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
+          # f" |    0 | (1024, 1471)     -11.536192     5.169790     0.151953 |   1024   -8.655299     2.601529     2.123748 |   -0.010149     0.010479     0.000481 |""
+    for k in layer_id.keys():
+        print(f" | {k:4d} | {str(weights[k].shape):15s}  {weights[k].min():-10.6f}   {weights[k].max():-10.6f}   {weights[k].std():-10.6f}"
+              f" |  {biases[k].shape[0]:5d}  {biases[k].min():-10.6f}   {biases[k].max():-10.6f}   {biases[k].std():-10.6f}"
+              f" |  {grads[k].min():-10.6f}   {grads[k].max():-10.6f}   {grads[k].std():-10.6f} |")
+    print(f" +------+-------------------------------------------------------+----------------------------------------------+---------------------------------------+")
+    print('\n\n')
+    
+    fig, axs = plt.subplots(3, num_layers, sharey=False, tight_layout=True, figsize=(num_layers*4,13) )
+    
+    # print("Weights:")
+    for k, weight in weights.items():
+        _ = axs[0,k].hist(weight.ravel(), bins=n_bins)
+        _ = axs[0,k].set_title(f" layer{layer_id[k]} {weight.shape} weights - ep:{epochs}", fontsize=9);
+        _ = axs[0,k].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    
+    # print("Biases:")
+    for k, bias in biases.items():
+        _ = axs[1,k].hist(bias.ravel(), bins=n_bins)
+        _ = axs[1,k].set_title(f" layer{layer_id[k]} {bias.shape} biases - ep:{epochs}", fontsize= 9);
+        _ = axs[1,k].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+    
+    # print("Gradients:")
+    for k, grad in grads.items():
+        _ = axs[2,k].hist(grad.ravel(), bins=n_bins)
+        _ = axs[2,k].set_title(f" layer{layer_id[k]} {grad.shape} gradients - ep:{epochs}", fontsize= 9);
+        _ = axs[2,k].tick_params(axis='both', which='major', labelsize=6, labelrotation=45)
+        _ = axs[2,k].tick_params(axis='both', which='minor', labelsize=4)
+    plt.show()
+
+
+def plot_TSNE(prj, lbl, cmp, key = None, end = None, epoch = 0):
+    if end is None:
+        end = len(lbl)
+    fig, axs = plt.subplots(1, 5, sharey=False, tight_layout=True, figsize=(20,4) )
+    for layer in [0,1,2,3,4]:
+        df = pd.DataFrame(dict(
+            x=prj[layer][:end,0],
+            y=prj[layer][:end,1],
+            tpsa=lbl[0:end],
+            compound = cmp[0:end]
+        ))
+        # print(key, np.bincount(lbl), df[key].unique() , palette_count)
+        palette_count = len(df[key].unique())
+        legend = True if layer in [0,4] else False
+        lp=sb.scatterplot( data=df, x ="x", y = "y", hue=key, palette=sb.color_palette(n_colors=palette_count), ax=axs[layer], legend = legend) #, size=6)
+        _=lp.set_title(f'Epoch: {epoch} layer {layer}', fontsize = 10)
+    
+    plt.show()
+
+def plot_TSNE_2(prj, lbl, cmp, key = None, layers = None, items = None, epoch = 0, limits = (None,None)):
+    if layers is None:
+        layers = range(len(prj))
+        
+    if items is None:
+        lbl_len = len(lbl)
+    elif not isinstance(items, list):
+        items = list(items)
+    fig, axs = plt.subplots(1, len(layers), sharey=False, tight_layout=True, figsize=(len(layers)*4,4) )
+
+    for idx, layer in enumerate(layers):
+        if items is None: 
+            df = pd.DataFrame(dict(
+                    x=prj[layer][:,0],
+                    y=prj[layer][:,1],
+                    tpsa=lbl[:],
+                    compound = cmp[:]
+                ))
+        else:
+            df = pd.DataFrame(dict(
+                    x=prj[layer][items,0],
+                    y=prj[layer][items,1],
+                    tpsa=lbl[items],
+                    compound = cmp[items]
+                ))
+        # print(key, np.bincount(lbl), df[key].unique() , palette_count)
+        palette_count = len(df[key].unique())
+        legend = True if layer in [0,4] else False
+        lp=sb.scatterplot( data=df, x ="x", y = "y", hue=key, palette=sb.color_palette(n_colors=palette_count), ax=axs[idx]) #, size=6)
+        _=lp.set_title(f'Epoch: {epoch} layer {layer}', fontsize = 10)
+        lp.legend(loc = 'best', fontsize = 8)
+        lp.set_xlim([limits[0], limits[1]])
+        lp.set_ylim([limits[0], limits[1]])
+    
+    plt.show()
+    return fig
 
 
