@@ -77,14 +77,16 @@ def parse_args(input = None):
     grp.add_argument('--gpu_id'  , type=int  , required=False, default=0, help="Cuda device id to use" )    
     grp.add_argument('--lr'      , type=float, required=False, default=None, dest='learning_rate', help="Learning Rate" )    
     grp.add_argument('--run_id'  , type=str  , required=False, default=None, dest='exp_id',  help="WandB run id (for run continuations)")
-    grp.add_argument("--runmode" , type=str  , required=False, default="baseline", help="the model running mode: [baseline (default) | snnl]")
+    grp.add_argument("--runmode" , type=str  , required=False, choices=['baseline', 'snnl'], default="base",
+                        help="the model running mode: [baseline (default) | snnl]")
     grp.add_argument("--seed"    , type=int  , required=False, default=1234, dest='random_seed', help="the random seed value to use, default: [1234]")
     grp.add_argument('--prim_opt', default=False, dest="use_prim_optimizer", action=argparse.BooleanOptionalAction)
     grp.add_argument('--temp_opt', default=False, dest="use_temp_optimizer", action=argparse.BooleanOptionalAction)
     grp.add_argument('--temp_annealing', default=False, dest="use_annealing", action=argparse.BooleanOptionalAction)
-    grp.add_argument('--single_loss', default=False, dest="use_single_loss", action=argparse.BooleanOptionalAction)
-    grp.add_argument('--temp'    , type=float, required=False, default=None, dest='temperature'  , help="Temperature" )    
-    grp.add_argument('--temp_lr' , type=float, required=False, default=None, dest='temperatureLR', help="Learning Rate" )    
+    grp.add_argument('--single_loss', default=False, dest="use_single_loss", action=argparse.BooleanOptionalAction,
+                     help="Optimize Primary and SNNL loss together (or seperately when = False)")
+    grp.add_argument('--temp'    , type=float, required=False, default=None, dest='temperature'  , help="Temperature initial value" )    
+    grp.add_argument('--temp_lr' , type=float, required=False, default=None, dest='temperatureLR', help="Temperature learning rate" )    
     grp.add_argument('--wandb'   , default=False, required=False, action=argparse.BooleanOptionalAction)
     arguments = parser.parse_args(input)
     return arguments
@@ -333,17 +335,19 @@ def define_autoencoder_model(args,  device = None):
             mode = "autoencoding",
             device = device,
  
-            units=args.units,
-            code_units  = args.code_units, 
+            units           = args.units,
+            code_units      = args.code_units, 
             embedding_layer = args.embedding_layer,
-            input_shape = args.input_shape, 
-            sample_size = args.cellpainting_args['sample_size'],
+            input_shape     = args.input_shape, 
+            sample_size     = args.cellpainting_args['sample_size'],
             
-            criterion   = torch.nn.MSELoss(reduction='mean'),
-            loss_factor = args.loss_factor,
-            learning_rate=args.learning_rate,
+            criterion       = torch.nn.MSELoss(reduction='mean'),
+            loss_factor     = args.loss_factor,
+
+            learning_rate      = args.learning_rate,
+            use_prim_optimzier = args.use_prim_optimizer,
             use_prim_scheduler = args.use_prim_scheduler,
-            adam_weight_decay = args.adam_weight_decay,
+            adam_weight_decay  = args.adam_weight_decay,
             )
     elif args.runmode.lower() == "snnl":
         logger.info(f"Defining model in SNNL mode ")
@@ -351,7 +355,7 @@ def define_autoencoder_model(args,  device = None):
             mode="latent_code",
             device = device,
  
-            units=args.units,
+            units           = args.units,
             code_units      = args.code_units,
             embedding_layer = args.embedding_layer,
             input_shape     = args.input_shape,
@@ -360,21 +364,23 @@ def define_autoencoder_model(args,  device = None):
             
             criterion       = torch.nn.MSELoss(reduction='mean'),
             loss_factor     = args.loss_factor,
-            learning_rate   = args.learning_rate,
-            use_prim_optimzier =args.use_prim_optimizer,
+            
+            learning_rate      = args.learning_rate,
+            adam_weight_decay  = args.adam_weight_decay,
+            use_prim_optimzier = args.use_prim_optimizer,
             use_prim_scheduler = args.use_prim_scheduler,
-            adam_weight_decay = args.adam_weight_decay,
+
             use_snnl=True,
             snnl_factor = args.snnl_factor,
             temperature = args.temperature,
-            # temp_learning = args.temp_learning,
-            use_temp_optimzier=args.use_temp_optimizer,
-            temperatureLR = args.temperatureLR,
+            use_temp_optimzier = args.use_temp_optimizer,
             use_temp_scheduler = args.use_temp_scheduler,
+            temperatureLR = args.temperatureLR,
             SGD_weight_decay = args.SGD_weight_decay,
-            SGD_momentum = args.SGD_momentum,
+            SGD_momentum  = args.SGD_momentum,
             use_annealing = args.use_annealing,        
             use_sum = args.use_sum,
+            # temp_learning = args.temp_learning,
             )
     else:
         raise ValueError("Choose runmode between [baseline] and [snnl] only.")
@@ -440,12 +446,12 @@ def display_model_parameters(model):
 
     print(f" ") 
     print(f" Best training loss     : {model.training_history['gen']['trn_best_loss']:<8.6f} - epoch: {model.training_history['gen']['trn_best_loss_ep']}") 
-    print(f" Best training metric   : {model.training_history['gen']['trn_best_metric']:8.6f} - epoch: {model.training_history['gen']['trn_best_metric_ep']}") 
+    print(f" Best training metric   : {model.training_history['gen']['trn_best_metric']:<8.6f} - epoch: {model.training_history['gen']['trn_best_metric_ep']}") 
     print(f" ") 
     print(f" Best validation loss   : {model.training_history['gen']['val_best_loss']:<8.6f} - epoch: {model.training_history['gen']['val_best_loss_ep']}") 
-    print(f" Best validation metric : {model.training_history['gen']['val_best_metric']:8.6f} - epoch: {model.training_history['gen']['val_best_metric_ep']}") 
+    print(f" Best validation metric : {model.training_history['gen']['val_best_metric']:<8.6f} - epoch: {model.training_history['gen']['val_best_metric_ep']}") 
     print(f" ")
-    print(f" Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
+    print(f" Model best val metric      : {model.val_best_metric:<8.6f} - epoch: {model.val_best_epoch}") 
 
 def display_cellpainting_batch(batch_id, batch):
     data, labels, plates, compounds, cmphash,  = batch
@@ -483,7 +489,7 @@ def display_epoch_metrics(model, epoch = None, epochs = None, header = False):
         temp_hist = 0
         temp_grad_hist = 0
         temp_LR = 0
-    print(idx)
+ 
     trn_LR = model.training_history[key1]["trn_lr"][idx] if model.use_prim_scheduler else 0.0
  
     if model.unsupervised:
@@ -1050,7 +1056,7 @@ def load_model(filename: str) -> torch.nn.Module:
     return torch.load(path)
 
 
-def save_checkpoint(epoch, model, filename, update_latest=False, update_best=False):
+def save_checkpoint_v1(epoch, model, filename, update_latest=False, update_best=False):
     model_checkpoints_folder = os.path.join("ckpts")
     if not os.path.exists(model_checkpoints_folder):
         print(f"path {model_checkpoints_folder} doesn't exist")
@@ -1218,7 +1224,7 @@ def save_checkpoint_v4(epoch, model, args, filename = None, update_latest=False,
     torch.save(checkpoint, filename) 
     logger.info(f" Model exported to {filename} - epoch: {epoch}")
 
-def load_checkpoint(model, filename, verbose = False ):
+def load_checkpoint_v1(model, filename, verbose = False ):
     epoch = 9999
     try:
         checkpoints_folder = os.path.join("ckpts")
@@ -1235,6 +1241,7 @@ def load_checkpoint(model, filename, verbose = False ):
             model.scheduler = checkpoint['scheduler']
         epoch = checkpoint.get('epoch',0)
         logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}\n")
+        logger.info(f"     Loaded model device    : {model.device}") 
          
     # except FileNotFoundError:
     #     Exception("Previous state checkpoint not found.")
@@ -1301,6 +1308,7 @@ def load_checkpoint_v2(model, filename, dryrun = False,verbose=False):
     epoch = checkpoint.get('epoch',-1)
     logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}")
     logger.info(f"     Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
+    logger.info(f"     Loaded model device    : {model.device}") 
 
     if 'gen' not in model.training_history:
         print(f" Define self.training_history['gen'] ")
@@ -1321,8 +1329,9 @@ def load_checkpoint_v2(model, filename, dryrun = False,verbose=False):
         
     return model, epoch
 
+load_checkpoint_v3 = load_checkpoint_v2
 
-def load_checkpoint_v4(model, filename, dryrun = False,verbose=False):
+def load_checkpoint_v4(model, filename, dryrun = False, verbose=False):
     epoch = -1
     if filename[-3:] != '.pt':
         filename+='.pt'
@@ -1385,12 +1394,13 @@ def load_checkpoint_v4(model, filename, dryrun = False,verbose=False):
 
     epoch = checkpoint.get('epoch',-1)
     logger.info(f" ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {epoch}")
-    logger.info(f"     Model best metric      : {model.best_metric:6f} - epoch: {model.best_epoch}") 
+    logger.info(f"     Model best training metric   : {model.trn_best_metric:6f} - epoch: {model.trn_best_epoch}") 
+    logger.info(f"     Model best validation metric : {model.val_best_metric:6f} - epoch: {model.val_best_epoch}") 
 
     if 'gen' not in model.training_history:
         print(f" Define self.training_history['gen'] ")
-        model.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : 0 ,
-                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': np.inf, 'val_best_loss_ep' : 0 }        
+        self.training_history['gen'] = {'trn_best_metric' : -np.inf, 'trn_best_metric_ep' : -1, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : -1 ,
+                                        'val_best_metric' : -np.inf, 'val_best_metric_ep' : -1, 'val_best_loss': np.inf, 'val_best_loss_ep' : -1 }   
     
         for key in ['trn', 'val']:
             tmp = np.argmin(model.training_history[key][f'{key}_ttl_loss'])
@@ -1400,15 +1410,21 @@ def load_checkpoint_v4(model, filename, dryrun = False,verbose=False):
             tmp1 = np.argmax(model.training_history[key][f'{key}_R2_score'])
             model.training_history['gen'][f'{key}_best_metric_ep'] = tmp1
             model.training_history['gen'][f'{key}_best_metric'] = model.training_history[key][f'{key}_R2_score'][tmp1]
-            
-        model.best_metric = model.training_history['gen'][f'val_best_metric']  
-        model.best_epoch  = model.training_history['gen'][f'val_best_metric_ep']              
+
+        model.trn_best_metric = model.training_history['gen'][f'trn_best_metric']  
+        model.trn_best_epoch  = model.training_history['gen'][f'trn_best_metric_ep']                          
+        model.val_best_metric = model.training_history['gen'][f'val_best_metric']  
+        model.val_best_epoch  = model.training_history['gen'][f'val_best_metric_ep']              
         
     return model, epoch
 
 
 def load_model_from_ckpt(model, runmode = None, date = None, title = None, epochs = None, 
-                         filename =None, cpb = None, factor = None , dryrun = False, v1 = True, verbose = False):
+                         filename =None, cpb = None, factor = None , 
+                         dryrun = False, 
+                         version = 'v2',
+                         cuda_device = None, 
+                         verbose = False):
     # filename = f"AE_{args.model.lower()}_{date}_{title}_{epochs:03d}_cpb_{args.compounds_per_batch}_factor_{factor}.pt"    
     if filename is None:
         if factor is None:
@@ -1419,59 +1435,68 @@ def load_model_from_ckpt(model, runmode = None, date = None, title = None, epoch
         
     if os.path.exists(os.path.join('ckpts', filename)):
         # print(f"\n {filename}   *** Checkpoint EXISTS *** \n")
-        if v1:
-            model, last_epoch = load_checkpoint(model, filename)
-        else:
+        if version == 'v1':
+            model, last_epoch = load_checkpoint_v1(model, filename)
+        elif version == 'v2':
             model, last_epoch = load_checkpoint_v2(model, filename, dryrun)
+        elif version == 'v3':
+            model, last_epoch = load_checkpoint_v3(model, filename, dryrun)
+        else:
+            model, last_epoch = load_checkpoint_v4(model, filename, dryrun)
+            
         _ = model.eval()
-        # model = model.to(current_device)
+        if cuda_device is not None:
+            model.device = cuda_device
+            # model = model.cuda(device=cuda_device)            
+            model = model.to(cuda_device)
+            
         # model.to('cpu')
-        if verbose:
-            print(f" model device: {model.device}")
-            print(f" model temperature: {model.temperature}")
+        
+        logger.info(f" Loaded model device: {model.device}")
+        logger.info(f" Loaded model temperature: {model.temperature}")
     else:
         logger.error(f" {filename} *** Checkpoint DOES NOT EXIST *** \n")
         raise ValueError(f"\n {filename} *** Checkpoint DOES NOT EXIST *** \n")
         
-    return model
+    return model, last_epoch
     
 
-def fix_checkpoint_v2 (filename):
+# def fix_checkpoint_v2 (filename):
 
-    checkpoints_folder = os.path.join("ckpts")
-    orig_ckpt_file = os.path.join(checkpoints_folder, filename+'.pt')
-    fixed_ckpt_file = os.path.join(checkpoints_folder, filename+'_fixed.pt')
+#     checkpoints_folder = os.path.join("ckpts")
+#     orig_ckpt_file = os.path.join(checkpoints_folder, filename+'.pt')
+#     fixed_ckpt_file = os.path.join(checkpoints_folder, filename+'_fixed.pt')
     
-    print(f" ==> Original checkpoint: {orig_ckpt_file}")
-    print(f" ==> Fixed    checkpoint: {fixed_ckpt_file}")
+#     print(f" ==> Original checkpoint: {orig_ckpt_file}")
+#     print(f" ==> Fixed    checkpoint: {fixed_ckpt_file}")
     
-    try:
-        checkpoint = torch.load(orig_ckpt_file)
-        print(f"\n ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {checkpoint['epoch']}\n")
-    except FileNotFoundError:
-        Exception("Original checkpoint not found.")
-    except :
-        print("Other Exception")
-        print(sys.exc_info())
+#     try:
+#         checkpoint = torch.load(orig_ckpt_file)
+#         print(f"\n ==> Loaded from checkpoint {filename} successfully. last epoch on checkpoint: {checkpoint['epoch']}\n")
+#     except FileNotFoundError:
+#         Exception("Original checkpoint not found.")
+#     except :
+#         print("Other Exception")
+#         print(sys.exc_info())
 
-    fixed_checkpoint = dict()
-    fixed_checkpoint['params'] = dict()
-    for key, value in checkpoint.items():
-        if key in ['epoch', 'state_dict', 'optimizer_state_dict', 'temp_optimizer_state_dict', 'scheduler_state_dict', 'temp_scheduler_state_dict' ]:
-            fixed_checkpoint[key] = value
-            print(f"{key:40s}, {str(type(value)):60s}  -- major key set  ")
-        else:
-            fixed_checkpoint['params'][key] = value
-            print(f"{key:40s}, {str(type(value)):60s}  -- params key set  ")
+#     fixed_checkpoint = dict()
+#     fixed_checkpoint['params'] = dict()
+#     for key, value in checkpoint.items():
+#         if key in ['epoch', 'state_dict', 'optimizer_state_dict', 'temp_optimizer_state_dict', 'scheduler_state_dict', 'temp_scheduler_state_dict' ]:
+#             fixed_checkpoint[key] = value
+#             print(f"{key:40s}, {str(type(value)):60s}  -- major key set  ")
+#         else:
+#             fixed_checkpoint['params'][key] = value
+#             print(f"{key:40s}, {str(type(value)):60s}  -- params key set  ")
             
-    try:
-        torch.save(fixed_checkpoint, fixed_ckpt_file) 
-        print(f"[INFO] Model exported to { fixed_ckpt_file}.")
-    except :
-        print("Other Exception 2")
-        print(sys.exc_info())
+#     try:
+#         torch.save(fixed_checkpoint, fixed_ckpt_file) 
+#         print(f"[INFO] Model exported to { fixed_ckpt_file}.")
+#     except :
+#         print("Other Exception 2")
+#         print(sys.exc_info())
 
-    return  fixed_checkpoint
+#     return  fixed_checkpoint
 
 #-------------------------------------------------------------------------------------------------------------------
 #  Plotting routines

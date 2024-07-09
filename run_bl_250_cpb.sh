@@ -1,4 +1,4 @@
-python AE_baseline.py   -c  ./hyperparameters/ae_cp_250_512_cpb.yaml \
+python AE_batch.py    --config ./hyperparameters/ae_cp_250_512_cpb.yaml \
 			--epochs        700 \
                         --lr            1.00e-04 \
                         --cpb           200 \

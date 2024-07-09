@@ -33,7 +33,7 @@ embedding_layer : 4
 ## Training parameters
 ##------------------------------------------------------
 show_every    : 1 
-save_every    : 25
+save_every    : 100
 
 learning_rate : 1.000e-03
 loss_factor   : 1.000e+00

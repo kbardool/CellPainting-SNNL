@@ -6,7 +6,7 @@ exp_id               :
 exp_name_pfx         : 
 exp_name             : 
 exp_title            : scpb{0:03d}-200Ltnt_512
-exp_description      : AE Baseline - snglOpt, 200 dim latent, 512 Midlayer, {0} cpb
+exp_description      : AE {1} - snglOpt, 200 dim latent, 512 Midlayer, {0} cpb
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
@@ -32,7 +32,7 @@ embedding_layer : 4
 ## Training parameters
 ##------------------------------------------------------
 show_every    : 1 
-save_every    : 25
+save_every    : 100
 
 learning_rate : 1.000e-03
 loss_factor   : 1.000e+00
@@ -40,6 +40,8 @@ adam_weight_decay : 0
 
 snnl_factor   : 0.000e+00
 temperature   : 0.0 
+use_temp_optimizer: False
+use_temp_scheduler: False
 temperatureLR : 0.000e+00
 SGD_weight_decay  : 0
 

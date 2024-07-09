@@ -128,7 +128,7 @@ class Autoencoder(Model):
         self.use_prim_optimizer = use_prim_optimzier
         self.use_prim_scheduler = use_prim_scheduler
         self.use_annealing = use_annealing
-        
+     
         self.temp_optimizer =  None
         self.temp_scheduler = None 
         self.temperatureLR = temperatureLR
@@ -208,12 +208,14 @@ class Autoencoder(Model):
             print(f"    AE init() -- non linearities    : {self.non_linearities}")               
             print(f"    AE init() -- Primary Crtierion  : {self.primary_criterion}")
             print(f"    AE init() -- monitor_grads_layer: {self.monitor_grads_layer}")
-            print(f"    AE init() -- scheduler          : {self.scheduler}")
+            print(f"    AE init() -- Primary optimizer  : {self.use_prim_optimizer}")
+            print(f"    AE init() -- Primary scheduler  : {self.use_prim_scheduler}")
             print(f"    AE init() -- use_snnl           : {self.use_snnl}")
             print(f"    AE init() -- SNNL Crtierion     : {self.snnl_criterion}")
             print(f"    AE init() -- temperature        : {self.temperature}")
             print(f"    AE init() -- temperature LR     : {self.temperatureLR}")
-            print(f"    AE init() -- temp_scheduler     : {self.temp_scheduler}")
+            print(f"    AE init() -- Temperature optmzr : {self.use_temp_scheduler}")
+            print(f"    AE init() -- Temperature schdlr : {self.use_temp_scheduler}")
 
     def setup_prim_optimizer(self):
         

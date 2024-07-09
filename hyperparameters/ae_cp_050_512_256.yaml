@@ -6,7 +6,7 @@ exp_id               :
 exp_name_pfx         :
 exp_name             : 
 exp_title            : sngl{0:0d}_050Ltnt_512_256
-exp_description      : Autoencoder Training in Baseline mode - SnglOpt, 512-256-50 latent
+exp_description      : AE {1} - SnglOpt, 50 dim latent, 512-256 Midlayers, {0} cpb
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
@@ -30,7 +30,6 @@ units   : [
     ["relu" ,  0, 0],
     ["linear",1024, 1471]
   ]
-
 input_shape : 1471
 code_units  : 50
 embedding_layer : 6

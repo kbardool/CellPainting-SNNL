@@ -1,4 +1,4 @@
-	python AE_baseline.py 	-c  ./hyperparameters/ae_sn_250_512_cpb.yaml \
+	python AE_batch.py 	 --config ./hyperparameters/ae_sn_250_512_cpb.yaml \
             --runmode       snnl \
             --epochs        200 \
             --lr            1.00e-04 \

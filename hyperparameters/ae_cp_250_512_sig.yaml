@@ -6,7 +6,7 @@ exp_id               :
 exp_name_pfx         : 
 exp_name             : 
 exp_title            : sngl{0:0d}_250Ltnt_512_sig
-exp_description      : AE Baseline - snglOpt, 250 dim latent, 512 Midlayer, {0} cpb
+exp_description      : AE {1} - snglOpt, 250 dim latent, 512 Midlayer, {0} cpb
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
@@ -25,8 +25,7 @@ units   : [
     ["linear", 512, 1024],
     ["relu" ,  0, 0],
     ["linear", 1024, 1471]
-  ]
-activations : ["relu", "relu", "sigmoid", "relu", "relu", "relu"]    
+  ]  
 input_shape : 1471
 code_units  : 250
 embedding_layer : 4

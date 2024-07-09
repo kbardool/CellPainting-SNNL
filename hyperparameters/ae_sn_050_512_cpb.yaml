@@ -32,18 +32,18 @@ embedding_layer : 4
 ## Training parameters
 ##------------------------------------------------------
 show_every    : 1 
-save_every    : 25
+save_every    : 100
 
 learning_rate : 1.000e-03
 loss_factor   : 1.000e+00
-adam_weight_decay : 0 
+adam_weight_decay : 0.00
 
 snnl_factor   : 0.500e+00
 temperature   : 0.5 
 temperatureLR : 1.000e-05
 use_temp_optimizer: True
 use_temp_scheduler: True
-SGD_weight_decay  : 0
+SGD_weight_decay  : 0.00
 
 ## Dataset parameters
 ##------------------------------------------------------

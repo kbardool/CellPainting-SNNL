@@ -1,4 +1,4 @@
-python AE_baseline.py   -c   hyperparameters/ae_cp_250_512_256.yaml \
+python AE_batch.py    --config  hyperparameters/ae_cp_250_512_256.yaml \
 	                    --runmode            baseline \
 	                    --wandb              \
 	                    --gpu_id             0 \

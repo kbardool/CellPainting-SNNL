@@ -1,4 +1,4 @@
-python AE_baseline.py -c  ./hyperparameters/ae_cp_050_512_256.yaml \
+python AE_batch.py  --config ./hyperparameters/ae_cp_050_512_256.yaml \
                       --epochs      450 \
                       --runmode     baseline \
                       --wandb  \

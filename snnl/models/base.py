@@ -46,6 +46,7 @@ class Model(torch.nn.Module):
         temperature: float = 100.0,
         temperatureLR: float = None,
         use_annealing: bool = False,
+        anneal_patience: int = 15,        
         use_sum: bool = False,
         unsupervised: bool = None,
         code_units: int = 0,
@@ -94,14 +95,19 @@ class Model(torch.nn.Module):
         self.embedding_layer = embedding_layer
         self.stability_epsilon = stability_epsilon
         self.verbose = verbose
-        
+        temperature = 1.0 if use_annealing else temperature
         self.sample_size = sample_size
         self.primary_criterion = criterion
-        self.best_metric = 0
-        self.best_epoch  = 0
+        self.R2_improvement_counter = 0
+        self.temp_decay_counter = 0
+        self.trn_best_metric = -np.inf
+        self.trn_best_epoch  = 0
+        self.val_best_metric = -np.inf
+        self.val_best_epoch  = 0
+        self.last_metric = 0.0
         self.training_history = dict()
-        self.training_history['gen'] = {'trn_best_metric' : 0, 'trn_best_metric_ep' : 0, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : 0 ,
-                                        'val_best_metric' : 0, 'val_best_metric_ep' : 0, 'val_best_loss': np.inf, 'val_best_loss_ep' : 0 }
+        self.training_history['gen'] = {'trn_best_metric' : -np.inf, 'trn_best_metric_ep' : -1, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : -1 ,
+                                        'val_best_metric' : -np.inf, 'val_best_metric_ep' : -1, 'val_best_loss': np.inf, 'val_best_loss_ep' : -1 }
         self.training_history['trn'] = defaultdict(list)
         self.training_history['val'] = defaultdict(list)
         
@@ -123,6 +129,7 @@ class Model(torch.nn.Module):
             self.register_parameter(name="temperature", param=self.temperature)
             # self.temperature = temperature
             self.use_annealing = use_annealing
+            self.anneal_patience= anneal_patience
             self.use_sum = use_sum
             self.snnl_criterion = SNNLoss(
                 mode=self.mode,
@@ -216,6 +223,7 @@ class Model(torch.nn.Module):
                     DEBUG_COUNT: int = 0, 
                     verbose: bool = False) -> Tuple:
         self.train()
+        self.new_trn_best = False
         self.epoch = epoch
         epoch_losses, epoch_metrics = self.init_losses_and_metrics()
         
@@ -224,19 +232,13 @@ class Model(torch.nn.Module):
             self.snnl_.factor = snnl_factor 
             self.snnl_criterion.factor = snnl_factor 
             print(f" model.snnl_criterion.factor set to {snnl_factor}")
-            
+          
         if (loss_factor is not None) and (loss_factor != self.loss_factor):
             # print(f" model.loss_factor {model.loss_factor}")
             self.loss_factor = loss_factor 
             print(f" model.loss_factor set to {loss_factor}")    
-        
-        if self.use_annealing:
-            # temp_before = self.temperature.item()
-            with torch.no_grad():
-                self.temperature.copy_(1.0 / ((1.0 + epoch) ** 0.55))
-            # print(f" {epoch} - anneal temp  -  before: {temp_before:10.6f}     new_temp: {self.temperature.item():10.6f} ")
- 
-                
+    
+                        
         for self.batch_count, (batch_features, batch_labels, _, _, _) in enumerate(data_loader):
             batch_features = batch_features.to(self.device)
             batch_labels = batch_labels.to(self.device)
@@ -268,9 +270,6 @@ class Model(torch.nn.Module):
                 total_loss.backward()
                 self.optimizers['prim'].step()
             else:        
-                # if self.batch_count < DEBUG_COUNT:
-                #     self.display_gradients('After forward pass, before zero grad')
- 
                 for k,v in self.optimizers.items():
                     # self.optimizers[k].zero_grad()
                     v.zero_grad()
@@ -281,14 +280,7 @@ class Model(torch.nn.Module):
                 primary_loss.backward( retain_graph = self.use_temp_optimizer)
                 if 'temp' in self.optimizers: 
                     snn_loss.backward()     
-                # else:   ## self.use_annealing
-                #     pass
 
-                # for k,v in self.optimizers.items():
-                    # if self.batch_count < DEBUG_COUNT:
-                    #     self.display_gradients(f" Optimizer {k} after {v}.backward()")
-                    #     self.display_values(f" Optimizer {k} after {v}.backward()")
-                    
                 for k,v in self.optimizers.items():
                     v.step()
                     # if self.batch_count < DEBUG_COUNT:
@@ -296,9 +288,10 @@ class Model(torch.nn.Module):
                     #     self.display_values(f" Optimizer {k} after step()")
                         
                 # self.temperature = torch.clamp(self.temperature,1.0e-6,None)
-            if self.monitor_grads_layer is not None:
-                self.training_history['trn']['layer_grads'].append( self.layers[self.monitor_grads_layer].weight.grad.sum().item() + 
-                                                                      self.layers[self.monitor_grads_layer].bias.grad.sum().item())     
+                
+            # if self.monitor_grads_layer is not None:
+            #     self.training_history['trn']['layer_grads'].append( self.layers[self.monitor_grads_layer].weight.grad.sum().item() + 
+            #                                                           self.layers[self.monitor_grads_layer].bias.grad.sum().item())     
             # temp_final = self.temperature.item()
             # snnl_temp_final = self.snnl_criterion.temperature.item()
             # temp_grad = 0.0 if self.temperature.grad is None else self.temperature.grad.item
@@ -326,7 +319,8 @@ class Model(torch.nn.Module):
             epoch_metrics.R2_score_tev  /= total_batches
             
         self.update_training_history('trn', epoch, epoch_losses, epoch_metrics)              
- 
+        self.update_best_trn_metrics()
+                
         return epoch_losses 
 
 
@@ -334,7 +328,7 @@ class Model(torch.nn.Module):
                     data_loader: torch.utils.data.DataLoader, 
                     epoch: int = None, 
                     verbose: bool = False) -> Tuple:
-        self.new_best = False
+        self.new_val_best = False
         self.epoch = epoch
         epoch_losses, epoch_metrics = self.init_losses_and_metrics()        
         
@@ -381,7 +375,7 @@ class Model(torch.nn.Module):
             epoch_metrics.R2_score_tev  /= total_batches
             
         self.update_training_history('val', epoch, epoch_losses, epoch_metrics)
-        self.update_best_metric()
+        self.update_best_val_metrics()
         return epoch_losses
 
     def init_losses_and_metrics(self):
@@ -402,11 +396,17 @@ class Model(torch.nn.Module):
             metrics.roc_auc   = 0
         return losses, metrics 
             
-    def update_best_metric(self):
-        if self.best_metric <  self.training_history['gen'][f'val_best_metric']:
-            self.best_metric =  self.training_history['gen'][f'val_best_metric']
-            self.best_epoch = self.training_history['gen'][f'val_best_metric_ep']
-            self.new_best = True
+    def update_best_trn_metrics(self):
+        if  self.training_history['gen'][f'trn_best_metric'] >  self.trn_best_metric :
+            self.trn_best_metric =  self.training_history['gen'][f'trn_best_metric']
+            self.trn_best_epoch = self.training_history['gen'][f'trn_best_metric_ep']
+            self.new_trn_best = True
+
+    def update_best_val_metrics(self):
+        if  self.training_history['gen'][f'val_best_metric'] >  self.val_best_metric :
+            self.val_best_metric =  self.training_history['gen'][f'val_best_metric']
+            self.val_best_epoch = self.training_history['gen'][f'val_best_metric_ep']
+            self.new_val_best = True
         
     def update_training_history(self, key, epoch, losses, metrics):
  
@@ -416,6 +416,7 @@ class Model(torch.nn.Module):
         self.training_history[key][f"{key}_ttl_loss"].append(losses.ttl_loss)
         self.training_history[key][f"{key}_prim_loss"].append(losses.primary_loss)
         self.training_history[key][f"{key}_snn_loss"].append(losses.snn_loss)
+        
         if losses.ttl_loss < self.training_history['gen'][f'{key}_best_loss']:
             self.training_history['gen'][f'{key}_best_loss'] = losses.ttl_loss
             self.training_history['gen'][f'{key}_best_loss_ep'] = epoch
@@ -429,6 +430,7 @@ class Model(torch.nn.Module):
         else:
             self.training_history[key][f"{key}_R2_score"].append(metrics.R2_score)
             self.training_history[key][f"{key}_R2_score_tev"].append(metrics.R2_score_tev )
+            
             if metrics.R2_score > self.training_history['gen'][f'{key}_best_metric']:
                 self.training_history['gen'][f'{key}_best_metric'] = metrics.R2_score
                 self.training_history['gen'][f'{key}_best_metric_ep'] = epoch
@@ -443,6 +445,7 @@ class Model(torch.nn.Module):
                     self.training_history['trn']['temp_lr'].append(self.optimizers['temp'].param_groups[0]['lr'])
                 else:
                     self.training_history['trn']['temp_lr'].append(0.0)
+                    
     
     def compute_snnl_loss(self, labels, outputs, features ):
         if self.use_snnl:
@@ -510,6 +513,22 @@ class Model(torch.nn.Module):
             self.schedulers['temp'].step(loss.snn_loss)
             if  self.training_history['trn']['temp_lr'][-1] != self.optimizers['temp'].param_groups[0]['lr']:
                 logger.info(f" Temperature optimizer learning rate reduced to {self.schedulers['temp']._last_lr}")    
+
+ 
+        # print(f" {epoch} - anneal temp  -  best_metric: {self.trn_best_metric:10.6f}    last_metric: {epoch_metrics.R2_score:10.6f}"
+        #       f"     delta: {epoch_metrics.R2_score - self.trn_best_metric:10.6f} ")
+            
+        # if self.use_annealing  and (epoch_metrics.R2_score - self.trn_best_metric < 1.0e-05):
+        if self.use_annealing  and (not self.new_val_best):
+            self.R2_improvement_counter += 1
+            if self.R2_improvement_counter > self.anneal_patience:
+                temp_before = self.temperature.item()
+                with torch.no_grad():
+                    self.temperature.copy_(1.0 / ((1.0 + self.temp_decay_counter) ** 0.55))
+                self.R2_improvement_counter = 0
+                print(f" {self.epoch} - anneal temp  -  counter: {self.temp_decay_counter}    before: {temp_before:10.6f}     new_temp: {self.temperature.item():10.6f} ")
+                self.temp_decay_counter += 1 
+
 
     
     def optimize_temperature(self, verbose = False):

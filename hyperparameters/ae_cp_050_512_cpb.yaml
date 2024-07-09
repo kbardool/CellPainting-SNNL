@@ -6,7 +6,7 @@ exp_id               :
 exp_name_pfx         :
 exp_name             : 
 exp_title            : scpb{0:03d}-050Ltnt_512
-exp_description      : AE Baseline - snglOpt, 50 dim latent, 512 Midlayer, {0} cpb
+exp_description      : AE {1} - snglOpt, 50 dim latent, 512 Midlayer, {0} cpb
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234

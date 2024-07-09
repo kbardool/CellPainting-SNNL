@@ -6,7 +6,7 @@ exp_id               :
 exp_name_pfx         :
 exp_name             : 
 exp_title            : sngl{0:0d}_100Ltnt_512_256
-exp_description      : AE Baseline - snglOpt, 512-256-100 dim latent, No Sigmoid, {0} cpb
+exp_description      : AE {1} - snglOpt, 512-256-100 dim latent, No Sigmoid, {0} cpb
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
