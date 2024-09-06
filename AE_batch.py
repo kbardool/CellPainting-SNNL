@@ -80,9 +80,88 @@ cli_args = parse_args()
 cli_args
 
 args = load_configuration(cli_args)
-set_global_seed(args.random_seed)
 # args.exp_title
 # args.ckpt
+
+
+
+#
+# WandB initialization 
+#
+WANDB_ACTIVE = args.wandb
+EXP_DATE = datetime.now().strftime('%y%m%d_%H%M')
+
+args.exp_name = f"AE_{EXP_DATE}"
+args.exp_date = EXP_DATE
+
+logger.info(f"args.wandb       : {args.wandb}")
+logger.info(f"Project Name     (wandb_run.project)  : {args.project_name}")
+logger.info(f"Experiment Id    (wandb_run.id)       : {args.exp_id}")
+logger.info(f"Experiment Title (wandb_run.title)    : {args.exp_title}")
+logger.info(f"Experiment Notes (wandb_run.notes)    : {args.exp_description}")
+logger.info(f"Initial Exp Name (wandb_run.name)     : {args.exp_name}")
+logger.info(f"Initial Exp Date (extract from name)  : {args.exp_date}")
+
+if WANDB_ACTIVE:
+    wandb_status = "***** Initialize NEW  W&B Run *****"  if args.exp_id is None else  "***** Resume EXISTING W&B Run *****" 
+    logger.info(f"{wandb_status}")
+    
+    wandb_run = init_wandb(args)
+    args.exp_id = wandb_run.id
+    args.exp_date = args.exp_name[3:]
+    logger.info(f" Experiment Name  : {args.exp_name}")
+    logger.info(f" Experiment Date  : {args.exp_date}")
+else: 
+    wandb_status = "***** W&B Logging INACTIVE *****"
+    args.exp_name = 'AE_'+datetime.now().strftime('%y%m%d_%H%M')
+    args.exp_date = datetime.now().strftime('%y%m%d_%H%M')    
+
+
+logger.info(f" {wandb_status}")
+logger.info(f" Project Name     : {args.project_name}")
+logger.info(f" Experiment Id    : {args.exp_id}")
+logger.info(f" Experiment Name  : {args.exp_name}")
+logger.info(f" Experiment Date  : {args.exp_date}")
+logger.info(f" Experiment Title : {args.exp_title}")
+logger.info(f" Experiment Notes : {args.exp_description}")
+
+
+#
+# WandB initialization (old)
+#
+# WANDB_ACTIVE = args.wandb
+# EXP_DATE = datetime.now().strftime('%Y%m%d_%H%M')
+
+# if WANDB_ACTIVE:
+#     if args.exp_id is not None:
+#         logger.info(" Resume WandB Run")
+#         resume_wandb = True
+#     else:
+#         logger.info(" Initialize WandB Run")
+#         resume_wandb = False
+#         args.exp_name = f"AE_{EXP_DATE}"
+    
+#     wandb_run = init_wandb(args)
+#     args.exp_id = wandb_run.id
+#     args.exp_date = args.exp_name[3:]
+    
+#     logger.info(f" WandB tracking started ")
+#     logger.info(f" Project  :  {args.project_name}")    
+#     logger.info(f" Run id   :  {args.exp_id}   / {wandb_run.id}")
+#     logger.info(f" Name     :  {args.exp_name} / {wandb_run.name} ")
+#     logger.info(f" Title    :  {args.exp_title}")    
+#     logger.info(f" Date     :  {args.exp_date}  ")
+#     logger.info(f" Notes    :  {args.exp_description} / {wandb_run.notes} ")
+# else: 
+#     logger.info(f" *** W&&B Logging is INACTIVE *** ")
+#     args.exp_id = None
+#     args.exp_name = f"AE_{EXP_DATE}"
+#     args.exp_date = EXP_DATE
+
+#
+# Set random seed and gpu device 
+#
+set_global_seed(args.random_seed)
 
 current_device = get_device()
 if args.gpu_id is not None:
@@ -108,44 +187,11 @@ train_loader = InfiniteDataLoader(dataset=train_dataset, batch_size = args.batch
 val_dataset = CellpaintingDataset(type='val', **args.cellpainting_args)
 val_loader = InfiniteDataLoader(dataset=val_dataset, batch_size = args.batch_size, shuffle = False, num_workers = 0, collate_fn = custom_collate_fn)
 
-
-#
-# WandB initialization 
-#
-WANDB_ACTIVE = args.wandb
-EXP_DATE = datetime.now().strftime('%Y%m%d_%H%M')
-
-if WANDB_ACTIVE:
-    if args.exp_id is not None:
-        logger.info(" Resume WandB Run")
-        resume_wandb = True
-    else:
-        logger.info(" Initialize WandB Run")
-        resume_wandb = False
-        args.exp_name = f"AE_{EXP_DATE}"
-    
-    wandb_run = init_wandb(args)
-    args.exp_id = wandb_run.id
-    args.exp_date = args.exp_name[3:]
-    
-    logger.info(f" WandB tracking started ")
-    logger.info(f" Project  :  {args.project_name}")    
-    logger.info(f" Run id   :  {args.exp_id}   / {wandb_run.id}")
-    logger.info(f" Name     :  {args.exp_name} / {wandb_run.name} ")
-    logger.info(f" Title    :  {args.exp_title}")    
-    logger.info(f" Date     :  {args.exp_date}  ")
-    logger.info(f" Notes    :  {args.exp_description} / {wandb_run.notes} ")
-else: 
-    logger.info(f" *** W&&B Logging is INACTIVE *** ")
-    args.exp_id = None
-    args.exp_name = f"AE_{EXP_DATE}"
-    args.exp_date = EXP_DATE
-
 #
 #  Define Model
 # 
 model = define_autoencoder_model(args, device = current_device)
-list_namespace(args)
+
 
 if WANDB_ACTIVE:
     wandb_watch(item = model, criterion=None, log = 'all', log_freq = 1000, log_graph = False)
@@ -183,7 +229,8 @@ else:
     model.starting_epoch = 0
     model.ending_epoch = args.epochs
     logging.info(f" INITIALIZE TRAINING - Run {args.epochs} epochs: epoch {model.starting_epoch+1} to {model.ending_epoch} ")
-
+    
+list_namespace(args)
 display_model_parameters(model)
 
 logger.info(f" Experiment run id      : {args.exp_id}")
@@ -232,19 +279,16 @@ for epoch in range(model.starting_epoch, model.ending_epoch):
         else:
             save_checkpoint_v4(epoch+1, model, args)    
             
-print(f"Last Epoch {epoch+1}")
-if WANDB_ACTIVE:
-    wandb.unwatch(model)
-    save_checkpoint_v4(epoch+1, model, args, update_latest=True)          
-else:
-    save_checkpoint_v4(epoch+1, model, args)    
-
-        
 #        
 # Write final checkpoint 
 #
+print(f"Last Epoch {epoch+1}")
 logger.info(f" Final checkpoint epoch {epoch+1}")
-save_checkpoint_v4(epoch+1, model, args, update_latest=True)            
+if WANDB_ACTIVE:
+    wandb.unwatch(model)
+    wandb.config.update(args,allow_val_change=True )
+
+save_checkpoint_v4(epoch+1, model, args, update_latest=True)          
 
 #
 # Finish WandB logging

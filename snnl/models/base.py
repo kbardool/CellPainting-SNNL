@@ -4,10 +4,12 @@ from typing import Dict, Tuple
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"
+import sys
 import logging
 import numpy as np
 import pandas as pd
 import torch
+import tqdm
 # from torch.optim.lr_scheduler import ReduceLROnPlateau
 from types import SimpleNamespace
 from datetime import datetime
@@ -15,12 +17,13 @@ from pt_datasets import create_dataloader
 from typing import Dict, List, Tuple
 from collections import defaultdict
 import sklearn.metrics as skm
-import torcheval.metrics.functional as tev
+# import torcheval.metrics.functional as tev
 from snnl.losses import SNNLoss
-logger = logging.getLogger(__name__) 
-#-------------------------------------------------------------------------------------------------------------------
+logger = logging.getLogger(__name__)
+
+# -------------------------------------------------------------------------------------------------------------------
 #  Model Base class  
-#-------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------------------------
 
 class Model(torch.nn.Module):
 
@@ -33,8 +36,9 @@ class Model(torch.nn.Module):
         "sae"         : True,
         "custom"      : False,
         "moe"         : False,
-    }    
+    }
     _ReduceLROnPlateau = torch.optim.lr_scheduler.ReduceLROnPlateau
+
     def __init__(
         self,
         mode: str,
@@ -46,7 +50,7 @@ class Model(torch.nn.Module):
         temperature: float = 100.0,
         temperatureLR: float = None,
         use_annealing: bool = False,
-        anneal_patience: int = 15,        
+        anneal_patience: int = 15,
         use_sum: bool = False,
         unsupervised: bool = None,
         code_units: int = 0,
@@ -81,7 +85,7 @@ class Model(torch.nn.Module):
         code_units: int
             The number of units in which the SNNL will be applied.
  
-        """        
+        """
         super().__init__()
         mode = mode.lower()
 
@@ -95,7 +99,9 @@ class Model(torch.nn.Module):
         self.embedding_layer = embedding_layer
         self.stability_epsilon = stability_epsilon
         self.verbose = verbose
-        temperature = 1.0 if use_annealing else temperature
+        ## temperature = 1.0 if use_annealing else temperature
+        self.epoch = -1
+        self.batch_count = -1
         self.sample_size = sample_size
         self.primary_criterion = criterion
         self.R2_improvement_counter = 0
@@ -105,32 +111,36 @@ class Model(torch.nn.Module):
         self.val_best_metric = -np.inf
         self.val_best_epoch  = 0
         self.last_metric = 0.0
+        self.resume_training = False
         self.training_history = dict()
         self.training_history['gen'] = {'trn_best_metric' : -np.inf, 'trn_best_metric_ep' : -1, 'trn_best_loss': np.inf, 'trn_best_loss_ep' : -1 ,
                                         'val_best_metric' : -np.inf, 'val_best_metric_ep' : -1, 'val_best_loss': np.inf, 'val_best_loss_ep' : -1 }
         self.training_history['trn'] = defaultdict(list)
         self.training_history['val'] = defaultdict(list)
-        
+
         if unsupervised is None:
             self.unsupervised = self._unsupervised_supported_modes.get(self.mode)
         else:
             self.unsupervised = unsupervised
 
-        self.calculate_metrics =  self.regression_metrics if self.unsupervised else self.classification_metrics
-            
+        self.calculate_metrics = self.regression_metrics if self.unsupervised else self.classification_metrics
+
         if (self.mode == "latent_code"):
             if (embedding_layer is None):
                 raise ValueError("[Embedding_layer]  must be specified when self.mode = 'latent_code'." )
-            elif  (type(embedding_layer) == int) and (embedding_layer <=0):
+            elif (type(embedding_layer) is int) and (embedding_layer <= 0):
                 raise ValueError("[Embedding_layer]  must be specified when self.mode = 'latent_code'." )
-               
+
         if self.use_snnl:
-            self.temperature = torch.nn.Parameter(data=torch.tensor([temperature]), requires_grad=True)
+            self.use_sum = use_sum
+            self.use_annealing = use_annealing
+            self.anneal_patience = anneal_patience
+            temp_requires_grad = False if self.use_annealing else True
+
+            self.temperature = torch.nn.Parameter(data=torch.tensor([temperature]), requires_grad=temp_requires_grad)
             self.register_parameter(name="temperature", param=self.temperature)
             # self.temperature = temperature
-            self.use_annealing = use_annealing
-            self.anneal_patience= anneal_patience
-            self.use_sum = use_sum
+
             self.snnl_criterion = SNNLoss(
                 mode=self.mode,
                 device = self.device,
@@ -144,7 +154,7 @@ class Model(torch.nn.Module):
         else:
             self.snnl_criterion = None
             self.temperature = 0
-            
+
         if verbose:
             print('\n'+'-'*60)
             print(f" Building Base Model from NOTEBOOK")
@@ -156,8 +166,7 @@ class Model(torch.nn.Module):
             print(f"    Model_init()_    -- use_snnl :         {self.use_snnl}")
             print(f"    Model_init()_    -- temperature :      {self.temperature}")
             print(f"    Model_init()_    -- temperature LR:    {self.temperatureLR}")
-        
-            
+
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
@@ -165,7 +174,425 @@ class Model(torch.nn.Module):
     def fit(self, **kwargs):
         raise NotImplementedError
 
-    
+    def epoch_train(self, 
+                    data_loader: torch.utils.data.DataLoader, 
+                    epoch: int = None, 
+                    loss_factor: float = None,
+                    snnl_factor: float = None, 
+                    DEBUG_COUNT: int = 2, 
+                    verbose: bool = False) -> Tuple:
+        self.train()
+        self.new_trn_best = False
+        self.epoch = epoch
+        epoch_losses, epoch_metrics = self.init_losses_and_metrics()
+
+        # if (snnl_factor is not None) and (snnl_factor != self.snnl_factor):
+        #     # print(f" model.snnl_criterion.factor {model.snnl_criterion.factor}")
+        #     self.snnl_.factor = snnl_factor 
+        #     self.snnl_criterion.factor = snnl_factor 
+        #     print(f" model.snnl_criterion.factor set to {snnl_factor}")
+
+        # if (loss_factor is not None) and (loss_factor != self.loss_factor):
+        #     # print(f" model.loss_factor {model.loss_factor}")
+        #     self.loss_factor = loss_factor 
+        #     print(f" model.loss_factor set to {loss_factor}")
+
+
+        ttl_minibatches = len(data_loader) // data_loader.dataset.rows_per_batch
+        t_trn = tqdm.tqdm(enumerate(data_loader), initial=0, total = ttl_minibatches,
+                          position=0, file=sys.stdout, leave= False, desc=f" Trn {self.epoch+1}/{self.ending_epoch}")
+        for self.batch_count, (batch_features, batch_labels, _, _, _, _) in t_trn:
+
+        # for self.batch_count, (batch_features, batch_labels, _, _, _, _) in enumerate(data_loader):
+
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
+
+            _, logits = self.forward(features=batch_features)
+
+            # temp_before = self.temperature.item()
+            # snnl_temp_before = self.snnl_criterion.temperature.item()
+
+            snn_loss = self.compute_snnl_loss(batch_labels, logits, batch_features)
+
+            # temp_after = self.temperature.item()
+            # snnl_temp_after = self.snnl_criterion.temperature.item()
+
+            primary_loss = self.compute_primary_loss(batch_labels, logits, batch_features)
+
+            snn_loss = torch.mul(self.snnl_factor, snn_loss)
+            primary_loss = torch.mul(self.loss_factor, primary_loss)
+            total_loss   = torch.add(primary_loss, snn_loss)
+
+            epoch_losses.snn_loss += snn_loss.item()
+            epoch_losses.primary_loss += primary_loss.item() 
+            epoch_losses.ttl_loss += total_loss.item() 
+
+            self.calculate_metrics(batch_features, logits, epoch_metrics)
+
+            if self.use_single_loss:
+
+                # if self.batch_count < DEBUG_COUNT:
+                #     print('\n NEW BATCH \n ------------------------------')
+                #     self.display_gradients(f" Gradients BEFORE Optimizer[prim].zero_grad() - Prim loss: {primary_loss.item()} snn loss: {snn_loss.item()}")
+
+                self.optimizers['prim'].zero_grad()
+
+                # if self.batch_count < DEBUG_COUNT:
+                #     self.display_gradients(f" Gradients AFTER Optimizer[prim].zero_grad()")
+
+                total_loss.backward()
+
+                # if self.batch_count < DEBUG_COUNT:
+                #     self.display_gradients(f" Gradients AFTER total_loss.backward() - Prim loss: {primary_loss.item()} snn loss: {snn_loss.item()}")
+                #     self.display_values(f" Values BEFORE  Optimizers step()")
+
+                self.optimizers['prim'].step()
+
+                # if self.batch_count < DEBUG_COUNT:
+                #     self.display_values(f" Values  AFTER Optimizer[prim].step() ")
+
+            else:
+                # print(f" {self.epoch}/{self.batch_count} - backwards and optimize step - ssn loss: {epoch_losses.snn_loss:.7f}    prim loss: {epoch_losses.primary_loss:.7f}  ")
+
+                # if self.batch_count < DEBUG_COUNT:
+                #     print('\n NEW BATCH \n ------------------------------')
+                #     self.display_gradients(f" Gradients BEFORE Optimizer[*].zero_grad() - Prim loss: {primary_loss.item()} snn loss: {snn_loss.item()}")
+
+                for k,v in self.optimizers.items():
+                    self.optimizers[k].zero_grad()
+                    # if self.batch_count < DEBUG_COUNT:
+                    #     self.display_gradients(f" Gradients AFTER Optimizer[{k}].zero_grad() - Prim loss: {primary_loss.item()} snn loss: {snn_loss.item()}")
+
+                primary_loss.backward(retain_graph = self.use_temp_optimizer)
+
+                # if self.batch_count < DEBUG_COUNT:
+                #     self.display_gradients(f" Gradients AFTER Primary_loss.backward() - Prim loss: {primary_loss.item()} snn loss: {snn_loss.item()}")
+
+                if self.use_snnl and 'temp' in self.optimizers:
+                    snn_loss.backward()
+
+                # if self.batch_count < DEBUG_COUNT:
+                #     self.display_gradients(f" Gradients AFTER SNN_loss.backward()")
+                #     self.display_values(f" Values BEFORE  Optimizers step()")
+
+                for k,v in self.optimizers.items():
+                    v.step()
+                    # if self.batch_count < DEBUG_COUNT:
+                    #     self.display_values(f" Values  AFTER Optimizer[{k}].step() ")
+                    #     self.display_gradients(f" Gradients AFTER Optimizer[{k}].step() ")
+
+                # self.temperature = torch.clamp(self.temperature,1.0e-6,None)
+
+            # if self.monitor_grads_layer is not None:
+            #     self.training_history['trn'][f'L{self.monitor_grads_layer:02d}_W_grad'].append( self.layers[self.monitor_grads_layer].weight.grad.sum().item())
+            #     self.training_history['trn'][f'L{self.monitor_grads_layer:02d}_B_grad'].append( self.layers[self.monitor_grads_layer].bias.grad.sum().item())   
+
+            # temp_final = self.temperature.item()
+            # snnl_temp_final = self.snnl_criterion.temperature.item()
+            # temp_grad = 0.0 if self.temperature.grad is None else self.temperature.grad.item
+            # print(f" {self.epoch}/{self.batch_count} - temp- bef: {temp_before:.6f}  aft: {temp_after:.6f}   "
+                #   f" fin: {temp_final:.6f}      delta: {temp_final - temp_after:10.6f}     grad: {temp_grad:10.6f}   "
+                #   f" grad * LR : {temp_grad*self.temperatureLR:10.6f}")
+                #   f" snnl-temp : {snnl_temp_before:10.6f}  {snnl_temp_after:10.6f}  {snnl_temp_final:10.6f} ")
+
+            t_trn.set_postfix({'Losses - Recon': f"{primary_loss.item():.5f}", 'SNNL': f"{snn_loss.item():.5f}" })
+        ## End of dataloader loop
+
+        total_batches = self.batch_count +1
+ 
+        epoch_losses.ttl_loss /= total_batches
+        epoch_losses.primary_loss /= total_batches
+        epoch_losses.snn_loss /= total_batches
+
+        if not self.unsupervised:
+            epoch_metrics.accuracy  /= total_batches
+            epoch_metrics.f1        /= total_batches
+            epoch_metrics.precision /= total_batches
+            epoch_metrics.recall    /= total_batches
+            epoch_metrics.roc_auc   /= total_batches
+        else:
+            epoch_metrics.R2_score  /= total_batches
+            # epoch_metrics.R2_score_tev  /= total_batches
+
+        self.update_training_history('trn', epoch, epoch_losses, epoch_metrics)
+        self.update_best_trn_metrics()
+        return epoch_losses 
+
+    def epoch_validate(self,
+                       data_loader : torch.utils.data.DataLoader,
+                       epoch : int = None,
+                       verbose: bool = False) -> Tuple:
+        self.new_val_best = False
+        self.epoch = epoch
+        epoch_losses, epoch_metrics = self.init_losses_and_metrics()
+
+        self.eval()
+
+        ## begin dataloader loop
+        ttl_minibatches = len(data_loader) // data_loader.dataset.rows_per_batch
+        t_trn = tqdm.tqdm(enumerate(data_loader), initial=0, total = ttl_minibatches,
+                          position=0, file=sys.stdout,
+                          leave= False, desc=f" Val {self.epoch+1}/{self.ending_epoch}")
+        for self.batch_count, (batch_features, batch_labels, _, _, _, _) in t_trn:
+
+        # for self.batch_count, (batch_features, batch_labels, _, _, _, _) in enumerate(data_loader):
+
+            batch_features = batch_features.to(self.device)
+            batch_labels = batch_labels.to(self.device)
+
+            _, logits = self.forward(features=batch_features)
+
+            snn_loss = self.compute_snnl_loss(batch_labels, logits, batch_features)
+            primary_loss = self.compute_primary_loss(batch_labels,logits,batch_features)
+
+            snn_loss = torch.mul(self.snnl_factor, snn_loss)
+            primary_loss = torch.mul(self.loss_factor, primary_loss)
+            total_loss = torch.add(primary_loss, snn_loss)
+
+            epoch_losses.snn_loss += snn_loss.item()
+            epoch_losses.primary_loss += primary_loss.item()
+            epoch_losses.ttl_loss += total_loss.item()
+
+            # if not self.unsupervised:
+            #     epoch_metrics = self.classification_metrics(batch_labels, logits, epoch_metrics)
+            # else:
+            #     epoch_metrics = self.regression_metrics(batch_features, logits, epoch_metrics)
+            self.calculate_metrics(batch_features, logits, epoch_metrics)
+
+            t_trn.set_postfix({'Losses - Recon': f"{primary_loss.item():.5f}", 'SNNL': f"{snn_loss.item():.5f}" })
+        ## end of dataloader loop
+
+        total_batches = self.batch_count +1
+        epoch_losses.ttl_loss /= total_batches
+        epoch_losses.primary_loss /= total_batches
+        epoch_losses.snn_loss /= total_batches
+
+        if not self.unsupervised:
+            epoch_metrics.accuracy  /= total_batches
+            epoch_metrics.f1        /= total_batches
+            epoch_metrics.precision /= total_batches
+            epoch_metrics.recall    /= total_batches
+            epoch_metrics.roc_auc   /= total_batches
+        else:
+            epoch_metrics.R2_score  /= total_batches
+
+        self.update_training_history('val', epoch, epoch_losses, epoch_metrics)
+        self.update_best_val_metrics()
+        return epoch_losses
+
+    def init_losses_and_metrics(self):
+        losses = SimpleNamespace()
+        losses.ttl_loss = 0
+        losses.snn_loss = 0
+        losses.primary_loss = 0
+
+        metrics = SimpleNamespace()
+        if self.unsupervised:
+            metrics.R2_score  = 0 
+            # metrics.R2_score_tev  = 0 
+        else:
+            metrics.accuracy  = 0
+            metrics.f1        = 0
+            metrics.precision = 0
+            metrics.recall    = 0
+            metrics.roc_auc   = 0
+        return losses, metrics 
+
+    def update_best_trn_metrics(self):
+        if self.training_history['gen'][f'trn_best_metric'] > self.trn_best_metric:
+            self.trn_best_metric = self.training_history['gen'][f'trn_best_metric']
+            self.trn_best_epoch = self.training_history['gen'][f'trn_best_metric_ep']
+            self.new_trn_best = True
+
+    def update_best_val_metrics(self):
+        if self.training_history['gen'][f'val_best_metric'] > self.val_best_metric :
+            self.val_best_metric = self.training_history['gen'][f'val_best_metric']
+            self.val_best_epoch = self.training_history['gen'][f'val_best_metric_ep']
+            self.new_val_best = True
+
+    def update_training_history(self, key, epoch, losses, metrics):
+
+        assert key in ['trn', 'val'], f" invalid history type {key} - must be {{'trn', 'val'}} "
+
+        self.training_history[key][f"{key}_time"].append(datetime.now().strftime('%H:%M:%S'))
+        self.training_history[key][f"{key}_ttl_loss"].append(losses.ttl_loss)
+        self.training_history[key][f"{key}_prim_loss"].append(losses.primary_loss)
+        self.training_history[key][f"{key}_snn_loss"].append(losses.snn_loss)
+
+        if losses.ttl_loss < self.training_history['gen'][f'{key}_best_loss']:
+            self.training_history['gen'][f'{key}_best_loss'] = losses.ttl_loss
+            self.training_history['gen'][f'{key}_best_loss_ep'] = epoch
+
+        if not self.unsupervised:
+            self.training_history[key][f"{key}_accuracy"].append(metrics.accuracy)
+            self.training_history[key][f"{key}_f1"].append(metrics.f1)
+            self.training_history[key][f"{key}_precision"].append(metrics.precision)
+            self.training_history[key][f"{key}_recall"].append(metrics.recall)
+            self.training_history[key][f"{key}_roc_auc"].append(metrics.roc_auc)
+        else:
+            self.training_history[key][f"{key}_R2_score"].append(metrics.R2_score)
+            # self.training_history[key][f"{key}_R2_score_tev"].append(metrics.R2_score_tev )
+
+            if metrics.R2_score > self.training_history['gen'][f'{key}_best_metric']:
+                self.training_history['gen'][f'{key}_best_metric'] = metrics.R2_score
+                self.training_history['gen'][f'{key}_best_metric_ep'] = epoch
+
+        if key == 'trn':
+            self.training_history['trn']['trn_lr'].append(self.optimizers['prim'].param_groups[0]['lr'])
+            if self.use_snnl:
+                self.training_history['trn']['temp_hist'].append(self.temperature.item()) 
+                temp_grad = 0.0 if self.temperature.grad is None else self.temperature.grad.item()
+                self.training_history['trn']['temp_grad_hist'].append(temp_grad)
+
+                if self.use_temp_optimizer:
+                    self.training_history['trn']['temp_lr'].append(self.optimizers['temp'].param_groups[0]['lr'])
+                else:
+                    self.training_history['trn']['temp_lr'].append(0.0)
+
+    def compute_snnl_loss(self, labels, outputs, features ):
+        if self.use_snnl:
+            snn_loss = self.snnl_criterion(
+                model=self,
+                outputs=outputs,
+                features=features,
+                labels=labels,
+                epoch = self.epoch,
+                batch = self.batch_count)
+        else:
+            snn_loss = 0.0
+        return snn_loss
+
+    def compute_primary_loss(self, labels, outputs, features ):
+        # print(f" compute primary loss - {self.primary_criterion} unsupervised: {self.unsupervised}")
+        # print(f" {outputs.squeeze().shape} \n {outputs.squeeze()}")
+        # print(f"{labels.shape}  \n {labels}")
+        if self.unsupervised:
+            if self.name in ["DNN","CNN"] :
+                loss = torch.tensor(0, requires_grad = True, dtype=torch.float32, device = self.device)
+            else:
+                loss = self.primary_criterion(outputs.squeeze(), features)
+        else:
+            loss = self.primary_criterion(outputs.squeeze(), labels)
+            # self.primary_loss = self.primary_criterion(outputs.squeeze, features if self.unsupervised else labels)
+        return loss
+
+    def regression_metrics(self, y_true, y_pred, metrics): 
+        r2_score_skm = skm.r2_score(y_pred = y_pred.detach().cpu().numpy(), y_true = y_true.detach().cpu().numpy())
+        metrics.R2_score += r2_score_skm.item()
+        # r2_score_tev = torch.tensor(0)
+        # if torch.isinf(r2_score_tev):
+        #     print(f" r2_score_tev is inf ")
+        # metrics.R2_score_tev  += r2_score_tev.item()
+        return metrics
+        # return metrics, torch.tensor(batch_r2_score, requires_grad = True, dtype=torch.float32, device = self.device)
+
+    def classification_metrics(self, batch_labels, logits, metrics): 
+        y_true = batch_labels.detach().cpu().numpy()
+        y_prob = logits.squeeze().detach().cpu().numpy()
+        y_pred = (y_prob >= 0.5).astype(np.int32)
+
+        precision, recall, f1, _ = skm.precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
+        # print(f" {ttl} : Acc: {accuracy:.5f}  F1: {f1:.5f}   Prec: {precision:.5f}   Recall: {recall:.5f}  "
+        #         f" pos lables: {y_true.sum()}  preds: {y_pred.sum()}  matching: {(y_pred == y_true).sum()}" )
+        metrics.accuracy  += skm.accuracy_score(y_true, y_pred)
+        metrics.roc_auc   += skm.roc_auc_score(y_true, y_prob)
+        metrics.f1        += f1
+        metrics.precision += precision
+        metrics.recall    += recall
+        return metrics
+
+    def scheduling_step(self, loss):
+
+        if 'prim' in self.schedulers:
+            self.schedulers['prim'].step(loss.primary_loss)
+            if self.training_history['trn']['trn_lr'][-1] != self.optimizers['prim'].param_groups[0]['lr']:
+                logger.info(f" Main learning rate reduced to {self.schedulers['prim']._last_lr}")
+
+        if 'temp' in self.schedulers:
+            self.schedulers['temp'].step(loss.snn_loss)
+            if self.training_history['trn']['temp_lr'][-1] != self.optimizers['temp'].param_groups[0]['lr']:
+                logger.info(f" Temperature optimizer learning rate reduced to {self.schedulers['temp']._last_lr}")    
+
+        # print(f" {epoch} - anneal temp  -  best_metric: {self.trn_best_metric:10.6f}    last_metric: {epoch_metrics.R2_score:10.6f}"
+        #       f"     delta: {epoch_metrics.R2_score - self.trn_best_metric:10.6f} ")
+
+        # if self.use_annealing  and (epoch_metrics.R2_score - self.trn_best_metric < 1.0e-05):
+        if self.use_annealing and (not self.new_val_best):
+            self.R2_improvement_counter += 1
+            if self.R2_improvement_counter > self.anneal_patience:
+                temp_before = self.temperature.item()
+                with torch.no_grad():
+                    self.temperature.copy_(1.0 / ((1.0 + self.temp_decay_counter) ** 0.55))
+                self.R2_improvement_counter = 0
+                print(f" {self.epoch} - anneal temp  -  counter: {self.temp_decay_counter}    before: {temp_before:10.6f}     new_temp: {self.temperature.item():10.6f} ")
+                self.temp_decay_counter += 1 
+
+    def optimize_temperature(self, verbose = False):
+        """
+        Learns an optimized temperature parameter.
+        """
+        torch.nn.utils.clip_grad_value_(self.temperature, clip_value=1.0)
+
+        with torch.no_grad():
+            self.temperature.copy_(self.temperature - (self.temperatureLR * self.temperature.grad))
+
+        ## use the with torch.no_grad(): context manager to prevent PyTorch from tracking the gradients
+        ## of the parameter, so that you can update it without affecting the training process.
+        ## without using no_grad() it gives error: 
+        ## cannot assign 'torch.cuda.FloatTensor' as parameter 'temperature' (torch.nn.Parameter or None expected)
+        ## 
+        ## original way this was being done (original code)
+        ##     updated_temperature = self.temperature - (self.temperatureLR * self.temperature.grad)
+        ##     self.temperature.data = updated_temperature
+
+        ## if torch.isnan(temperature_gradient):
+        ##    print(f" optimize_temp:  temp_gradients: {temperature_gradient}  temp: {self.temperature.data}   ")
+        ## else:
+        ##     if verbose:
+        ##         print(f" optimize_temp:  temp_gradients:{unclipped_temperature_gradient:.7f} - {temperature_gradient.item():.7f}"
+        ##               f"  Temp: before: {before_temp}   updated: {updated_temperature.item()}")
+
+    def display_gradients(self, msg):
+        print(f"\n {self.epoch}/ {self.batch_count} - {msg}")
+        print(f"  Parm           | Grad Min      | Grad Max      | Grad Sum        |  Gradient first 9 elems")
+        print(f" ----------------+---------------+---------------+-----------------+--------------------------------------------------------------------------------------------------------")
+        #       temperature     | None          | None          | None            |
+        #       layers.0.weight |   -0.00047778 |    0.00044926 |     -1.77925849 |   [-0.00885538  0.03363461 -0.03305408 -0.0675725  -0.03476553 -0.01513866 -0.03438179  0.00656638 -0.00376418]
+        for k,v in self.named_parameters():
+            if v.grad is not None:
+                g_str = f" {k[:15]:15s} | {v.grad.min():13.8f} | {v.grad.max():13.8f} | {v.grad.sum():15.8f}"
+                # p_str = f" Parm:  Min: {v.min():15.12f} | Max: {v.max():15.12f} | Sum: {v.sum():18.12f}"
+                if v.grad.ndim > 1:
+                    print(f"{g_str} |   {v.grad[:3,:3].reshape((-1)).detach().cpu().numpy()}")
+                else:
+                    print(f"{g_str} |   {v.grad[:9].detach().cpu().numpy()}")
+            else:
+                print(f" {k[:15]:15s} | {'None':13s} | {'None':13s} | {'None':15s} |")
+
+    def display_values(self, msg):
+        print(f"\n {self.epoch}/ {self.batch_count} - {msg}")
+        print(f"  Parm           |  Shape          | Grad |   Value Min   |   Value Max   |    Value Sum    |  Gradient first 9 elems")
+        print(f" ----------------+-----------------+---------------+---------------+-----------------+--------------------------------------------------------------------------------------------------------")
+               # temperature     |                 | True |    1.00000000 |    1.00000000 |      1.00000000 | [1.]
+
+        for k,v in self.named_parameters():
+            g_shp = ', '.join([f"{x:4d}" for x in list(v.shape)])
+            g_str = f" {k[:15]:15s} | {g_shp:15s} | {str(v.requires_grad):5s} | {v.min():13.8f} | {v.max():13.8f} | {v.sum():15.8f}"
+            if v.ndim > 1:
+                print(f"{g_str} | {v[:3,:3].reshape((-1)).detach().cpu().numpy()}")
+            else:
+                print(f"{g_str} | {v[:9].detach().cpu().numpy()}")
+        print()
+        # for k in ['temperature', 'snnl_criterion.temperature','layers.0.weight', 'layers.0.bias','layers.2.weight',
+        #           'layers.4.weight','layers.4.bias','layers.5.weight','layers.5.bias','layers.7.weight','layers.9.weight','layers.9.bias',]:
+        #     if self.state_dict()[k].ndim > 1:
+        #         print(f" {k+' - '+str(self.state_dict()[k].shape):45s} - {self.state_dict()[k].sum():.6f} - {self.state_dict()[k][:3,:3].reshape((-1)).data}")
+        #     else:
+        #         print(f" {k+' - '+str(self.state_dict()[k].shape):45s} - {self.state_dict()[k].sum():15.6f} - {self.state_dict()[k][:9].data}")
+
+
+
     def sanity_check(self,
                      data_loader: torch.utils.data.DataLoader,
                      epochs: int = 10,
@@ -212,368 +639,3 @@ class Model(torch.nn.Module):
             if (epoch + 1) % show_every == 0:
                 print(f"epoch {epoch + 1}/{epochs}")
                 print(f"mean loss = {epoch_loss:4f}")
-
-
-    
-    def epoch_train(self, 
-                    data_loader: torch.utils.data.DataLoader, 
-                    epoch: int = None, 
-                    loss_factor: float = None,
-                    snnl_factor: float = None, 
-                    DEBUG_COUNT: int = 0, 
-                    verbose: bool = False) -> Tuple:
-        self.train()
-        self.new_trn_best = False
-        self.epoch = epoch
-        epoch_losses, epoch_metrics = self.init_losses_and_metrics()
-        
-        if (snnl_factor is not None) and (snnl_factor != self.snnl_factor):
-            # print(f" model.snnl_criterion.factor {model.snnl_criterion.factor}")
-            self.snnl_.factor = snnl_factor 
-            self.snnl_criterion.factor = snnl_factor 
-            print(f" model.snnl_criterion.factor set to {snnl_factor}")
-          
-        if (loss_factor is not None) and (loss_factor != self.loss_factor):
-            # print(f" model.loss_factor {model.loss_factor}")
-            self.loss_factor = loss_factor 
-            print(f" model.loss_factor set to {loss_factor}")    
-    
-                        
-        for self.batch_count, (batch_features, batch_labels, _, _, _) in enumerate(data_loader):
-            batch_features = batch_features.to(self.device)
-            batch_labels = batch_labels.to(self.device)
-            
-            _, logits = self.forward(features=batch_features)
-            
-            # temp_before = self.temperature.item()
-            # snnl_temp_before = self.snnl_criterion.temperature.item()
-
-            snn_loss = self.compute_snnl_loss(batch_labels, logits, batch_features)
-
-            # temp_after = self.temperature.item()
-            # snnl_temp_after = self.snnl_criterion.temperature.item()
-
-            primary_loss = self.compute_primary_loss(batch_labels, logits, batch_features)
-           
-            snn_loss =  torch.mul(self.snnl_factor, snn_loss)
-            primary_loss = torch.mul(self.loss_factor, primary_loss)        
-            total_loss   = torch.add(primary_loss, snn_loss)
-            
-            epoch_losses.snn_loss += snn_loss.item()
-            epoch_losses.primary_loss += primary_loss.item() 
-            epoch_losses.ttl_loss += total_loss.item() 
-             
-            self.calculate_metrics(batch_features, logits, epoch_metrics)
-
-            if self.use_single_loss:  
-                self.optimizers['prim'].zero_grad()
-                total_loss.backward()
-                self.optimizers['prim'].step()
-            else:        
-                for k,v in self.optimizers.items():
-                    # self.optimizers[k].zero_grad()
-                    v.zero_grad()
-                    # if self.batch_count < DEBUG_COUNT:
-                    #     self.display_gradients(f" Optimizer {k} after zero_grad()")
-                    #     self.display_values(f" Optimizer {k} after zero_grad()")
-
-                primary_loss.backward( retain_graph = self.use_temp_optimizer)
-                if 'temp' in self.optimizers: 
-                    snn_loss.backward()     
-
-                for k,v in self.optimizers.items():
-                    v.step()
-                    # if self.batch_count < DEBUG_COUNT:
-                    #     self.display_gradients(f" Optimizer {k} after step()")
-                    #     self.display_values(f" Optimizer {k} after step()")
-                        
-                # self.temperature = torch.clamp(self.temperature,1.0e-6,None)
-                
-            # if self.monitor_grads_layer is not None:
-            #     self.training_history['trn']['layer_grads'].append( self.layers[self.monitor_grads_layer].weight.grad.sum().item() + 
-            #                                                           self.layers[self.monitor_grads_layer].bias.grad.sum().item())     
-            # temp_final = self.temperature.item()
-            # snnl_temp_final = self.snnl_criterion.temperature.item()
-            # temp_grad = 0.0 if self.temperature.grad is None else self.temperature.grad.item
-            # print(f" {self.epoch}/{self.batch_count} - temp- bef: {temp_before:.6f}  aft: {temp_after:.6f}   "
-                #   f" fin: {temp_final:.6f}      delta: {temp_final - temp_after:10.6f}     grad: {temp_grad:10.6f}   "
-                #   f" grad * LR : {temp_grad*self.temperatureLR:10.6f}")
-                #   f" snnl-temp : {snnl_temp_before:10.6f}  {snnl_temp_after:10.6f}  {snnl_temp_final:10.6f} ")
- 
-        ## End of dataloader loop
-        
-        total_batches = self.batch_count +1 
- 
-        epoch_losses.ttl_loss /= total_batches
-        epoch_losses.primary_loss /=  total_batches
-        epoch_losses.snn_loss /= total_batches
-        
-        if  not self.unsupervised:
-            epoch_metrics.accuracy  /= total_batches
-            epoch_metrics.f1        /= total_batches
-            epoch_metrics.precision /= total_batches
-            epoch_metrics.recall    /= total_batches
-            epoch_metrics.roc_auc   /= total_batches
-        else:
-            epoch_metrics.R2_score  /= total_batches
-            epoch_metrics.R2_score_tev  /= total_batches
-            
-        self.update_training_history('trn', epoch, epoch_losses, epoch_metrics)              
-        self.update_best_trn_metrics()
-                
-        return epoch_losses 
-
-
-    def epoch_validate(self, 
-                    data_loader: torch.utils.data.DataLoader, 
-                    epoch: int = None, 
-                    verbose: bool = False) -> Tuple:
-        self.new_val_best = False
-        self.epoch = epoch
-        epoch_losses, epoch_metrics = self.init_losses_and_metrics()        
-        
-        self.eval()
-        
-        ## begin dataloader loop
-        for self.batch_count, (batch_features, batch_labels, _, _, _) in enumerate(data_loader): 
-            batch_features = batch_features.to(self.device)
-            batch_labels = batch_labels.to(self.device)
-
-            _, logits = self.forward(features=batch_features)
-                
-            snn_loss = self.compute_snnl_loss(batch_labels, logits, batch_features)
-            primary_loss = self.compute_primary_loss(batch_labels,logits,batch_features)
-
-            snn_loss = torch.mul(self.snnl_factor, snn_loss)          
-            primary_loss = torch.mul(self.loss_factor, primary_loss)        
-            total_loss= torch.add(primary_loss, snn_loss)
-            
-            epoch_losses.snn_loss += snn_loss.item()
-            epoch_losses.primary_loss += primary_loss.item()
-            epoch_losses.ttl_loss += total_loss.item()
-            
-            # if not self.unsupervised:
-            #     epoch_metrics = self.classification_metrics(batch_labels, logits, epoch_metrics)
-            # else:
-            #     epoch_metrics = self.regression_metrics(batch_features, logits, epoch_metrics)                
-            self.calculate_metrics(batch_features, logits, epoch_metrics)
-        ## end of dataloader loop
-                
-        total_batches = self.batch_count +1     
-        epoch_losses.ttl_loss /= total_batches
-        epoch_losses.primary_loss /=  total_batches
-        epoch_losses.snn_loss /= total_batches
-        
-        if not self.unsupervised:
-            epoch_metrics.accuracy  /= total_batches
-            epoch_metrics.f1        /= total_batches
-            epoch_metrics.precision /= total_batches
-            epoch_metrics.recall    /= total_batches
-            epoch_metrics.roc_auc   /= total_batches
-        else:
-            epoch_metrics.R2_score  /= total_batches
-            epoch_metrics.R2_score_tev  /= total_batches
-            
-        self.update_training_history('val', epoch, epoch_losses, epoch_metrics)
-        self.update_best_val_metrics()
-        return epoch_losses
-
-    def init_losses_and_metrics(self):
-        losses = SimpleNamespace()
-        metrics = SimpleNamespace()
-        losses.ttl_loss = 0
-        losses.snn_loss = 0
-        losses.primary_loss = 0
-        
-        if self.unsupervised:
-            metrics.R2_score  = 0 
-            metrics.R2_score_tev  = 0 
-        else:
-            metrics.accuracy  = 0
-            metrics.f1        = 0
-            metrics.precision = 0
-            metrics.recall    = 0
-            metrics.roc_auc   = 0
-        return losses, metrics 
-            
-    def update_best_trn_metrics(self):
-        if  self.training_history['gen'][f'trn_best_metric'] >  self.trn_best_metric :
-            self.trn_best_metric =  self.training_history['gen'][f'trn_best_metric']
-            self.trn_best_epoch = self.training_history['gen'][f'trn_best_metric_ep']
-            self.new_trn_best = True
-
-    def update_best_val_metrics(self):
-        if  self.training_history['gen'][f'val_best_metric'] >  self.val_best_metric :
-            self.val_best_metric =  self.training_history['gen'][f'val_best_metric']
-            self.val_best_epoch = self.training_history['gen'][f'val_best_metric_ep']
-            self.new_val_best = True
-        
-    def update_training_history(self, key, epoch, losses, metrics):
- 
-        assert  key in ['trn', 'val'], f" invalid history type {key} - must be {{'trn', 'val'}} "
-        
-        self.training_history[key][f"{key}_time"].append(datetime.now().strftime('%H:%M:%S'))
-        self.training_history[key][f"{key}_ttl_loss"].append(losses.ttl_loss)
-        self.training_history[key][f"{key}_prim_loss"].append(losses.primary_loss)
-        self.training_history[key][f"{key}_snn_loss"].append(losses.snn_loss)
-        
-        if losses.ttl_loss < self.training_history['gen'][f'{key}_best_loss']:
-            self.training_history['gen'][f'{key}_best_loss'] = losses.ttl_loss
-            self.training_history['gen'][f'{key}_best_loss_ep'] = epoch
-            
-        if not self.unsupervised:
-            self.training_history[key][f"{key}_accuracy"].append(metrics.accuracy)
-            self.training_history[key][f"{key}_f1"].append(metrics.f1)
-            self.training_history[key][f"{key}_precision"].append(metrics.precision)
-            self.training_history[key][f"{key}_recall"].append(metrics.recall)
-            self.training_history[key][f"{key}_roc_auc"].append(metrics.roc_auc)
-        else:
-            self.training_history[key][f"{key}_R2_score"].append(metrics.R2_score)
-            self.training_history[key][f"{key}_R2_score_tev"].append(metrics.R2_score_tev )
-            
-            if metrics.R2_score > self.training_history['gen'][f'{key}_best_metric']:
-                self.training_history['gen'][f'{key}_best_metric'] = metrics.R2_score
-                self.training_history['gen'][f'{key}_best_metric_ep'] = epoch
-            
-        if key == 'trn':        
-            self.training_history['trn']['trn_lr'].append(self.optimizers['prim'].param_groups[0]['lr'])
-            if self.use_snnl:
-                self.training_history['trn']['temp_hist'].append(self.temperature.item()) 
-                temp_grad = 0.0 if self.temperature.grad is None else self.temperature.grad.item()
-                self.training_history['trn']['temp_grad_hist'].append(temp_grad)   
-                if self.use_temp_optimizer:
-                    self.training_history['trn']['temp_lr'].append(self.optimizers['temp'].param_groups[0]['lr'])
-                else:
-                    self.training_history['trn']['temp_lr'].append(0.0)
-                    
-    
-    def compute_snnl_loss(self, labels, outputs, features ):
-        if self.use_snnl:
-            snn_loss = self.snnl_criterion(
-                model=self,
-                outputs=outputs,
-                features=features,
-                labels=labels,
-                epoch = self.epoch,
-                batch = self.batch_count)
-        else:
-            snn_loss = 0.0
-        return snn_loss
-
-    def compute_primary_loss(self, labels, outputs, features ):
-        # print(f" compute primary loss - {self.primary_criterion} unsupervised: {self.unsupervised}")
-        # print(f" {outputs.squeeze().shape} \n {outputs.squeeze()}")
-        # print(f"{labels.shape}  \n {labels}")
-        if self.unsupervised:
-             if self.name in ["DNN","CNN"] :
-                loss = torch.tensor(0, requires_grad = True, dtype=torch.float32, device = self.device)
-             else:
-                loss = self.primary_criterion(outputs.squeeze(), features)
-        else:
-            loss = self.primary_criterion(outputs.squeeze(), labels)
-            # self.primary_loss = self.primary_criterion(outputs.squeeze, features if self.unsupervised else labels)
-        return loss
-
-
-    def regression_metrics(self, y_true, y_pred, metrics): 
-        r2_score_skm = skm.r2_score(y_pred = y_pred.detach().cpu().numpy(), y_true = y_true.detach().cpu().numpy())
-        r2_score_tev = torch.tensor(0)
-        if torch.isinf(r2_score_tev):
-            print(f" r2_score_tev is inf ")
-        metrics.R2_score +=  r2_score_skm.item()
-        metrics.R2_score_tev  += r2_score_tev.item()
-        return metrics
-        # return metrics, torch.tensor(batch_r2_score, requires_grad = True, dtype=torch.float32, device = self.device)
-
-        
-    def classification_metrics(self, batch_labels, logits, metrics): 
-        y_true = batch_labels.detach().cpu().numpy()
-        y_prob = logits.squeeze().detach().cpu().numpy()
-        y_pred = (y_prob >= 0.5).astype(np.int32)
-        
-        precision, recall, f1, _ = skm.precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
-        # print(f" {ttl} : Acc: {accuracy:.5f}  F1: {f1:.5f}   Prec: {precision:.5f}   Recall: {recall:.5f}  "
-                # f"  pos lables: {y_true.sum()}  preds: {y_pred.sum()}  matching: {(y_pred == y_true).sum()}" )
-        metrics.accuracy  += skm.accuracy_score(y_true, y_pred)
-        metrics.roc_auc   += skm.roc_auc_score(y_true, y_prob)
-        metrics.f1        += f1
-        metrics.precision += precision
-        metrics.recall    += recall
-        return metrics
-
-                   
-    def scheduling_step(self, loss):
-        
-        if 'prim' in self.schedulers:
-            self.schedulers['prim'].step(loss.primary_loss)
-            if  self.training_history['trn']['trn_lr'][-1] != self.optimizers['prim'].param_groups[0]['lr']:
-                logger.info(f" Main learning rate reduced to {self.schedulers['prim']._last_lr}")
-                
-        if 'temp' in self.schedulers:
-            self.schedulers['temp'].step(loss.snn_loss)
-            if  self.training_history['trn']['temp_lr'][-1] != self.optimizers['temp'].param_groups[0]['lr']:
-                logger.info(f" Temperature optimizer learning rate reduced to {self.schedulers['temp']._last_lr}")    
-
- 
-        # print(f" {epoch} - anneal temp  -  best_metric: {self.trn_best_metric:10.6f}    last_metric: {epoch_metrics.R2_score:10.6f}"
-        #       f"     delta: {epoch_metrics.R2_score - self.trn_best_metric:10.6f} ")
-            
-        # if self.use_annealing  and (epoch_metrics.R2_score - self.trn_best_metric < 1.0e-05):
-        if self.use_annealing  and (not self.new_val_best):
-            self.R2_improvement_counter += 1
-            if self.R2_improvement_counter > self.anneal_patience:
-                temp_before = self.temperature.item()
-                with torch.no_grad():
-                    self.temperature.copy_(1.0 / ((1.0 + self.temp_decay_counter) ** 0.55))
-                self.R2_improvement_counter = 0
-                print(f" {self.epoch} - anneal temp  -  counter: {self.temp_decay_counter}    before: {temp_before:10.6f}     new_temp: {self.temperature.item():10.6f} ")
-                self.temp_decay_counter += 1 
-
-
-    
-    def optimize_temperature(self, verbose = False):
-        """
-        Learns an optimized temperature parameter.
-        """
-        torch.nn.utils.clip_grad_value_(self.temperature, clip_value=1.0)
-
-        # use the with torch.no_grad(): context manager to prevent PyTorch from tracking the gradients
-        # of the parameter, so that you can update it without affecting the training process.
-        # without using no_grad() it gives error: 
-        # cannot assign 'torch.cuda.FloatTensor' as parameter 'temperature' (torch.nn.Parameter or None expected)
-        # 
-        # original way this was being done (original code)
-        #     updated_temperature = self.temperature - (self.temperatureLR * self.temperature.grad)
-        #     self.temperature.data = updated_temperature
-        
-        with torch.no_grad():
-            self.temperature.copy_(self.temperature - (self.temperatureLR * self.temperature.grad))
-
-        # if torch.isnan(temperature_gradient):
-            # print(f" optimize_temp:  temp_gradients: {temperature_gradient}  temp: {self.temperature.data}   ")
-        # else:
-        #     if verbose:
-        #         print(f" optimize_temp:  temp_gradients:{unclipped_temperature_gradient:.7f} - {temperature_gradient.item():.7f}"
-        #               f"  Temp: before: {before_temp}   updated: {updated_temperature.item()}")
-
-    
-    def display_gradients(self, msg):
-        print()
-        print(f" {self.epoch}/ {self.batch_count} - {msg}")
-        for p in self.named_parameters():
-            if p[1].grad is not None:
-                print(f"  Name: {p[0]:30s}  Grad:  Min: {p[1].grad.min():15.12f}  Max: {p[1].grad.max():15.12f}  Sum: {p[1].grad.sum():15.12f} "
-                                       f" - Parm:  Min: {p[1].min():15.12f}  Max: {p[1].max():15.12f}  Sum: {p[1].sum():18.12f}")
-            else:
-                print(f"  Name: {p[0]:30s}  Gradient: {p[1].requires_grad}   Min: {'None':12s}  Max: {'None':12s}  Sum:  {'None':12s} ")
-                
-    def display_values(self, msg):
-        print()
-        print(f" {self.epoch}/ {self.batch_count} - {msg}")
-        for k in ['temperature', 'snnl_criterion.temperature','layers.0.weight', 'layers.0.bias','layers.2.weight',
-                  'layers.4.weight','layers.4.bias','layers.5.weight','layers.5.bias','layers.7.weight','layers.9.weight','layers.9.bias',]:
-            if self.state_dict()[k].ndim > 1:
-                print(f" {k+' - '+str(self.state_dict()[k].shape):45s} - {self.state_dict()[k].sum():20.15f} - {self.state_dict()[k][:3,:3].reshape((-1)).data}")
-            else:
-                print(f" {k+' - '+str(self.state_dict()[k].shape):45s} - {self.state_dict()[k].sum():20.15f} - {self.state_dict()[k][:9].data}")
-        print()

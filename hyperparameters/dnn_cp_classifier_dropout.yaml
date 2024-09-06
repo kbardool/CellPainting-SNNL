@@ -34,8 +34,8 @@ cellpainting_args :
     sample_size     : 3
     batch_size      : 1
     compounds_per_batch : 100
-    training_path   : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder.csv"
-    validation_path : "/home/kevin/WSL-shared/Cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder_test.csv"
+    training_path   : "/home/kevin/WSL-shared/cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder.csv"
+    validation_path : "/home/kevin/WSL-shared/cellpainting/cj-datasets/output_11102023/3_sample_profiles/3sample_profiles_1482_HashOrder_test.csv"
     train_start     : 0
     train_end       : 240000
     val_start       : 0

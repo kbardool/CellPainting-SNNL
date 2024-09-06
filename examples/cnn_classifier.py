@@ -21,7 +21,7 @@ from pt_datasets import create_dataloader, load_dataset
 
 from snnl.models import CNN
 from snnl.utils import get_hyperparameters, set_global_seed
-from snnl.utils.metrics import accuracy
+from snnl.utils.utils_metrics import accuracy
 
 __author__ = "Abien Fred Agarap"
 __version__ = "1.0.0"

@@ -11,7 +11,7 @@ python AE_batch.py 	\
             --seed          4321 \
             --wandb         \
             --gpu_id        1 \
-            # --run_id        z742d8ok \
-            # --ckpt          AE_snnl_dcpb200_150Ltnt_512_20240708_0539_LAST_ep_800.pt
+            --run_id        53nu5pmd \
+            --ckpt          AE_snnl_dcpb200_200Ltnt_512_20240709_2022_LAST_ep_400.pt
             # --run_id        qheblbmi \
             # --ckpt          AE_snnl_dcpb200_150Ltnt_512_20240708_0612_LAST_ep_800.pt
