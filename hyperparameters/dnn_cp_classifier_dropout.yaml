@@ -17,7 +17,15 @@ gpu_ids :
 ## Model parameters
 ##------------------------------------------------------  
 activations : ["relu", "relu", "none","sigmoid"]
-units : [["Linear" ,1471, 512], ["relu", 0, 0], ["Linear" , 512, 128],  ["relu", 0, 0], ["dropout", 128, 128], ["Linear", 128, 1], ["sigmoid", 0, 0]  ]
+units : [
+         ["Linear" ,1471, 512],
+         ["relu", 0, 0], 
+         ["Linear" , 512, 128],  
+         ["relu", 0, 0], 
+         ["dropout", 128, 128], 
+         ["Linear", 128, 1], 
+         ["sigmoid", 0, 0]  
+        ]
 
 ## Training parameters
 ##------------------------------------------------------

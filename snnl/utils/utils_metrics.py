@@ -106,6 +106,7 @@ def run_model_on_test_data(model, data_loader, embedding_layer, verbose = False)
     out.logits = np.empty((0))
     out.compounds = np.empty((0))
     out.tpsa = np.empty((0))
+    out.tpsa_rest = np.empty((0,2))
     out.embeddings = {}
 
     for k, layer in enumerate(model.layers):
@@ -117,10 +118,12 @@ def run_model_on_test_data(model, data_loader, embedding_layer, verbose = False)
             print(f" layer {k:2d}: - {layer} {out.embeddings[k].shape}")
 
     out.y_true = np.empty((0,model.layers[0].in_features))
+
     if hasattr(model.layers[-1],"out_features"):
         out.y_pred = np.empty((0,model.layers[-1].out_features))
         if verbose:
             print(f" y_pred picked up from layer {k} of {len(model.layers)} layers")
+
     elif hasattr(model.layers[-2],"out_features"):
         out.y_pred = np.empty((0,model.layers[-2].out_features))
         if verbose:
@@ -134,7 +137,7 @@ def run_model_on_test_data(model, data_loader, embedding_layer, verbose = False)
 
         batch_features = batch_features.to(model.device)
         batch_labels = batch_labels.to(model.device)
-        output_activations, reconstruction =  model.forward(batch_features)
+        output_activations, reconstruction = model.forward(batch_features)
 
         for k,v in output_activations.items():
             out.embeddings[k] = np.concatenate((out.embeddings[k], v.detach().cpu().numpy()))
@@ -142,7 +145,8 @@ def run_model_on_test_data(model, data_loader, embedding_layer, verbose = False)
         out.y_true = np.concatenate((out.y_true, batch_features.detach().cpu().numpy()))
         out.y_pred = np.concatenate((out.y_pred, reconstruction.detach().cpu().numpy()))
         out.labels = np.concatenate((out.labels, batch_labels.detach().cpu().numpy()))
-        out.tpsa   = np.concatenate((out.tpsa,  batch_tpsa[0,:] ))
+        out.tpsa   = np.concatenate((out.tpsa,  batch_tpsa[:,0] ))
+        out.tpsa_rest = np.concatenate((out.tpsa_rest,  batch_tpsa[:,1:] ))
         if verbose:
             print(f"   output :  {idx:2d} - Labels:{out.labels.shape[0]:5d}   y_true:{out.y_true.shape}   y_pred:{out.y_pred.shape} ")
     ###- end
@@ -158,6 +162,7 @@ def run_model_on_test_data(model, data_loader, embedding_layer, verbose = False)
         print(f" out.compounds :      shape: {out.compounds.shape}")
         print(f" out.labels    :      shape: {out.labels.shape} - Pos Labels {out.labels.sum()}")
         print(f" out.tpsa      :      shape: {out.tpsa.shape} - {out.tpsa[:5]}")
+        print(f" out.tpsa_rest :      shape: {out.tpsa_rest.shape} - {out.tpsa_rest[0,:]}")
         print(f" out.comp_labels:     shape: {out.comp_labels.shape} - {out.comp_labels[:25]}")
         for k,v in out.embeddings.items():
             print(f" out.embeddings[{k:2d}]  :   shape: {v.shape}  {' <---- embedding layer' if k == embedding_layer else ''}")
@@ -173,9 +178,15 @@ def get_latent_representation(model, data_loader, embedding_layer, verbose = Fal
 
     # ##- Pass Test Dataset through network
     for idx, (batch_features, batch_labels, batch_wellinfo, batch_compounds, batch_hashbin, batch_tpsa_info) in enumerate(data_loader):
+        # print(f" batch_features : {batch_features.shape}")
+        # print(f" batch_labels   : {batch_labels.shape}  ")
+        # print(f" batch_wellinfo : {batch_wellinfo.shape}")
+        # print(f" batch_compounds: {batch_compounds.shape}")
+        # print(f" batch_hashbin  : {batch_hashbin.shape}")
+        # print(f" latent_code    : {latent_code.shape}")
 
         latent_code = model.compute_latent_code(batch_features.to(model.device))
-        output_batch = np.hstack((batch_wellinfo, np.expand_dims(batch_compounds,-1), batch_hashbin, batch_tpsa_info,  np.expand_dims(batch_labels,-1), latent_code.detach().cpu().numpy()))
+        output_batch = np.hstack((batch_wellinfo, batch_compounds, batch_hashbin, batch_tpsa_info, batch_labels, latent_code.detach().cpu().numpy()))
 
         output = output_batch if idx == 0 else np.vstack((output,output_batch))
 
@@ -283,7 +294,6 @@ def get_sample_data(model_data, compound_ids,  spc = 3, verbose = False):
     spc: samples per compound
     '''
     indicies = [(compound_ids + i) for i in range(spc)]
-
     sorted_indicies = np.sort(np.concatenate(indicies))
 
     samp_input  = model_data.y_true[[sorted_indicies],:].squeeze()
@@ -337,7 +347,6 @@ def distance_metrics_sample_set(model_data, num_samples = 10, cps = 3, seed = 12
     samp_embed  = model_data.latent_embedding[[sorted_sample],:].squeeze()
     samp_output = model_data.y_pred[[sorted_sample],:].squeeze()
 
-    
     if display:
         print(f" Number of unique compounds    :   {num_inputs}")
         print(f" Sampled compounds      - shape:   {sample.shape} - {sample}")
@@ -604,15 +613,15 @@ def plot_distance_matrices(grp_level_dict, data = None, layers = ['inp', 'emb', 
     len_dict = len(grp_level_dict)
     ## figsize =(width, height)
     cols = len(layers)
-    rows = len(epochs)
+    rows = len(epochs) 
     fig, axs = plt.subplots(rows,cols, sharey=False, tight_layout=True, figsize=(cols*7,rows*7) )
 
     row_id = 0
     col_id = 0
     for k in epochs:
         for col_id, layer in enumerate(layers):
-            hm = sns.heatmap(data=grp_level_dict[data][k][layer][0],annot=annot, ax = axs[row_id,col_id], vmin = 0.0, vmax = 1.6)
-            hm.set_title(f"epoch {k} - {layer_str[layer]}")
+            hm = sns.heatmap(data=grp_level_dict[data][k][layer][0], annot=annot, ax = axs[row_id,col_id], vmin = 0.0, vmax = 1.6)
+            hm.set_title(f" {data.upper()} Data - epoch {k} - {layer_str[layer]}")
         # hm = sns.heatmap(data=grp_level_dict[data][k]['emb'][0],annot=annot, ax = axs[row_id,1], vmin = 0.0, vmax = 1.6)
         # hm.set_title(f"epoch {k} embedding")
         # hm = sns.heatmap(data=grp_level_dict[data][k]['out'][0],annot=annot, ax = axs[row_id,2], vmin = 0.0, vmax = 1.6)
@@ -627,21 +636,49 @@ def plot_distance_matrices(grp_level_dict, data = None, layers = ['inp', 'emb', 
     plt.show()
 
 
-def plot_R2_rmse_scores(reg_metrics):
+def plot_distance_change_heatmap(grp_level_dict, data = None, epochs = None,annot = True):
+    import seaborn as sns
+    assert data in ['train', 'val', 'test' ]
+    layer_str = {'inp': 'input', 
+                 'emb': 'embedding layer',
+                 'out': 'output/reconstruction'}
+    # plotting the heatmap 
+    # del fig, axs
+    len_dict = len(grp_level_dict)
+    ## figsize =(width, height)
+    # cols = len(layers)
+    # rows = len(epochs) 
+    fig, axs = plt.subplots(1,1, sharey=False, tight_layout=True, figsize=(cols*7,rows*7) )
+
+    row_id = 0
+    col_id = 0
+    delta = np.abs(grp_level_dict[data][epoch[-1]]['emb'][0] - grp_level_dict[data][epoch[0]]['emb'][0] )
+    hm = sns.heatmap(data=delta,
+                     annot=annot,
+                     ax = axs,
+                     vmin = 0.0,
+                     vmax = 1.6)
+    hm.set_title(f" {data.upper()} - Distance change between epochs {epochs[0]} and  {epochs[-1]} ")
+ 
+    plt.show()
+
+
+
+def plot_R2_rmse_scores(reg_metrics, latent_dim = 0 ):
     fig, axs = plt.subplots(1,2, sharey=False, tight_layout=True, figsize=(10,5))
     reg_metrics_grouping = reg_metrics["all"].groupby('ds')
     for grp in reg_metrics_grouping:
-        _ = grp[1].plot(x = 'epoch', y='rmse_score', kind='line', subplots=False, title = f"RMSE for AE with {LATENT_DIM} dim embedding layer", label = grp[0], ax = axs[0])
-        _ = grp[1].plot(x = 'epoch', y='R2_score', kind='line', subplots=False, title = f"R2 score for AE with {LATENT_DIM} dim embedding layer", label = grp[0], ax = axs[1])
+        _ = grp[1].plot(x = 'epoch', y='rmse_score', kind='line', subplots=False, title = f"RMSE for AE with {latent_dim} dim embedding layer", label = grp[0], ax = axs[0])
+        _ = grp[1].plot(x = 'epoch', y='R2_score', kind='line', subplots=False, title = f"R2 score for AE with {latent_dim} dim embedding layer", label = grp[0], ax = axs[1])
 # df_reg_metrics["all"].plot(x = 'epochs', y=['rmse_score_train','rmse_score_val','rmse_score_test',], kind='line', subplots=False, title = f"RMSE for AE with {LATENT_DIM} dim embedding layer")
 
 
-def plot_distances(dist_metrics, layer = None, verbose = False):
+def plot_distances(dist_metrics, layer = None, latent_dim = 0, verbose = False):
     assert layer in ['inp','emb', 'out'], f" Invalid layer {layer} valid vlaues: {{'inp', 'emb', 'out'}}"
     fig, axs = plt.subplots(1,3, sharey=False, tight_layout=True, figsize=(15,5))
     # fig, axs = plt.subplots(1,2, sharey=False, tight_layout=True, figsize=(10,5))
     if layer == 'emb':
-        layer_str = f'embedding layer (dim{LATENT_DIM})'
+        layer_str = f'embedding layer (dim{latent_dim})'
     elif layer == 'inp':
         layer_str = 'input layer'
     else:

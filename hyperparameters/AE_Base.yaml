@@ -3,6 +3,7 @@
 defaults:
  - _self_
  - dataset: cellpainting
+ - paths: paths
 
 project_name         :  CellPainting_Profiles
 ## Leave empty to have date_time used 
@@ -10,8 +11,8 @@ exp_id               :
 exp_name_pfx         :
 exp_name             : 
 exp_date             : 
-exp_title            : dcpb{0:03d}_200Ltnt_512
-exp_description      : AE {1} - DualOpt, 200 dim latent, 512 Midlayer, {0} cpb
+exp_title            : "{ttl_pfx:1s}cpb{cpb:03d}_{ltnt:03d}Ltnt_{hidden_1:03d}"
+exp_description      : "AE {runmode:s} - {optimizers:s}, latent: {ltnt:03d}, hidden_1: {hidden_1:03d}, cpb: {cpb:03d}"
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
@@ -51,13 +52,6 @@ use_temp_scheduler: True
 temperatureLR : 1.000e-06
 SGD_weight_decay  : 0.90
 
-## Dataset parameters
-##------------------------------------------------------
  
 
-## Data & Folder parameters
-##------------------------------------------------------
-paths:
-  log_dir        :     ./logs
-  result_dir     :     ./results
-  checkpoint_dir :     ./ckpt
+ 

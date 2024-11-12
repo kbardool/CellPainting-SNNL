@@ -1,0 +1,6 @@
+## Data & Folder parameters
+##------------------------------------------------------
+paths:
+  log_dir        :     ./logs
+  result_dir     :     ./results
+  checkpoint_dir :     ./ckpt

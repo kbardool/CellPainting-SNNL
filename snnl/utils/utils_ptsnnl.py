@@ -38,34 +38,9 @@ import scipy.stats as sps
 import sklearn.metrics as skm 
 from scipy.spatial.distance import pdist, squareform, euclidean
 from .dataloader import CellpaintingDataset, InfiniteDataLoader, custom_collate_fn
-from KevinsRoutines.utils.utils_wandb  import  init_wandb, wandb_log_metrics,wandb_watch
+from KevinsRoutines.utils.utils_wandb import init_wandb, wandb_log_metrics,wandb_watch
 logger = logging.getLogger(__name__) 
 
-
-def get_device(verbose = False):
-    gb = 2**30
-    devices = torch.cuda.device_count()
-    for i in range(devices):
-        free, total = torch.cuda.mem_get_info(i)
-        if verbose:
-            print(f" device: {i}   {torch.cuda.get_device_name(i):30s} :  free: {free:,d} B   ({free/gb:,.2f} GB)    total: {total:,d} B   ({total/gb:,.2f} GB)")
-    # device = 
-    torch.cuda.empty_cache()
-    del free, total
-    device = f"{'cuda' if torch.cuda.is_available() else 'cpu'}:{torch.cuda.current_device()}"
-    logger.info(f" Current CUDA Device is:  {device} - {torch.cuda.get_device_name()}" )
-    return device
-
-def set_device(device_id):
-    # print(" Running on:",  torch.cuda.get_device_name(), torch.cuda.current_device())
-    devices = torch.cuda.device_count()
-    assert device_id < devices, f"Invalid device id, must be less than {devices}"
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    device = f"{device}:{device_id}"
-    # print(f" Switch to {device} ")
-    torch.cuda.set_device(device_id)
-    logger.info(f" Switched to: {torch.cuda.get_device_name()} - {torch.cuda.current_device()}")
-    return device
 
 def parse_args(input = None):
     parser = argparse.ArgumentParser(description="DNN classifier with SNNL")
@@ -125,21 +100,36 @@ def load_configuration(input_params):
         if v is not None:
             _args[k] = v
 
-    if _args['runmode'] == 'baseline':
-        _args['use_single_loss'] = True
-
-    _args['exp_title'] = _args['exp_title'].format(_args['cpb'])
-    _args['exp_description'] = _args['exp_description'].format(_args['cpb'],_args['runmode'])
-    _args['cellpainting_args']['compounds_per_batch'] = _args['cpb']
-    _args['ckpt'] = input_params['ckpt']
-    _args['batch_size'] = _args['cellpainting_args']['batch_size']
-
     _args.setdefault('use_prim_optimizer', True)
     _args.setdefault('use_prim_scheduler', True)
     _args.setdefault('use_temp_optimizer', False)
     _args.setdefault('use_annealing', False)
     _args.setdefault('use_sum', False)
     _args.setdefault('SGD_momentum', 0)
+
+    if _args['runmode'] == 'baseline':
+        _args['use_single_loss'] = True
+        ttl_pfx = 's'
+    else:
+        ttl_pfx = 'd'
+
+    opt_ttl = 'DualOpt' if (_args['use_temp_optimizer'] ) else 'SnglOpt'
+
+    _args['exp_title'] = _args['exp_title'].format(ttl_pfx = ttl_pfx,
+                                                   cpb = _args['cpb'],
+                                                   ltnt = _args['code_units'],
+                                                   hidden_1 = _args['hidden_1'])
+
+    _args['exp_description'] = _args['exp_description'].format(runmode = _args['runmode'],
+                                                               optimizers = opt_ttl,
+                                                               ltnt = _args['code_units'],
+                                                               hidden_1 = _args['hidden_1'],
+                                                               cpb = _args['cpb'],)
+
+    _args['cellpainting_args']['compounds_per_batch'] = _args['cpb']
+    _args['ckpt'] = input_params['ckpt']
+    _args['batch_size'] = _args['cellpainting_args']['batch_size']
+
 
     if _args['ckpt'] is None:
         _args['exp_date'] = datetime.now().strftime('%Y%m%d_%H%M')
@@ -153,9 +143,10 @@ def load_configuration(input_params):
     _args['use_temp_scheduler'] = _args.setdefault('use_temp_scheduler', False) if _args['use_temp_optimizer'] else False
 
 
-    assert not(_args['use_annealing'] and _args['use_temp_optimizer']), " Temperature annealing and Temp optimization are mutually exclusive"
+    assert not (_args['use_annealing'] and _args['use_temp_optimizer']), " Temperature annealing and Temp optimization are mutually exclusive"
 
     logger.info(f" command line param {'exp_title':25s} : [{_args['exp_title']}]")
+    logger.info(f" command line param {'exp_description':25s} : [{_args['exp_description']}]")
 
     # ars = types.SimpleNamespace(**args, **(vars(input_params)))
     return SimpleNamespace(**_args)

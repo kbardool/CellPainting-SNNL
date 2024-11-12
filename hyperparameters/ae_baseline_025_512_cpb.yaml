@@ -6,8 +6,8 @@ exp_id               :
 exp_name_pfx         :
 exp_date             :
 exp_name             : 
-exp_title            : sngl{0:0d}_025Ltnt_512
-exp_description      : AE {1} - snglOpt, 25 dim latent, 512 Midlayer, {0} cpb
+exp_title            : "{ttl_pfx:1s}cpb{cpb:03d}_{ltnt:03d}Ltnt_{hidden_1:03d}"
+exp_description      : "AE {runmode:s} - {optimizers:s}, latent: {ltnt:03d}, hidden_1: {hidden_1:03d}, cpb: {cpb:03d}"
 exp_folder           : 
 folder_sfx           :
 random_seed          : 1234
@@ -27,6 +27,7 @@ units   : [
     ["linear", 1024, 1471]
   ]   
 input_shape : 1471
+hidden_1    : 512
 code_units  : 25
 embedding_layer : 4
 

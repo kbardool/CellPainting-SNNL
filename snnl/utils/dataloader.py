@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Tuple, List
+from functools import partial
 import numpy as np
 import pandas as pd
 import torch
@@ -15,8 +16,8 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
                  training_path : str = None,
                  validation_path : str = None,
                  test_path : str = None,
-                 batch_size: int = None,
-                 sample_size : int = None,
+                 batch_size: int = 1,
+                 sample_size : int = 3,
                  rows_per_batch : int  = None,
                  conversions : Dict = None,
                  train_start : int = None,
@@ -27,9 +28,10 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
                  test_end : int = None,
                  names : List = None,
                  usecols : List = None,
-                 iterator : bool = False,
+                 iterator : bool = True,
                  verbose : bool = False,
-                 compounds_per_batch: int = 1,
+                 compounds_per_batch : int = 1,
+                 tpsa_threshold : int = 100,
                  **misc ):
         # print("Cellpainting __init__ routine", flush=True)
         # Store the filename in object's memory
@@ -45,8 +47,9 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
         # chunksize should be a mulitple of sample_size
         self.batch_size = batch_size
         self.sample_size = sample_size
+        self.tpsa_threshold = tpsa_threshold
         if rows_per_batch is None:
-            self.rows_per_batch = self.sample_size * self.compounds_per_batch
+            self.rows_per_batch = self.sample_size  * self.compounds_per_batch
 
         if self.type == 'train': 
             self.filename = training_path
@@ -64,11 +67,11 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
 
         file_sz = self.end - self.start
         smp_sz = self.sample_size
-        buf_sz = self.compounds_per_batch
+        cpb_sz = self.compounds_per_batch
         bth_sz = self.batch_size
-        recs_per_batch = smp_sz * bth_sz * buf_sz
+        recs_per_batch = smp_sz * bth_sz * cpb_sz
         bth_per_epoch = file_sz // recs_per_batch
-
+    
         logger.info(f" Building CellPantingDataset for {self.type}")
         logger.info(f" filename:  {self.filename}")
         logger.info(f" type    :  {self.type}")
@@ -79,7 +82,8 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
         logger.info(f" batch_size  :  {self.batch_size}")
         logger.info(f" sample_size :  {self.sample_size}")
         logger.info(f" compounds_per_batch :  {self.compounds_per_batch}")
-        logger.info(f" chunksize  (rows per minibatch) :  {self.rows_per_batch}")
+        logger.info(f" rows per batch (chunksize) :  {self.rows_per_batch}")
+        logger.info(f" TPSA threshold :  {self.tpsa_threshold}")
         logger.info(f" Each mini-batch contains {recs_per_batch/smp_sz} compounds with {smp_sz} samples per compound : total {recs_per_batch} rows")
         logger.info(f" Number of {recs_per_batch} row full size batches per epoch: {bth_per_epoch}")
         logger.info(f" Rows covered by {bth_per_epoch} full size batches ({recs_per_batch} rows) per epoch:  {(file_sz // recs_per_batch) * recs_per_batch}")
@@ -113,15 +117,15 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
         # Create an iterator
         # print("Cellpainting __iter__ routine", flush=True)
         self.file_iterator = pd.read_csv(self.filename,
-                                names = self.names,
-                                header = 0,
-                                skiprows = self.start,
-                                nrows = self.numrows,
-                                dtype = self.dtype,
-                                usecols = self.usecols,
-                                iterator = self.iterator,
-                                chunksize = self.rows_per_batch,
-                                )
+                                         names = self.names,
+                                         header = 0,
+                                         skiprows = self.start,
+                                         nrows = self.numrows,
+                                         dtype = self.dtype,
+                                         usecols = self.usecols,
+                                         iterator = self.iterator,
+                                         chunksize = self.rows_per_batch,)
+        # print(type(self.file_iterator), self.numrows, self.chunksize)
         # df_ps = dd.read_csv(profile_file, header=header, names = names, usecols = usecols, dtype = dtype) 
         # Map each element using the line_mapper
         # self.mapped_itr = map(self.line_mapper, self.file_iterator)
@@ -130,6 +134,7 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
     # def __next__(self):
         # print("Cellpainting __next__ funtion called")
         # super().__next__()
+
 
     def __len__(self):
         # print("Cellpainting __len__ funtion called")
@@ -142,18 +147,19 @@ class CellpaintingDataset(torch.utils.data.IterableDataset ):
 class InfiniteDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print(f" Dataset size: {len(self.dataset)}   rows per batch: {self.dataset.rows_per_batch}")
+        print(f" Dataset size: {len(self.dataset)}   rows per batch: {self.dataset.rows_per_batch}  tpsa_threshold: {self.dataset.tpsa_threshold}")
         # Initialize an iterator over the dataset.
 
     def __iter__(self):
-        # print("InfiniteDataLoader __iter__  routine")
         self.dataset_iterator = super().__iter__()
+        # print(f"InfiniteDataLoader __iter__  routine   {type(self.dataset_iterator)}")
         return self
 
     def __next__(self):
         try:
             # print(f"InfiniteDataLoader __next__  routine ")
             batch = next(self.dataset_iterator)
+            # print(type(batch), len(batch), type(batch[0]), batch[0].shape)
         except StopIteration:
             # print("InfiniteDataLoader __next__  routine  -- End of dataset encountered!!!")
             # Dataset exhausted, use a new fresh iterator.
@@ -167,10 +173,23 @@ class InfiniteDataLoader(torch.utils.data.DataLoader):
 def custom_collate_fn(batch):
     batch_numpy = np.concatenate(batch)
     plates  = batch_numpy[:,:4]
-    compounds = batch_numpy[:,4]
+    compounds = batch_numpy[:,4:5]
     cmphash = batch_numpy[:,5:7].astype(np.int64)
-    other = batch_numpy[:,7:10]
-    labels = torch.from_numpy(batch_numpy[:,10].astype(np.float32))
+    tpsa = batch_numpy[:,7:10]
+    labels = torch.from_numpy(batch_numpy[:,10:11].astype(np.float32))
     data = torch.from_numpy(batch_numpy[:, 11:].astype(np.float32))
 
-    return data, labels, plates, compounds, cmphash, other
+    return data, labels, plates, compounds, cmphash, tpsa
+
+def dynamic_collate_fn(batch, tpsa_threshold : int ):
+    batch_numpy = np.concatenate(batch)
+    plates  = batch_numpy[:,:4]
+    compounds = batch_numpy[:,4]
+    cmphash = batch_numpy[:,5:7].astype(np.int64)
+    tpsa = batch_numpy[:,7:10]
+    orig_labels = torch.from_numpy(batch_numpy[:,10:11].astype(np.float32))
+    labels = np.where(batch_numpy[:,7:8] > tpsa_threshold, 1.0, 0.0)
+    labels = torch.from_numpy(labels.astype(np.float32))
+    data = torch.from_numpy(batch_numpy[:, 11:].astype(np.float32))
+
+    return data, labels, plates, compounds, cmphash, tpsa, orig_labels
